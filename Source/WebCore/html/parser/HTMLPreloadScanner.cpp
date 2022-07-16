@@ -123,8 +123,8 @@ public:
             return;
         
         for (auto& attribute : attributes) {
-            AtomString attributeName(attribute.name);
-            AtomString attributeValue(attribute.value);
+            AtomString attributeName(attribute.name.data(), attribute.name.size());
+            AtomString attributeValue(attribute.value.data(), attribute.value.size());
             processAttribute(WTFMove(attributeName), WTFMove(attributeValue), pictureState);
         }
         
@@ -482,7 +482,8 @@ void TokenPreloadScanner::updatePredictedBaseURL(const HTMLToken& token, bool sh
     auto* hrefAttribute = findAttribute(token.attributes(), hrefAsUChar);
     if (!hrefAttribute)
         return;
-    URL temp { m_documentURL, stripLeadingAndTrailingHTMLSpaces(StringImpl::create8BitIfPossible(hrefAttribute->value)) };
+    auto value = hrefAttribute->value;
+    URL temp { m_documentURL, stripLeadingAndTrailingHTMLSpaces(StringImpl::create8BitIfPossible(value.data(), value.size())) };
     if (!shouldRestrictBaseURLSchemes || SecurityPolicy::isBaseURLSchemeAllowed(temp))
         m_predictedBaseElementURL = WTFMove(temp).isolatedCopy();
 }

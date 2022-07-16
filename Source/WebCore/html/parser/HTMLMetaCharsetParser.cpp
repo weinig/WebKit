@@ -86,7 +86,7 @@ static StringView extractCharset(const String& value)
 bool HTMLMetaCharsetParser::processMeta(HTMLToken& token)
 {
     auto attributes = token.attributes().map([](auto& attribute) {
-        return std::pair { AtomString(attribute.name), AtomString(attribute.value) };
+        return std::pair { AtomString(attribute.name.data(), attribute.name.size()), AtomString(attribute.value.data(), attribute.value.size()) };
     });
 
     m_encoding = encodingFromMetaAttributes(attributes);

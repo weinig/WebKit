@@ -207,7 +207,7 @@ inline void AtomHTMLToken::initializeAttributes(const HTMLToken::AttributeList& 
     addedAttributes.reserveInitialCapacity(size);
     m_attributes.reserveInitialCapacity(size);
     for (auto& attribute : attributes) {
-        if (attribute.name.isEmpty())
+        if (attribute.name.empty())
             continue;
 
         auto qualifiedName = HTMLNameCache::makeAttributeQualifiedName(attribute.name);

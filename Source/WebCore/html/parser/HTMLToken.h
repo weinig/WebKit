@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2013 Google, Inc. All Rights Reserved.
- * Copyright (C) 2015-2021 Apple Inc. All Rights Reserved.
+ * Copyright (C) 2015-2022 Apple Inc. All Rights Reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -40,6 +40,250 @@ public:
     bool forceQuirks { false };
 };
 
+struct HTMLTokenAttributeList {
+    WTF_MAKE_FAST_ALLOCATED;
+public:
+    struct Attribute {
+        Span<const UChar> name;
+        Span<const UChar> value;
+    };
+
+    HTMLTokenAttributeList()
+        : m_capacity { inlineCapacity }
+        , m_size { 0 }
+        , m_numberOfAttributes { 0 }
+        , m_currentSizeIndex { 0 }
+        , m_state { State::Initial }
+    {
+    }
+
+    void clear()
+    {
+        m_data = Inline { };
+        m_capacity = inlineCapacity;
+        m_size = 0;
+        m_numberOfAttributes = 0;
+        m_currentSizeIndex = 0;
+        m_state = State::Initial;
+    }
+
+    void beginAttribute()
+    {
+        switch (m_state) {
+        case State::Initial:
+            break;
+        case State::Name:
+            endAttributeName();
+            endAttributeValue();
+            break;
+        case State::Value:
+            endAttributeValue();
+            break;
+        }
+
+        m_state = State::Name;
+        ++m_numberOfAttributes;
+    }
+
+    void appendToAttributeName(UChar character)
+    {
+        ASSERT(m_state == State::Name);
+        m_size++;
+        growIfNecessary();
+        buffer()[m_size] = character;
+    }
+
+    void appendToAttributeValue(UChar character)
+    {
+        ASSERT(m_state != State::Initial);
+
+        if (m_state == State::Name) {
+            endAttributeName();
+            m_state = State::Value;
+        }
+
+        m_size++;
+        growIfNecessary();
+        buffer()[m_size] = character;
+    }
+
+    template<typename CharacterType>
+    void appendToAttributeValue(Span<const CharacterType> characters)
+    {
+        ASSERT(m_state != State::Initial);
+
+        if (m_state == State::Name) {
+            endAttributeName();
+            m_state = State::Value;
+        }
+
+        auto existingSize = m_size;
+        m_size += characters.size();
+        growIfNecessary();
+        std::memcpy(&buffer()[existingSize + 1], characters.data(), characters.size());
+    }
+
+    void endAttribute()
+    {
+        switch (m_state) {
+        case State::Initial:
+            break;
+        case State::Name:
+            endAttributeName();
+            endAttributeValue();
+            break;
+        case State::Value:
+            endAttributeValue();
+            break;
+        }
+
+        m_state = State::Initial;
+    }
+
+    struct const_iterator {
+        using iterator_category = std::forward_iterator_tag;
+        using value_type = Attribute;
+        using difference_type = ptrdiff_t;
+        using pointer = value_type*;
+        using reference = value_type&;
+
+        bool operator!=(const const_iterator& other) const
+        {
+            return indexOfNameSize != other.indexOfNameSize;
+        }
+
+        void operator++()
+        {
+            auto buffer = list.buffer();
+            auto nameSize = buffer[indexOfNameSize];
+            auto indexOfValueSize = indexOfNameSize + nameSize + 1;
+            auto valueSize = buffer[indexOfValueSize];
+
+            indexOfNameSize = indexOfValueSize + valueSize + 1;
+        }
+
+        const Attribute& operator*()
+        {
+            auto buffer = list.buffer();
+
+            auto nameSize = static_cast<size_t>(buffer[indexOfNameSize]);
+            auto name = Span<const UChar>(&buffer[indexOfNameSize + 1], nameSize);
+
+            auto indexOfValueSize = indexOfNameSize + nameSize + 1;
+            auto valueSize = static_cast<size_t>(buffer[indexOfValueSize]);
+            auto value = Span<const UChar>(&buffer[indexOfValueSize + 1], valueSize);
+
+            attribute = Attribute { name, value };
+
+            return attribute;
+        }
+
+    private:
+        friend struct HTMLTokenAttributeList;
+
+        const_iterator(const HTMLTokenAttributeList& list, unsigned indexOfNameSize)
+            : list { list }
+            , indexOfNameSize { indexOfNameSize }
+            , attribute { }
+        {
+        }
+
+        const HTMLTokenAttributeList& list;
+        unsigned indexOfNameSize;
+        Attribute attribute;
+    };
+
+    auto begin() const { return const_iterator { *this, 0 }; }
+    auto end() const { return const_iterator { *this, m_size }; }
+
+    auto size() const { return m_numberOfAttributes; }
+
+    template<typename MapFunction>
+    auto map(MapFunction&& mapFunction) const -> std::enable_if_t<std::is_invocable_v<MapFunction, const Attribute&>, Vector<typename std::invoke_result_t<MapFunction, const Attribute&>>> {
+        return WTF::map(*this, std::forward<MapFunction>(mapFunction));
+    }
+
+private:
+    // For access to the internal buffer.
+    friend struct const_iterator;
+
+    void endAttributeName()
+    {
+        ASSERT(m_state == State::Name);
+        m_size++;
+        growIfNecessary();
+
+        auto lengthOfName = m_size - m_currentSizeIndex - 1;
+        ASSERT(lengthOfName <= std::numeric_limits<UChar>::max());
+        buffer()[m_currentSizeIndex] = static_cast<UChar>(lengthOfName);
+
+        m_currentSizeIndex = m_size;
+
+        m_state = State::Value;
+    }
+
+    void endAttributeValue()
+    {
+        ASSERT(m_state == State::Value);
+        m_size++;
+        growIfNecessary();
+
+        auto lengthOfValue = m_size - m_currentSizeIndex - 1;
+        ASSERT(lengthOfValue <= std::numeric_limits<UChar>::max());
+        buffer()[m_currentSizeIndex] = static_cast<UChar>(lengthOfValue);
+
+        m_currentSizeIndex = m_size;
+
+        m_state = State::Initial;
+    }
+
+    void growIfNecessary()
+    {
+        if (m_size <= m_capacity)
+            return;
+
+        // FIXME: Add overflow checking.
+        auto newCapacity = m_capacity * 2;
+        while (m_size > newCapacity)
+            newCapacity *= 2;
+
+        auto newBuffer = std::make_unique<UChar[]>(newCapacity);
+        std::memcpy(newBuffer.get(), buffer(), m_capacity);
+        m_capacity = newCapacity;
+        m_data = OutOfLine { WTFMove(newBuffer) };
+    }
+
+    UChar* buffer()
+    {
+        return std::visit([] (auto& data) { return std::data(data); }, m_data);
+    }
+
+    const UChar* buffer() const
+    {
+        return std::visit([] (auto& data) { return std::data(data); }, m_data);
+    }
+
+    // Derived as approximation of old sizes rounded to a power of 2: ~ (32 UChar for name + 64 UChar for value) * 10 Attributes
+    static constexpr size_t inlineCapacity = 1024;
+
+    using Inline = std::array<UChar, inlineCapacity>;
+    struct OutOfLine {
+        UChar* data() { return memory.get(); }
+        const UChar* data() const { return memory.get(); }
+        std::unique_ptr<UChar[]> memory;
+    };
+
+    enum class State : uint8_t { Initial, Name, Value };
+
+    unsigned m_capacity;
+    unsigned m_size;
+    unsigned m_numberOfAttributes;
+    unsigned m_currentSizeIndex; // Index of "size" index for the currently active name or value.
+    State m_state;
+
+    std::variant<Inline, OutOfLine> m_data;
+};
+
 class HTMLToken {
     WTF_MAKE_FAST_ALLOCATED;
 public:
@@ -53,13 +297,9 @@ public:
         EndOfFile,
     };
 
-    struct Attribute {
-        Vector<UChar, 32> name;
-        Vector<UChar, 64> value;
-    };
-
-    typedef Vector<Attribute, 10> AttributeList;
-    typedef Vector<UChar, 256> DataVector;
+    using Attribute = HTMLTokenAttributeList::Attribute;
+    using AttributeList = HTMLTokenAttributeList;
+    using DataVector = Vector<UChar, 256>;
 
     HTMLToken() = default;
 
@@ -105,7 +345,6 @@ public:
     void beginAttribute();
     void appendToAttributeName(UChar);
     void appendToAttributeValue(UChar);
-    void appendToAttributeValue(unsigned index, StringView value);
     template<typename CharacterType> void appendToAttributeValue(Span<const CharacterType>);
     void endAttribute();
 
@@ -143,7 +382,6 @@ private:
     // For StartTag and EndTag
     bool m_selfClosing;
     AttributeList m_attributes;
-    Attribute* m_currentAttribute;
 
     // For DOCTYPE
     std::unique_ptr<DoctypeData> m_doctypeData;
@@ -259,10 +497,6 @@ inline void HTMLToken::beginStartTag(LChar character)
     m_selfClosing = false;
     m_attributes.clear();
 
-#if ASSERT_ENABLED
-    m_currentAttribute = nullptr;
-#endif
-
     m_data.append(character);
 }
 
@@ -272,10 +506,6 @@ inline void HTMLToken::beginEndTag(LChar character)
     m_type = Type::EndTag;
     m_selfClosing = false;
     m_attributes.clear();
-
-#if ASSERT_ENABLED
-    m_currentAttribute = nullptr;
-#endif
 
     m_data.append(character);
 }
@@ -287,62 +517,49 @@ inline void HTMLToken::beginEndTag(const Vector<LChar, 32>& characters)
     m_selfClosing = false;
     m_attributes.clear();
 
-#if ASSERT_ENABLED
-    m_currentAttribute = nullptr;
-#endif
-
     m_data.appendVector(characters);
 }
 
 inline void HTMLToken::beginAttribute()
 {
     ASSERT(m_type == Type::StartTag || m_type == Type::EndTag);
-    m_attributes.grow(m_attributes.size() + 1);
-    m_currentAttribute = &m_attributes.last();
+    m_attributes.beginAttribute();
 }
 
 inline void HTMLToken::endAttribute()
 {
-    ASSERT(m_currentAttribute);
-#if ASSERT_ENABLED
-    m_currentAttribute = nullptr;
-#endif
+    m_attributes.endAttribute();
 }
 
 inline void HTMLToken::appendToAttributeName(UChar character)
 {
     ASSERT(character);
     ASSERT(m_type == Type::StartTag || m_type == Type::EndTag);
-    ASSERT(m_currentAttribute);
-    m_currentAttribute->name.append(character);
+
+    m_attributes.appendToAttributeName(character);
 }
 
 inline void HTMLToken::appendToAttributeValue(UChar character)
 {
     ASSERT(character);
     ASSERT(m_type == Type::StartTag || m_type == Type::EndTag);
-    ASSERT(m_currentAttribute);
-    m_currentAttribute->value.append(character);
+
+    m_attributes.appendToAttributeValue(character);
 }
 
 template<typename CharacterType>
 inline void HTMLToken::appendToAttributeValue(Span<const CharacterType> characters)
 {
     ASSERT(m_type == Type::StartTag || m_type == Type::EndTag);
-    ASSERT(m_currentAttribute);
-    m_currentAttribute->value.append(characters);
-}
 
-inline void HTMLToken::appendToAttributeValue(unsigned i, StringView value)
-{
-    ASSERT(!value.isEmpty());
-    ASSERT(m_type == Type::StartTag || m_type == Type::EndTag);
-    append(m_attributes[i].value, value);
+    m_attributes.appendToAttributeValue(characters);
 }
 
 inline const HTMLToken::AttributeList& HTMLToken::attributes() const
 {
     ASSERT(m_type == Type::StartTag || m_type == Type::EndTag);
+
+    // ASSERT or ensure that we are in the right state (m_state == Initial) to be used?
     return m_attributes;
 }
 

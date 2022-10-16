@@ -31,10 +31,6 @@
 #include "CSSPropertyAnimation.h"
 
 #include "AnimationUtilities.h"
-#include "CSSCrossfadeValue.h"
-#include "CSSFilterImageValue.h"
-#include "CSSImageGeneratorValue.h"
-#include "CSSImageValue.h"
 #include "CSSPrimitiveValue.h"
 #include "CSSPropertyBlendingClient.h"
 #include "CSSPropertyNames.h"
@@ -381,17 +377,10 @@ static inline FilterOperations blendFunc(const FilterOperations& from, const Fil
     return result;
 }
 
-static inline RefPtr<StyleImage> blendFilter(CachedImage* image, const FilterOperations& from, const FilterOperations& to, const CSSPropertyBlendingContext& context)
+static inline RefPtr<StyleImage> blendFilter(StyleImage& image, const FilterOperations& from, const FilterOperations& to, const CSSPropertyBlendingContext& context)
 {
-    ASSERT(image);
-    FilterOperations filterResult = blendFilterOperations(from, to, context);
-
-    auto imageValue = CSSImageValue::create(*image);
-    auto filterValue = ComputedStyleExtractor::valueForFilter(context.client->currentStyle(), filterResult, ComputedStyleExtractor::AdjustPixelValuesForComputedStyle::No);
-
-    auto result = CSSFilterImageValue::create(WTFMove(imageValue), WTFMove(filterValue));
-    result.get().setFilterOperations(filterResult);
-    return StyleFilterImage::create(WTFMove(result));
+    auto filterResult = blendFilterOperations(from, to, context);
+    return StyleFilterImage::create(&image, WTFMove(filterResult));
 }
 
 static inline Visibility blendFunc(Visibility from, Visibility to, const CSSPropertyBlendingContext& context)
@@ -457,23 +446,17 @@ static inline Vector<SVGLengthValue> blendFunc(const Vector<SVGLengthValue>& fro
     return result;
 }
 
-static inline RefPtr<StyleImage> crossfadeBlend(StyleCachedImage* fromStyleImage, StyleCachedImage* toStyleImage, const CSSPropertyBlendingContext& context)
+static inline RefPtr<StyleImage> crossfadeBlend(StyleCachedImage& fromStyleImage, StyleCachedImage& toStyleImage, const CSSPropertyBlendingContext& context)
 {
     // If progress is at one of the extremes, we want getComputedStyle to show the image,
     // not a completed cross-fade, so we hand back one of the existing images.
     if (!context.progress)
-        return fromStyleImage;
+        return &fromStyleImage;
     if (context.progress == 1)
-        return toStyleImage;
-    if (!fromStyleImage->cachedImage() || !toStyleImage->cachedImage())
-        return toStyleImage;
-
-    auto fromImageValue = CSSImageValue::create(*fromStyleImage->cachedImage());
-    auto toImageValue = CSSImageValue::create(*toStyleImage->cachedImage());
-    auto percentageValue = CSSPrimitiveValue::create(context.progress, CSSUnitType::CSS_NUMBER);
-
-    auto crossfadeValue = CSSCrossfadeValue::create(WTFMove(fromImageValue), WTFMove(toImageValue), WTFMove(percentageValue));
-    return StyleCrossfadeImage::create(WTFMove(crossfadeValue));
+        return &toStyleImage;
+    if (!fromStyleImage.cachedImage() || !toStyleImage.cachedImage())
+        return &toStyleImage;
+    return StyleCrossfadeImage::create(&fromStyleImage, &toStyleImage, context.progress, false);
 }
 
 static inline RefPtr<StyleImage> blendFunc(StyleImage* from, StyleImage* to, const CSSPropertyBlendingContext& context)
@@ -494,43 +477,46 @@ static inline RefPtr<StyleImage> blendFunc(StyleImage* from, StyleImage* to, con
 
     // Animation between two generated images. Cross fade for all other cases.
     if (is<StyleGeneratedImage>(*from) && is<StyleGeneratedImage>(*to)) {
-        CSSImageGeneratorValue& fromGenerated = downcast<StyleGeneratedImage>(*from).imageValue();
-        CSSImageGeneratorValue& toGenerated = downcast<StyleGeneratedImage>(*to).imageValue();
+        auto& fromGenerated = downcast<StyleGeneratedImage>(*from);
+        auto& toGenerated = downcast<StyleGeneratedImage>(*to);
 
-        if (is<CSSFilterImageValue>(fromGenerated) && is<CSSFilterImageValue>(toGenerated)) {
+        if (is<StyleFilterImage>(fromGenerated) && is<StyleFilterImage>(toGenerated)) {
             // Animation of generated images just possible if input images are equal.
             // Otherwise fall back to cross fade animation.
-            CSSFilterImageValue& fromFilter = downcast<CSSFilterImageValue>(fromGenerated);
-            CSSFilterImageValue& toFilter = downcast<CSSFilterImageValue>(toGenerated);
+            auto& fromFilter = downcast<StyleFilterImage>(fromGenerated);
+            auto& toFilter = downcast<StyleFilterImage>(toGenerated);
+
             if (fromFilter.equalInputImages(toFilter) && fromFilter.cachedImage())
-                return blendFilter(fromFilter.cachedImage(), fromFilter.filterOperations(), toFilter.filterOperations(), context);
+                return blendFilter(fromFilter, fromFilter.filterOperations(), toFilter.filterOperations(), context);
         }
 
-        if (is<CSSCrossfadeValue>(fromGenerated) && is<CSSCrossfadeValue>(toGenerated)) {
-            CSSCrossfadeValue& fromCrossfade = downcast<CSSCrossfadeValue>(fromGenerated);
-            CSSCrossfadeValue& toCrossfade = downcast<CSSCrossfadeValue>(toGenerated);
+        if (is<StyleCrossfadeImage>(fromGenerated) && is<StyleCrossfadeImage>(toGenerated)) {
+            auto& fromCrossfade = downcast<StyleCrossfadeImage>(fromGenerated);
+            auto& toCrossfade = downcast<StyleCrossfadeImage>(toGenerated);
+
             if (fromCrossfade.equalInputImages(toCrossfade)) {
                 if (auto crossfadeBlend = toCrossfade.blend(fromCrossfade, context))
-                    return StyleCrossfadeImage::create(*crossfadeBlend);
+                    return crossfadeBlend;
             }
         }
 
         // FIXME: Add support for animation between two *gradient() functions.
         // https://bugs.webkit.org/show_bug.cgi?id=119956
     } else if (is<StyleGeneratedImage>(*from) && is<StyleCachedImage>(*to)) {
-        CSSImageGeneratorValue& fromGenerated = downcast<StyleGeneratedImage>(*from).imageValue();
-        if (is<CSSFilterImageValue>(fromGenerated)) {
-            CSSFilterImageValue& fromFilter = downcast<CSSFilterImageValue>(fromGenerated);
+        auto& fromGenerated = downcast<StyleGeneratedImage>(*from);
+        if (is<StyleFilterImage>(fromGenerated)) {
+            auto& fromFilter = downcast<StyleFilterImage>(fromGenerated);
             if (fromFilter.cachedImage() && downcast<StyleCachedImage>(*to).cachedImage() == fromFilter.cachedImage())
-                return blendFilter(fromFilter.cachedImage(), fromFilter.filterOperations(), FilterOperations(), context);
+                return blendFilter(fromFilter, fromFilter.filterOperations(), FilterOperations(), context);
         }
         // FIXME: Add interpolation between cross-fade and image source.
     } else if (is<StyleCachedImage>(*from) && is<StyleGeneratedImage>(*to)) {
-        CSSImageGeneratorValue& toGenerated = downcast<StyleGeneratedImage>(*to).imageValue();
-        if (is<CSSFilterImageValue>(toGenerated)) {
-            CSSFilterImageValue& toFilter = downcast<CSSFilterImageValue>(toGenerated);
+        auto& toGenerated = downcast<StyleGeneratedImage>(*to);
+        if (is<StyleFilterImage>(toGenerated)) {
+            auto& toFilter = downcast<StyleFilterImage>(toGenerated);
+            // FIXME: Fix.
             if (toFilter.cachedImage() && downcast<StyleCachedImage>(*from).cachedImage() == toFilter.cachedImage())
-                return blendFilter(toFilter.cachedImage(), FilterOperations(), toFilter.filterOperations(), context);
+                return blendFilter(toFilter, FilterOperations(), toFilter.filterOperations(), context);
         }
         // FIXME: Add interpolation between image source and cross-fade.
     }
@@ -538,7 +524,7 @@ static inline RefPtr<StyleImage> blendFunc(StyleImage* from, StyleImage* to, con
     // FIXME: Add support cross fade between cached and generated images.
     // https://bugs.webkit.org/show_bug.cgi?id=78293
     if (is<StyleCachedImage>(*from) && is<StyleCachedImage>(*to))
-        return crossfadeBlend(downcast<StyleCachedImage>(from), downcast<StyleCachedImage>(to), context);
+        return crossfadeBlend(downcast<StyleCachedImage>(*from), downcast<StyleCachedImage>(*to), context);
 
     return to;
 }

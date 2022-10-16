@@ -44,12 +44,12 @@
 #include "PaintRenderingContext2D.h"
 #include "RenderElement.h"
 #include "StylePropertyMap.h"
-
 #include <JavaScriptCore/ConstructData.h>
+#include <wtf/text/TextStream.h>
 
 namespace WebCore {
 
-CustomPaintImage::CustomPaintImage(PaintWorkletGlobalScope::PaintDefinition& definition, const FloatSize& size, RenderElement& element, const Vector<String>& arguments)
+CustomPaintImage::CustomPaintImage(PaintWorkletGlobalScope::PaintDefinition& definition, const FloatSize& size, const RenderElement& element, const Vector<String>& arguments)
     : m_paintDefinition(definition)
     , m_inputProperties(definition.inputProperties)
     , m_element(element)
@@ -223,5 +223,12 @@ void CustomPaintImage::drawPattern(GraphicsContext& destContext, const FloatRect
     destContext.setDrawLuminanceMask(false);
 }
 
+void CustomPaintImage::dump(TextStream& ts) const
+{
+    GeneratedImage::dump(ts);
+    // FIXME: Add additional dumping.
 }
+
+}
+
 #endif

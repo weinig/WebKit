@@ -36,6 +36,7 @@
 
 namespace WebCore {
 
+class CachedImage;
 class Document;
 class WeakPtrImplWithEventTargetData;
 
@@ -49,7 +50,7 @@ public:
 
     void serialize(StringBuilder&, OptionSet<SerializationArguments>) const final;
 
-    CachedImage* image() { return m_cssValue->cachedImage(); }
+    CachedImage* image() { return nullptr/*m_cssValue->cachedImage()*/; }
     Document* document() const;
     
     CSSStyleValueType getType() const final { return CSSStyleValueType::CSSStyleImageValue; }

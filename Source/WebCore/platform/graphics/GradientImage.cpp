@@ -32,8 +32,8 @@
 
 namespace WebCore {
 
-GradientImage::GradientImage(Gradient& generator, const FloatSize& size)
-    : m_gradient(generator)
+GradientImage::GradientImage(Ref<Gradient>&& generator, const FloatSize& size)
+    : m_gradient { WTFMove(generator) }
 {
     setContainerSize(size);
 }
@@ -53,8 +53,7 @@ ImageDrawResult GradientImage::draw(GraphicsContext& destContext, const FloatRec
     return ImageDrawResult::DidDraw;
 }
 
-void GradientImage::drawPattern(GraphicsContext& destContext, const FloatRect& destRect, const FloatRect& srcRect, const AffineTransform& patternTransform,
-    const FloatPoint& phase, const FloatSize& spacing, const ImagePaintingOptions& options)
+void GradientImage::drawPattern(GraphicsContext& destContext, const FloatRect& destRect, const FloatRect& srcRect, const AffineTransform& patternTransform, const FloatPoint& phase, const FloatSize& spacing, const ImagePaintingOptions& options)
 {
     // Allow the generator to provide visually-equivalent tiling parameters for better performance.
     FloatSize adjustedSize = size();
@@ -95,7 +94,6 @@ void GradientImage::drawPattern(GraphicsContext& destContext, const FloatRect& d
 
     // Tile the image buffer into the context.
     m_cachedImage->drawPattern(destContext, destRect, adjustedSrcRect, adjustedPatternCTM, phase, spacing, options);
-
 }
 
 void GradientImage::dump(WTF::TextStream& ts) const

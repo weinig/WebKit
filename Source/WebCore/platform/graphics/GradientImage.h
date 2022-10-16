@@ -25,18 +25,17 @@
 
 #pragma once
 
+#include "FloatSize.h"
 #include "GeneratedImage.h"
+#include "Gradient.h"
 
 namespace WebCore {
 
-class Gradient;
-class Image;
-
 class GradientImage final : public GeneratedImage {
 public:
-    static Ref<GradientImage> create(Gradient& generator, const FloatSize& size)
+    static Ref<GradientImage> create(Ref<Gradient> gradient, const FloatSize& size)
     {
-        return adoptRef(*new GradientImage(generator, size));
+        return adoptRef(*new GradientImage(WTFMove(gradient), size));
     }
 
     virtual ~GradientImage();
@@ -44,13 +43,15 @@ public:
     const Gradient& gradient() const { return m_gradient.get(); }
 
 private:
-    WEBCORE_EXPORT GradientImage(Gradient&, const FloatSize&);
+    WEBCORE_EXPORT GradientImage(Ref<Gradient>&&, const FloatSize&);
 
     ImageDrawResult draw(GraphicsContext&, const FloatRect& dstRect, const FloatRect& srcRect, const ImagePaintingOptions& = { }) final;
     void drawPattern(GraphicsContext&, const FloatRect& destRect, const FloatRect& srcRect, const AffineTransform& patternTransform, const FloatPoint& phase, const FloatSize& spacing, const ImagePaintingOptions& = { }) final;
+    
+    bool hasSingleSecurityOrigin() const final { return true; }
     bool isGradientImage() const final { return true; }
     void dump(WTF::TextStream&) const final;
-    
+
     Ref<Gradient> m_gradient;
     RefPtr<Image> m_cachedImage;
     FloatSize m_cachedAdjustedSize;

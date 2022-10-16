@@ -23,20 +23,21 @@
 
 #pragma once
 
+#include "CSSParserContext.h"
 #include "CachedResourceHandle.h"
 #include "StyleImage.h"
 
 namespace WebCore {
 
-class CSSValue;
-class CSSImageValue;
 class CachedImage;
 class Document;
 
 class StyleCachedImage final : public StyleImage {
     WTF_MAKE_FAST_ALLOCATED;
 public:
-    static Ref<StyleCachedImage> create(CSSImageValue& cssValue, float scaleFactor = 1);
+    static Ref<StyleCachedImage> create(ResolvedURL, LoadedFromOpaqueSource, AtomString initiatorName = { }, float scaleFactor = 1);
+    static Ref<StyleCachedImage> create(URL, LoadedFromOpaqueSource, AtomString initiatorName = { }, float scaleFactor = 1);
+    static Ref<StyleCachedImage> create(StyleCachedImage&, float scaleFactor);
     virtual ~StyleCachedImage();
 
     bool operator==(const StyleImage& other) const final;
@@ -45,8 +46,8 @@ public:
 
     WrappedImagePtr data() const final { return m_cachedImage.get(); }
 
-    Ref<CSSValue> cssValue() const final;
-    
+    Ref<CSSValue> computedStyleValue(const RenderStyle&) const final;
+
     bool canRender(const RenderElement*, float multiplier) const final;
     bool isPending() const final;
     void load(CachedResourceLoader&, const ResourceLoaderOptions&) final;
@@ -69,13 +70,17 @@ public:
 
     URL reresolvedURL(const Document&) const;
 
+    // Take care when using this, and read https://drafts.csswg.org/css-values/#relative-urls
+    URL imageURL() const { return m_url.resolvedURL; }
+
 private:
-    StyleCachedImage(CSSImageValue&, float);
+    StyleCachedImage(ResolvedURL&&, LoadedFromOpaqueSource, AtomString&&, float);
+    StyleCachedImage(StyleCachedImage&, float);
 
-    URL imageURL() const;
-
-    Ref<CSSImageValue> m_cssValue;
-    bool m_isPending { true };
+    ResolvedURL m_url;
+    LoadedFromOpaqueSource m_loadedFromOpaqueSource;
+    AtomString m_initiatorName;
+    bool m_isPending;
     mutable float m_scaleFactor { 1 };
     mutable CachedResourceHandle<CachedImage> m_cachedImage;
 };

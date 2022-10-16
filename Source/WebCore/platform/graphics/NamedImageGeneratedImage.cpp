@@ -34,8 +34,8 @@
 
 namespace WebCore {
 
-NamedImageGeneratedImage::NamedImageGeneratedImage(String name, const FloatSize& size)
-    : m_name(name)
+NamedImageGeneratedImage::NamedImageGeneratedImage(String&& name, const FloatSize& size)
+    : m_name { WTFMove(name) }
 {
     setContainerSize(size);
 }

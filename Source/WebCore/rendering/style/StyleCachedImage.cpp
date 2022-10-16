@@ -26,30 +26,62 @@
 
 #include "CSSImageValue.h"
 #include "CachedImage.h"
+#include "CachedResourceLoader.h"
+#include "CachedResourceRequest.h"
+#include "CachedResourceRequestInitiators.h"
+#include "Document.h"
+#include "Element.h"
 #include "RenderElement.h"
 #include "RenderView.h"
 
 namespace WebCore {
 
-Ref<StyleCachedImage> StyleCachedImage::create(CSSImageValue& cssValue, float scaleFactor)
+Ref<StyleCachedImage> StyleCachedImage::create(ResolvedURL url, LoadedFromOpaqueSource loadedFromOpaqueSource, AtomString initiatorName, float scaleFactor)
 {
-    return adoptRef(*new StyleCachedImage(cssValue, scaleFactor));
+    return adoptRef(*new StyleCachedImage(WTFMove(url), loadedFromOpaqueSource, WTFMove(initiatorName), scaleFactor));
 }
 
-StyleCachedImage::StyleCachedImage(CSSImageValue& cssValue, float scaleFactor)
-    : StyleImage(Type::CachedImage)
-    , m_cssValue(cssValue)
-    , m_scaleFactor(scaleFactor)
+Ref<StyleCachedImage> StyleCachedImage::create(URL url, LoadedFromOpaqueSource loadedFromOpaqueSource, AtomString initiatorName, float scaleFactor)
 {
-    m_cachedImage = m_cssValue->cachedImage();
-    if (m_cachedImage)
-        m_isPending = false;
+    return adoptRef(*new StyleCachedImage(makeResolvedURL(WTFMove(url)), loadedFromOpaqueSource, WTFMove(initiatorName), scaleFactor));
+}
+
+Ref<StyleCachedImage> StyleCachedImage::create(StyleCachedImage& other, float scaleFactor)
+{
+    if (other.m_scaleFactor == scaleFactor)
+        return other;
+    return adoptRef(*new StyleCachedImage(other, scaleFactor));
+}
+
+StyleCachedImage::StyleCachedImage(ResolvedURL&& url, LoadedFromOpaqueSource loadedFromOpaqueSource, AtomString&& initiatorName, float scaleFactor)
+    : StyleImage { Type::CachedImage }
+    , m_url { WTFMove(url) }
+    , m_loadedFromOpaqueSource { loadedFromOpaqueSource }
+    , m_initiatorName { WTFMove(initiatorName) }
+    , m_isPending { true }
+    , m_scaleFactor { scaleFactor }
+{
+}
+
+StyleCachedImage::StyleCachedImage(StyleCachedImage& other, float scaleFactor)
+    : StyleImage { Type::CachedImage }
+    , m_url { other.m_url }
+    , m_loadedFromOpaqueSource { other.m_loadedFromOpaqueSource }
+    , m_initiatorName { other.m_initiatorName }
+    , m_isPending { other.m_isPending }
+    , m_scaleFactor { scaleFactor }
+{
+    ASSERT(other.m_scaleFactor != scaleFactor);
 }
 
 StyleCachedImage::~StyleCachedImage() = default;
 
 bool StyleCachedImage::operator==(const StyleImage& other) const
 {
+    // FROM CSSImageValue.
+    // return m_url == other.m_url;
+
+
     if (!is<StyleCachedImage>(other))
         return false;
     auto& otherCached = downcast<StyleCachedImage>(other);
@@ -57,28 +89,47 @@ bool StyleCachedImage::operator==(const StyleImage& other) const
         return true;
     if (m_scaleFactor != otherCached.m_scaleFactor)
         return false;
-    if (m_cssValue.ptr() == otherCached.m_cssValue.ptr() || m_cssValue->equals(otherCached.m_cssValue.get()))
-        return true;
     if (m_cachedImage && m_cachedImage == otherCached.m_cachedImage)
         return true;
     return false;
 }
 
-URL StyleCachedImage::imageURL() const
-{
-    return m_cssValue->imageURL();
-}
-
 URL StyleCachedImage::reresolvedURL(const Document& document) const
 {
-    return m_cssValue->reresolvedURL(document);
+    if (CSSValue::isCSSLocalURL(m_url.resolvedURL.string()))
+        return m_url.resolvedURL;
+
+    // Re-resolving the URL is important for cases where resolvedURL is still not an absolute URL.
+    // This can happen if there was no absolute base URL when the value was created, like a style from a document without a base URL.
+    if (m_url.isLocalURL())
+        return document.completeURL(m_url.specifiedURLString, URL());
+
+    return document.completeURL(m_url.resolvedURL.string());
 }
 
 void StyleCachedImage::load(CachedResourceLoader& loader, const ResourceLoaderOptions& options)
 {
     ASSERT(m_isPending);
     m_isPending = false;
-    m_cachedImage = m_cssValue->loadImage(loader, options);
+
+    if (m_cachedImage)
+        return;
+
+    ResourceLoaderOptions loadOptions = options;
+    loadOptions.loadedFromOpaqueSource = m_loadedFromOpaqueSource;
+    
+    CachedResourceRequest request(ResourceRequest(reresolvedURL(*loader.document())), loadOptions);
+    if (m_initiatorName.isEmpty())
+        request.setInitiator(cachedResourceRequestInitiators().css);
+    else
+        request.setInitiator(m_initiatorName);
+
+    if (options.mode == FetchOptions::Mode::Cors) {
+        ASSERT(loader.document());
+        request.updateForAccessControl(*loader.document());
+    }
+
+    m_cachedImage = loader.requestImage(WTFMove(request)).value_or(nullptr);
 }
 
 CachedImage* StyleCachedImage::cachedImage() const
@@ -86,9 +137,9 @@ CachedImage* StyleCachedImage::cachedImage() const
     return m_cachedImage.get();
 }
 
-Ref<CSSValue> StyleCachedImage::cssValue() const
+Ref<CSSValue> StyleCachedImage::computedStyleValue(const RenderStyle&) const
 {
-    return m_cssValue.copyRef();
+    return CSSImageValue::create(m_url, m_loadedFromOpaqueSource, m_initiatorName);
 }
 
 bool StyleCachedImage::canRender(const RenderElement* renderer, float multiplier) const
@@ -212,7 +263,7 @@ bool StyleCachedImage::knownToBeOpaque(const RenderElement& renderer) const
 
 bool StyleCachedImage::usesDataProtocol() const
 {
-    return m_cssValue->imageURL().protocolIsData();
+    return imageURL().protocolIsData();
 }
 
-}
+} // namespace WebCore

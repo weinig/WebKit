@@ -94,52 +94,27 @@ bool BuilderState::useSVGZoomRulesForLength() const
     return is<SVGElement>(element()) && !(is<SVGSVGElement>(*element()) && element()->parentNode());
 }
 
-Ref<CSSValue> BuilderState::resolveImageStyles(CSSValue& value)
+RefPtr<StyleImage> BuilderState::createStyleImage(const CSSValue& value)
 {
     if (is<CSSImageValue>(value))
-        return downcast<CSSImageValue>(value).valueWithStylesResolved(*this);
+        return downcast<CSSImageValue>(value).createStyleImage(*this);
     if (is<CSSImageSetValue>(value))
-        return downcast<CSSImageSetValue>(value).valueWithStylesResolved(*this);
+        return downcast<CSSImageSetValue>(value).createStyleImage(*this);
     if (is<CSSCursorImageValue>(value))
-        return downcast<CSSCursorImageValue>(value).valueWithStylesResolved(*this);
+        return downcast<CSSCursorImageValue>(value).createStyleImage(*this);
     if (is<CSSNamedImageValue>(value))
-        return downcast<CSSNamedImageValue>(value).valueWithStylesResolved(*this);
+        return downcast<CSSNamedImageValue>(value).createStyleImage(*this);
     if (is<CSSCanvasValue>(value))
-        return downcast<CSSCanvasValue>(value).valueWithStylesResolved(*this);
+        return downcast<CSSCanvasValue>(value).createStyleImage(*this);
     if (is<CSSCrossfadeValue>(value))
-        return downcast<CSSCrossfadeValue>(value).valueWithStylesResolved(*this);
+        return downcast<CSSCrossfadeValue>(value).createStyleImage(*this);
     if (is<CSSFilterImageValue>(value))
-        return downcast<CSSFilterImageValue>(value).valueWithStylesResolved(*this);
+        return downcast<CSSFilterImageValue>(value).createStyleImage(*this);
     if (is<CSSGradientValue>(value))
-        return downcast<CSSGradientValue>(value).valueWithStylesResolved(*this);
+        return downcast<CSSGradientValue>(value).createStyleImage(*this);
 #if ENABLE(CSS_PAINTING_API)
     if (is<CSSPaintImageValue>(value))
-        return downcast<CSSPaintImageValue>(value).valueWithStylesResolved(*this);
-#endif
-    return value;
-}
-
-RefPtr<StyleImage> BuilderState::createStyleImage(CSSValue& value)
-{
-    if (is<CSSImageValue>(value))
-        return StyleCachedImage::create(downcast<CSSImageValue>(resolveImageStyles(value).get()));
-    if (is<CSSImageSetValue>(value))
-        return StyleImageSet::create(downcast<CSSImageSetValue>(resolveImageStyles(value).get()));
-    if (is<CSSCursorImageValue>(value))
-        return StyleCursorImage::create(downcast<CSSCursorImageValue>(resolveImageStyles(value).get()));
-    if (is<CSSNamedImageValue>(value))
-        return StyleNamedImage::create(downcast<CSSNamedImageValue>(resolveImageStyles(value).get()));
-    if (is<CSSCanvasValue>(value))
-        return StyleCanvasImage::create(downcast<CSSCanvasValue>(resolveImageStyles(value).get()));
-    if (is<CSSCrossfadeValue>(value))
-        return StyleCrossfadeImage::create(downcast<CSSCrossfadeValue>(resolveImageStyles(value).get()));
-    if (is<CSSFilterImageValue>(value))
-        return StyleFilterImage::create(downcast<CSSFilterImageValue>(resolveImageStyles(value).get()));
-    if (is<CSSGradientValue>(value))
-        return StyleGradientImage::create(downcast<CSSGradientValue>(resolveImageStyles(value).get()));
-#if ENABLE(CSS_PAINTING_API)
-    if (is<CSSPaintImageValue>(value))
-        return StylePaintImage::create(downcast<CSSPaintImageValue>(resolveImageStyles(value).get()));
+        return downcast<CSSPaintImageValue>(value).createStyleImage(*this);
 #endif
     return nullptr;
 }
@@ -178,22 +153,21 @@ static FilterOperation::OperationType filterOperationForType(CSSValueID type)
     return FilterOperation::NONE;
 }
 
-bool BuilderState::createFilterOperations(const CSSValue& inValue, FilterOperations& outOperations)
+std::optional<FilterOperations> BuilderState::createFilterOperations(const CSSValue& inValue)
 {
     // FIXME: Move this code somewhere else.
 
-    ASSERT(outOperations.isEmpty());
+    FilterOperations operations;
 
     if (is<CSSPrimitiveValue>(inValue)) {
         auto& primitiveValue = downcast<CSSPrimitiveValue>(inValue);
         if (primitiveValue.valueID() == CSSValueNone)
-            return true;
+            return operations;
     }
 
     if (!is<CSSValueList>(inValue))
-        return false;
+        return std::nullopt;
 
-    FilterOperations operations;
     for (auto& currentValue : downcast<CSSValueList>(inValue)) {
         if (is<CSSPrimitiveValue>(currentValue)) {
             auto& primitiveValue = downcast<CSSPrimitiveValue>(currentValue.get());
@@ -210,7 +184,7 @@ bool BuilderState::createFilterOperations(const CSSValue& inValue, FilterOperati
             continue;
 
         auto& filterValue = downcast<CSSFunctionValue>(currentValue.get());
-        FilterOperation::OperationType operationType = filterOperationForType(filterValue.name());
+        auto operationType = filterOperationForType(filterValue.name());
 
         // Check that all parameters are primitive values, with the
         // exception of drop shadow which has a CSSShadowValue parameter.
@@ -274,14 +248,14 @@ bool BuilderState::createFilterOperations(const CSSValue& inValue, FilterOperati
             if (filterValue.length() >= 1)
                 stdDeviation = convertToFloatLength(firstValue, cssToLengthConversionData());
             if (stdDeviation.isUndefined())
-                return false;
+                return std::nullopt;
 
             operations.operations().append(BlurFilterOperation::create(stdDeviation));
             break;
         }
         case FilterOperation::DROP_SHADOW: {
             if (filterValue.length() != 1)
-                return false;
+                return std::nullopt;
 
             const auto* cssValue = filterValue.itemWithoutBoundsCheck(0);
             if (!is<CSSShadowValue>(cssValue))
@@ -303,8 +277,7 @@ bool BuilderState::createFilterOperations(const CSSValue& inValue, FilterOperati
         }
     }
 
-    outOperations = operations;
-    return true;
+    return operations;
 }
 
 bool BuilderState::isColorFromPrimitiveValueDerivedFromElement(const CSSPrimitiveValue& value)

@@ -32,7 +32,6 @@
 #include "CSSBackgroundRepeatValue.h"
 #include "CSSBorderImageSliceValue.h"
 #include "CSSBorderImageWidthValue.h"
-#include "CSSImageGeneratorValue.h"
 #include "CSSImageSetValue.h"
 #include "CSSImageValue.h"
 #include "CSSPrimitiveValue.h"
@@ -473,7 +472,7 @@ void CSSToStyleMap::mapNinePieceImage(CSSValue* value, NinePieceImage& image)
     CSSValueList& borderImage = downcast<CSSValueList>(*value);
 
     for (auto& current : borderImage) {
-        if (is<CSSImageValue>(current) || is<CSSImageGeneratorValue>(current) || is<CSSImageSetValue>(current))
+        if (is<CSSImageValue>(current) || is<CSSImageSetValue>(current) || current->isImageGeneratorValue())
             image.setImage(styleImage(current.get()));
         else if (is<CSSBorderImageSliceValue>(current))
             mapNinePieceImageSlice(current, image);

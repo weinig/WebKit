@@ -36,7 +36,6 @@
 #include "CSSGridAutoRepeatValue.h"
 #include "CSSGridIntegerRepeatValue.h"
 #include "CSSGridLineNamesValue.h"
-#include "CSSImageGeneratorValue.h"
 #include "CSSImageSetValue.h"
 #include "CSSImageValue.h"
 #include "CSSOffsetRotateValue.h"
@@ -903,7 +902,7 @@ inline OptionSet<LineBoxContain> BuilderConverter::convertLineBoxContain(Builder
 
 static inline bool isImageShape(const CSSValue& value)
 {
-    return is<CSSImageValue>(value) || is<CSSImageSetValue>(value) || is<CSSImageGeneratorValue>(value);
+    return is<CSSImageValue>(value) || is<CSSImageSetValue>(value) || value.isImageGeneratorValue();
 }
 
 inline RefPtr<ShapeValue> BuilderConverter::convertShapeValue(BuilderState& builderState, CSSValue& value)
@@ -1292,10 +1291,7 @@ inline std::optional<Length> BuilderConverter::convertMarqueeIncrement(BuilderSt
 
 inline std::optional<FilterOperations> BuilderConverter::convertFilterOperations(BuilderState& builderState, const CSSValue& value)
 {
-    FilterOperations operations;
-    if (builderState.createFilterOperations(value, operations))
-        return operations;
-    return std::nullopt;
+    return builderState.createFilterOperations(value);
 }
 
 inline FontFeatureSettings BuilderConverter::convertFontFeatureSettings(BuilderState&, const CSSValue& value)

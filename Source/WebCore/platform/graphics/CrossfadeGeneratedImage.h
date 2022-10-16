@@ -27,33 +27,31 @@
 
 #include "FloatSize.h"
 #include "GeneratedImage.h"
-#include "Image.h"
-#include <wtf/RefPtr.h>
 
 namespace WebCore {
 
 class CrossfadeGeneratedImage final : public GeneratedImage {
 public:
-    static Ref<CrossfadeGeneratedImage> create(Image& fromImage, Image& toImage, float percentage, const FloatSize& crossfadeSize, const FloatSize& size)
+    static Ref<CrossfadeGeneratedImage> create(Ref<Image> fromImage, Ref<Image> toImage, float percentage, const FloatSize& crossfadeSize, const FloatSize& size)
     {
-        return adoptRef(*new CrossfadeGeneratedImage(fromImage, toImage, percentage, crossfadeSize, size));
+        return adoptRef(*new CrossfadeGeneratedImage(WTFMove(fromImage), WTFMove(toImage), percentage, crossfadeSize, size));
     }
 
-    void setContainerSize(const FloatSize&) override { }
-    bool usesContainerSize() const override { return false; }
-    bool hasRelativeWidth() const override { return false; }
-    bool hasRelativeHeight() const override { return false; }
-
-    FloatSize size(ImageOrientation = ImageOrientation::FromImage) const override { return m_crossfadeSize; }
+    void setContainerSize(const FloatSize&) final { }
+    bool usesContainerSize() const final { return false; }
+    bool hasRelativeWidth() const final { return false; }
+    bool hasRelativeHeight() const final { return false; }
+    FloatSize size(ImageOrientation = ImageOrientation::FromImage) const final { return m_crossfadeSize; }
 
 private:
-    ImageDrawResult draw(GraphicsContext&, const FloatRect& dstRect, const FloatRect& srcRect, const ImagePaintingOptions& = { }) override;
-    void drawPattern(GraphicsContext&, const FloatRect& dstRect, const FloatRect& srcRect, const AffineTransform& patternTransform, const FloatPoint& phase, const FloatSize& spacing, const ImagePaintingOptions& = { }) override;
+    CrossfadeGeneratedImage(Ref<Image>&& fromImage, Ref<Image>&& toImage, float percentage, const FloatSize& crossfadeSize, const FloatSize&);
 
-    CrossfadeGeneratedImage(Image& fromImage, Image& toImage, float percentage, const FloatSize& crossfadeSize, const FloatSize&);
+    ImageDrawResult draw(GraphicsContext&, const FloatRect& dstRect, const FloatRect& srcRect, const ImagePaintingOptions& = { }) final;
+    void drawPattern(GraphicsContext&, const FloatRect& dstRect, const FloatRect& srcRect, const AffineTransform& patternTransform, const FloatPoint& phase, const FloatSize& spacing, const ImagePaintingOptions& = { }) final;
 
-    bool isCrossfadeGeneratedImage() const override { return true; }
-    void dump(WTF::TextStream&) const override;
+    bool hasSingleSecurityOrigin() const final { return false; }
+    bool isCrossfadeGeneratedImage() const final { return true; }
+    void dump(WTF::TextStream&) const final;
     
     void drawCrossfade(GraphicsContext&);
 

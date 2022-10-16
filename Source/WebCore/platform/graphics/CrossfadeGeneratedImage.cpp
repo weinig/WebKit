@@ -33,9 +33,9 @@
 
 namespace WebCore {
 
-CrossfadeGeneratedImage::CrossfadeGeneratedImage(Image& fromImage, Image& toImage, float percentage, const FloatSize& crossfadeSize, const FloatSize& size)
-    : m_fromImage(fromImage)
-    , m_toImage(toImage)
+CrossfadeGeneratedImage::CrossfadeGeneratedImage(Ref<Image>&& fromImage, Ref<Image>&& toImage, float percentage, const FloatSize& crossfadeSize, const FloatSize& size)
+    : m_fromImage(WTFMove(fromImage))
+    , m_toImage(WTFMove(toImage))
     , m_percentage(percentage)
     , m_crossfadeSize(crossfadeSize)
 {

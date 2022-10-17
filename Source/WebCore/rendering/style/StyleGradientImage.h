@@ -29,6 +29,7 @@
 #include "CSSGradientValue.h"
 #include "StyleColor.h"
 #include "StyleGeneratedImage.h"
+#include <optional>
 #include <variant>
 
 namespace WebCore {
@@ -42,12 +43,55 @@ class StyleGradientImage final : public StyleGeneratedImage {
 public:
     using Stop = StyleGradientImageStop;
 
+    struct Angle {
+        float valueInDegrees;
+    };
+
+    struct SideOrCorner {
+        enum Horizontal { Left, Right };
+        enum Vertical { Top, Bottom };
+        using Both = std::pair<Horizontal, Vertical>;
+    };
+
+    struct Position {
+        // [ left | center | right ] || [ top | center | bottom ]
+        struct Variant1 {
+            
+        };
+
+        // [ left | center | right | <length-percentage> ]
+        // [ top | center | bottom | <length-percentage> ]?
+        struct Variant2 {
+            
+        };
+
+        // [ [ left | right ] <length-percentage> ] &&
+        // [ [ top | bottom ] <length-percentage> ]
+        struct Variant3 {
+            
+        };
+        
+        std::variant<Variant1, Variant2, Variant3> value;
+    };
+
+    struct LinearData {
+        std::variant<Angle, SideOrCorner::Horizontal, SideOrCorner::Vertical, SideOrCorner::Both> direction;
+    }
+
+    struct DeprecatedLinearData {
+    
+    };
+
+    struct PrefixedLinearData {
+    
+    };
+
     struct LinearData {
         RefPtr<CSSPrimitiveValue> firstX;
         RefPtr<CSSPrimitiveValue> firstY;
         RefPtr<CSSPrimitiveValue> secondX;
         RefPtr<CSSPrimitiveValue> secondY;
-        RefPtr<CSSPrimitiveValue> angle;
+        std::optional<float> angleInDegrees;
     };
 
     struct RadialData {
@@ -63,12 +107,30 @@ public:
         RefPtr<CSSPrimitiveValue> endVerticalSize;
     };
 
+    struct DeprecatedRadialData {
+    
+    };
+
+    struct PrefixedRadialData {
+    
+    };
+
     struct ConicData {
+        // https://drafts.csswg.org/css-values-4/#typedef-position
+        //
+        // <position> Determines the gradient center of the gradient. The <position> value
+        // type (which is also used for background-position) is defined in [CSS-VALUES-3], and
+        // is resolved using the center-point as the object area and the gradient box as the
+        // positioning area. If this argument is omitted, it defaults to center.
+        Position position;
         RefPtr<CSSPrimitiveValue> firstX;
         RefPtr<CSSPrimitiveValue> firstY;
-        RefPtr<CSSPrimitiveValue> secondX;
-        RefPtr<CSSPrimitiveValue> secondY;
-        RefPtr<CSSPrimitiveValue> angle;
+        
+        // https://drafts.csswg.org/css-values-4/#angle-value
+        //
+        // The entire gradient is rotated by this angle. If omitted, defaults to 0deg. The unit
+        // identifier may be omitted if the <angle> is zero.
+        Angle angle;
     };
 
     using Data = std::variant<LinearData, RadialData, ConicData>;
@@ -107,7 +169,6 @@ private:
 
     Data m_data;
     CSSGradientRepeat m_repeat;
-    CSSGradientType m_gradientType;
     CSSGradientColorInterpolationMethod m_colorInterpolationMethod;
     Vector<Stop> m_stops;
     mutable std::optional<bool> m_hasColorDerivedFromElement;

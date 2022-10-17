@@ -52,7 +52,7 @@ static inline bool operator==(const StyleGradientImage::LinearData& a, const Sty
         && compareCSSValuePtr(a.firstY, b.firstY)
         && compareCSSValuePtr(a.secondX, b.secondX)
         && compareCSSValuePtr(a.secondY, b.secondY)
-        && compareCSSValuePtr(a.angle, b.angle);
+        && a.angleInDegrees == b.angleInDegrees;
 }
 
 static inline bool operator==(const StyleGradientImage::RadialData& a, const StyleGradientImage::RadialData& b)
@@ -75,7 +75,7 @@ static inline bool operator==(const StyleGradientImage::ConicData& a, const Styl
         && compareCSSValuePtr(a.firstY, b.firstY)
         && compareCSSValuePtr(a.secondX, b.secondX)
         && compareCSSValuePtr(a.secondY, b.secondY)
-        && compareCSSValuePtr(a.angle, b.angle);
+        && a.angleInDegrees == b.angleInDegrees;
 }
 
 StyleGradientImage::StyleGradientImage(Data&& data, CSSGradientRepeat repeat, CSSGradientType gradientType, CSSGradientColorInterpolationMethod colorInterpolationMethod, Vector<StyleGradientImage::Stop>&& stops)
@@ -117,7 +117,8 @@ Ref<CSSValue> StyleGradientImage::computedStyleValue(const RenderStyle& style) c
             result->setFirstY(data.firstY.copyRef());
             result->setSecondX(data.secondX.copyRef());
             result->setSecondY(data.secondY.copyRef());
-            result->setAngle(data.angle.copyRef());
+            if (data.angleInDegrees)
+                result->setAngle(CSSPrimitiveValue::create(data.angleInDegrees, CSSUnitType::CSS_DEG));
             return result;
         },
         [&] (const RadialData& data) -> Ref<CSSValue> {
@@ -140,7 +141,8 @@ Ref<CSSValue> StyleGradientImage::computedStyleValue(const RenderStyle& style) c
             result->setFirstY(data.firstY.copyRef());
             result->setSecondX(data.secondX.copyRef());
             result->setSecondY(data.secondY.copyRef());
-            result->setAngle(data.angle.copyRef());
+            if (data.angleInDegrees)
+                result->setAngle(CSSPrimitiveValue::create(data.angleInDegrees, CSSUnitType::CSS_DEG));
             return result;
         }
     );
@@ -730,41 +732,29 @@ static FloatPoint computeEndPoint(const CSSPrimitiveValue* horizontal, const CSS
 }
 
 // Compute the endpoints so that a gradient of the given angle covers a box of the given size.
-static void endPointsFromAngle(float angleDeg, const FloatSize& size, FloatPoint& firstPoint, FloatPoint& secondPoint, CSSGradientType type)
+static std::pair<FloatPoint, FloatPoint> endPointsFromAngle(float angleInDegrees, const FloatSize& size, CSSGradientType type)
 {
     // Prefixed gradients use "polar coordinate" angles, rather than "bearing" angles.
     if (type == CSSPrefixedLinearGradient)
-        angleDeg = 90 - angleDeg;
+        angleInDegrees = 90 - angleInDegrees;
 
-    angleDeg = toPositiveAngle(angleDeg);
+    angleInDegrees = toPositiveAngle(angleInDegrees);
 
-    if (!angleDeg) {
-        firstPoint.set(0, size.height());
-        secondPoint.set(0, 0);
-        return;
-    }
+    if (!angleInDegrees)
+        return { { 0, size.height() }, { 0, 0 } };
 
-    if (angleDeg == 90) {
-        firstPoint.set(0, 0);
-        secondPoint.set(size.width(), 0);
-        return;
-    }
+    if (angleInDegrees == 90)
+        return { { 0, 0 }, { size.width(), 0 } };
 
-    if (angleDeg == 180) {
-        firstPoint.set(0, 0);
-        secondPoint.set(0, size.height());
-        return;
-    }
+    if (angleInDegrees == 180)
+        return { { 0, 0 }, { 0, size.height() } };
 
-    if (angleDeg == 270) {
-        firstPoint.set(size.width(), 0);
-        secondPoint.set(0, 0);
-        return;
-    }
+    if (angleInDegrees == 270) {
+        return { { size.width(), 0 }, { 0, 0 } };
 
-    // angleDeg is a "bearing angle" (0deg = N, 90deg = E),
+    // angleInDegrees is a "bearing angle" (0deg = N, 90deg = E),
     // but tan expects 0deg = E, 90deg = N.
-    float slope = tan(deg2rad(90 - angleDeg));
+    float slope = tan(deg2rad(90 - angleInDegrees));
 
     // We find the endpoint by computing the intersection of the line formed by the slope,
     // and a line perpendicular to it that intersects the corner.
@@ -774,11 +764,11 @@ static void endPointsFromAngle(float angleDeg, const FloatSize& size, FloatPoint
     float halfHeight = size.height() / 2;
     float halfWidth = size.width() / 2;
     FloatPoint endCorner;
-    if (angleDeg < 90)
+    if (angleInDegrees < 90)
         endCorner.set(halfWidth, halfHeight);
-    else if (angleDeg < 180)
+    else if (angleInDegrees < 180)
         endCorner.set(halfWidth, -halfHeight);
-    else if (angleDeg < 270)
+    else if (angleInDegrees < 270)
         endCorner.set(-halfWidth, -halfHeight);
     else
         endCorner.set(-halfWidth, halfHeight);
@@ -789,10 +779,14 @@ static void endPointsFromAngle(float angleDeg, const FloatSize& size, FloatPoint
     float endY = perpendicularSlope * endX + c;
 
     // We computed the end point, so set the second point,
-    // taking into account the moved origin and the fact that we're in drawing space (+y = down).
-    secondPoint.set(halfWidth + endX, halfHeight - endY);
-    // Reflect around the center for the start point.
-    firstPoint.set(halfWidth - endX, halfHeight + endY);
+    // taking into account the moved origin and the fact
+    // that we're in drawing space (+y = down). Then we
+    // reflect around the center for the start point.
+
+    return {
+        { halfWidth - endX, halfHeight + endY },
+        { halfWidth + endX, halfHeight - endY }
+    };
 }
 
 static float resolveRadius(CSSPrimitiveValue& radius, const CSSToLengthConversionData& conversionData, float* widthOrHeight = nullptr)
@@ -896,12 +890,67 @@ Ref<Gradient> StyleGradientImage::createGradient(const LinearData& linear, const
 
     CSSToLengthConversionData conversionData(renderer.style(), rootStyle, renderer.parentStyle(), &renderer.view(), renderer.generatingElement());
 
+    auto [firstPoint, secondPoint] = WTF::switchOn(linear.direction,
+        [&] (Angle angle) -> std::pair<FloatPoint, FloatPoint> {
+            return endPointsFromAngle(angle.valueInDegrees, size);
+        },
+        [&] (SideOrCorner::Horizontal leftOrRight) -> std::pair<FloatPoint, FloatPoint> {
+            switch (leftOrRight) {
+            case SideOrCorner:::Left:
+                return { { size.width(), 0 }, { 0, 0 } };
+            case SideOrCorner:::Right:
+                return { { 0, 0 }, { size.width(), 0 } };
+            }
+        },
+        [&] (SideOrCorner::Vertical topOrBottom) -> std::pair<FloatPoint, FloatPoint> {
+            switch (topOrBottom) {
+            case SideOrCorner:::Top:
+                return { { 0, size.height() }, { 0, 0 } };
+            case SideOrCorner:::Bottom:
+                return { { 0, 0 }, { 0, size.height() } };
+            }
+        },
+        [] (SideOrCorner::Both leftOrRightAndTopOrBottom) -> std::pair<FloatPoint, FloatPoint> {
+            // "Magic" corners, so the 50% line touches two corners.
+            float rise = size.width();
+            float run = size.height();
+            if (leftOrRightAndTopOrBottom.first == SideOrCorner::Left)
+                run *= -1;
+            if (leftOrRightAndTopOrBottom.second == SideOrCorner::Bottom)
+                rise *= -1;
+
+            // Compute angle, and flip it back to "bearing angle" degrees.
+            float angle = 90 - rad2deg(atan2(rise, run));
+            return endPointsFromAngle(angle, size);
+        }
+    );
+
     FloatPoint firstPoint;
     FloatPoint secondPoint;
-    if (linear.angle) {
-        float angle = linear.angle->floatValue(CSSUnitType::CSS_DEG);
-        endPointsFromAngle(angle, size, firstPoint, secondPoint, m_gradientType);
-    } else {
+    if (linear.angleInDegrees)
+        std::tie(firstPoint, secondPoint) = endPointsFromAngle(*linear.angleInDegrees, size, m_gradientType);
+    else {
+        if (linear.firstX && linear.firstY) {
+            // "Magic" corners, so the 50% line touches two corners.
+            float rise = size.width();
+            float run = size.height();
+            if (linear.firstX->valueID() == CSSValueLeft)
+                run *= -1;
+            if (linear.firstY->valueID() == CSSValueBottom)
+                rise *= -1;
+            // Compute angle, and flip it back to "bearing angle" degrees.
+            float angle = 90 - rad2deg(atan2(rise, run));
+            endPointsFromAngle(angle, size, firstPoint, secondPoint, m_gradientType);
+        } else if (linear.firstX) {
+            secondPoint = computeEndPoint(linear.firstX.get(), nullptr, conversionData, size);
+            firstPoint.setX(size.width() - secondPoint.x());
+        } else if (linear.firstY) {
+            secondPoint = computeEndPoint(nullptr, linear.firstY.get(), conversionData, size);
+            firstPoint.setY(size.height() - secondPoint.y());
+        } else
+            secondPoint.setY(size.height());
+    }
+
         switch (m_gradientType) {
         case CSSDeprecatedLinearGradient:
             firstPoint = computeEndPoint(linear.firstX.get(), linear.firstY.get(), conversionData, size);
@@ -1114,11 +1163,7 @@ Ref<Gradient> StyleGradientImage::createGradient(const ConicData& conic, const R
     if (!conic.firstY)
         centerPoint.setY(size.height() / 2);
 
-    float angleRadians = 0;
-    if (conic.angle)
-        angleRadians = conic.angle->floatValue(CSSUnitType::CSS_RAD);
-
-    Gradient::ConicData data { centerPoint, angleRadians };
+    Gradient::ConicData data { centerPoint, deg2rad(conic.angleInDegrees.value_or(0)) };
     ConicGradientAdapter adapter;
     auto stops = computeStops(adapter, conversionData, renderer.style(), 1);
 

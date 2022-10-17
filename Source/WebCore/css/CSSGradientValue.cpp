@@ -66,6 +66,10 @@ RefPtr<StyleImage> CSSGradientValue::createStyleImage(Style::BuilderState& state
 
 RefPtr<StyleImage> CSSLinearGradientValue::createStyleImage(Style::BuilderState& state) const
 {
+    std::optional<float> angle;
+    if (m_angle)
+        angle = m_angle->floatValue(CSSUnitType::CSS_DEG);
+
     return StyleGradientImage::create(
         // FIXME: The parameters to LinearData should convert down to a non-CSS specific type here (e.g. Length, double, etc.).
         StyleGradientImage::LinearData {
@@ -73,7 +77,7 @@ RefPtr<StyleImage> CSSLinearGradientValue::createStyleImage(Style::BuilderState&
             firstY(),
             secondX(),
             secondY(),
-            m_angle.copyRef()
+            angle
         },
         isRepeating() ? CSSGradientRepeat::Repeating : CSSGradientRepeat::NonRepeating,
         gradientType(),
@@ -107,6 +111,10 @@ RefPtr<StyleImage> CSSRadialGradientValue::createStyleImage(Style::BuilderState&
 
 RefPtr<StyleImage> CSSConicGradientValue::createStyleImage(Style::BuilderState& state) const
 {
+    std::optional<float> angle;
+    if (m_angle)
+        angle = m_angle->floatValue(CSSUnitType::CSS_DEG);
+
     return StyleGradientImage::create(
         // FIXME: The parameters to ConicData should convert down to a non-CSS specific type here (e.g. Length, double, etc.).
         StyleGradientImage::ConicData {
@@ -114,7 +122,7 @@ RefPtr<StyleImage> CSSConicGradientValue::createStyleImage(Style::BuilderState& 
             firstY(),
             secondX(),
             secondY(),
-            m_angle.copyRef()
+            angle
         },
         isRepeating() ? CSSGradientRepeat::Repeating : CSSGradientRepeat::NonRepeating,
         gradientType(),

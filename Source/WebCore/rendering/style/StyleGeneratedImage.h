@@ -43,6 +43,7 @@ struct ResourceLoaderOptions;
 class StyleGeneratedImage : public StyleImage {
 public:
     const HashCountedSet<RenderElement*>& clients() const { return m_clients; }
+    const HashCountedSet<StyleImageObserver*>& observers() const { return m_observers; }
 
 protected:
     explicit StyleGeneratedImage(StyleImage::Type, bool fixedSize);
@@ -57,9 +58,15 @@ protected:
     bool usesImageContainerSize() const final { return !m_fixedSize; }
     void setContainerContextForRenderer(const RenderElement&, const FloatSize& containerSize, float) final { m_containerSize = containerSize; }
     
+    // Clients.
     void addClient(RenderElement&) final;
     void removeClient(RenderElement&) final;
     bool hasClient(RenderElement&) const final;
+
+    // Observers.
+    void registerObserver(StyleImageObserver&) final;
+    void unregisterObserver(StyleImageObserver&) final;
+    bool hasObserver(StyleImageObserver&) const final;
 
     // Allow subclasses to react to clients being added/removed.
     virtual void didAddClient(RenderElement&) = 0;
@@ -76,6 +83,7 @@ protected:
     FloatSize m_containerSize;
     bool m_fixedSize;
     HashCountedSet<RenderElement*> m_clients;
+    HashCountedSet<StyleImageObserver*> m_observers;
     HashMap<FloatSize, std::unique_ptr<CachedGeneratedImage>> m_images;
 };
 

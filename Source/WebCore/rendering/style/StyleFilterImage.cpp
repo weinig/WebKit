@@ -29,29 +29,30 @@
 
 #include "CSSFilter.h"
 #include "CSSFilterImageValue.h"
-#include "CachedImage.h"
 #include "CachedResourceLoader.h"
 #include "ComputedStyleExtractor.h"
 #include "ImageBuffer.h"
 #include "NullGraphicsContext.h"
 #include "RenderElement.h"
+#include <wtf/PointerComparison.h>
 
 namespace WebCore {
-
-// MARK: - StyleFilterImage
 
 StyleFilterImage::StyleFilterImage(RefPtr<StyleImage>&& image, FilterOperations&& filterOperations)
     : StyleGeneratedImage { Type::FilterImage, StyleFilterImage::isFixedSize }
     , m_image { WTFMove(image) }
     , m_filterOperations { WTFMove(filterOperations) }
-    , m_inputImageIsReady { false }
+    , m_inputImagesRegistered { false }
 {
 }
 
 StyleFilterImage::~StyleFilterImage()
 {
-    if (m_cachedImage)
-        m_cachedImage->removeClient(*this);
+    if (!m_inputImagesRegistered)
+        return;
+
+    if (m_image)
+        m_image->unregisterObserver(*this);
 }
 
 bool StyleFilterImage::operator==(const StyleImage& other) const
@@ -61,26 +62,12 @@ bool StyleFilterImage::operator==(const StyleImage& other) const
 
 bool StyleFilterImage::equals(const StyleFilterImage& other) const
 {
-    return equalInputImages(other) && m_filterOperations != other.m_filterOperations;
+    return equalInputImages(other) && m_filterOperations == other.m_filterOperations;
 }
 
 bool StyleFilterImage::equalInputImages(const StyleFilterImage& other) const
 {
-    if (m_image == other.m_image)
-        return true;
-
-    if (!m_image) {
-        if (other.m_image)
-            return false;
-    } else {
-        if (!other.m_image)
-            return false;
-        
-        if (*m_image != *other.m_image)
-            return false;
-    }
-    
-    return true;
+    return arePointingToEqualData(m_image, other.m_image);
 }
 
 Ref<CSSValue> StyleFilterImage::computedStyleValue(const RenderStyle& style) const
@@ -93,31 +80,23 @@ bool StyleFilterImage::isPending() const
     return m_image ? m_image->isPending() : false;
 }
 
-void StyleFilterImage::load(CachedResourceLoader& cachedResourceLoader, const ResourceLoaderOptions& options)
+void StyleFilterImage::load(CachedResourceLoader& loader, const ResourceLoaderOptions& options)
 {
-    CachedResourceHandle<CachedImage> oldCachedImage = m_cachedImage;
+    ASSERT(!m_inputImagesRegistered);
 
     if (m_image) {
-        m_image->load(cachedResourceLoader, options);
-        m_cachedImage = m_image->cachedImage();
-    } else
-        m_cachedImage = nullptr;
-
-    if (m_cachedImage != oldCachedImage) {
-        if (oldCachedImage)
-            oldCachedImage->removeClient(*this);
-        if (m_cachedImage)
-            m_cachedImage->addClient(*this);
+        m_image->load(loader, options);
+        m_image->registerObserver(*this);
     }
 
     for (auto& filterOperation : m_filterOperations.operations()) {
         if (!is<ReferenceFilterOperation>(filterOperation))
             continue;
         auto& referenceFilterOperation = downcast<ReferenceFilterOperation>(*filterOperation);
-        referenceFilterOperation.loadExternalDocumentIfNeeded(cachedResourceLoader, options);
+        referenceFilterOperation.loadExternalDocumentIfNeeded(loader, options);
     }
 
-    m_inputImageIsReady = true;
+    m_inputImagesRegistered = true;
 }
 
 RefPtr<Image> StyleFilterImage::image(const RenderElement* renderer, const FloatSize& size) const
@@ -168,13 +147,16 @@ FloatSize StyleFilterImage::fixedSize(const RenderElement& renderer) const
     return m_image->imageSize(&renderer, 1);
 }
 
-void StyleFilterImage::imageChanged(CachedImage*, const IntRect*)
+void StyleFilterImage::styleImageDidChange(const StyleImage&)
 {
-    if (!m_inputImageIsReady)
+    if (!m_inputImagesRegistered)
         return;
 
     for (auto& client : clients().values())
         client->imageChanged(static_cast<WrappedImagePtr>(this));
+
+    for (auto& observer : observers().values())
+        observer->styleImageDidChange(*this);
 }
 
 } // namespace WebCore

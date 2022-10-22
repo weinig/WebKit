@@ -26,13 +26,11 @@
 
 #pragma once
 
-#include "CachedImageClient.h"
-#include "CachedResourceHandle.h"
 #include "StyleGeneratedImage.h"
 
 namespace WebCore {
 
-class StyleCrossfadeImage final : public StyleGeneratedImage, private CachedImageClient {
+class StyleCrossfadeImage final : public StyleGeneratedImage, private StyleImageObserver {
 public:
     static Ref<StyleCrossfadeImage> create(RefPtr<StyleImage> from, RefPtr<StyleImage> to, double percentage, bool isPrefixed)
     {
@@ -54,27 +52,20 @@ private:
     Ref<CSSValue> computedStyleValue(const RenderStyle&) const final;
     bool isPending() const final;
     void load(CachedResourceLoader&, const ResourceLoaderOptions&) final;
+    FloatSize fixedSize(const RenderElement&) const final;
     RefPtr<Image> image(const RenderElement*, const FloatSize&) const final;
     bool knownToBeOpaque(const RenderElement&) const final;
-    FloatSize fixedSize(const RenderElement&) const final;
     void didAddClient(RenderElement&) final { }
     void didRemoveClient(RenderElement&) final { }
 
-    // CachedImageClient.
-    void imageChanged(CachedImage*, const IntRect*) final;
+    // StyleImageObserver.
+    void styleImageDidChange(const StyleImage&) final;
 
     RefPtr<StyleImage> m_from;
     RefPtr<StyleImage> m_to;
     double m_percentage;
     bool m_isPrefixed;
-
-    // FIXME: Rather than caching and tracking the input image via CachedImages, we should
-    // instead use a new, StyleImage specific notification, to allow correct tracking of
-    // nested images (e.g. one of the input images for a StyleCrossfadeImage is a StyleFilterImage
-    // where its input image is a StyleCachedImage).
-    CachedResourceHandle<CachedImage> m_cachedFromImage;
-    CachedResourceHandle<CachedImage> m_cachedToImage;
-    bool m_inputImagesAreReady;
+    bool m_inputImagesRegistered;
 };
 
 } // namespace WebCore

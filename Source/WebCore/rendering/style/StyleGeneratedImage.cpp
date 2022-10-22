@@ -162,4 +162,22 @@ bool StyleGeneratedImage::hasClient(RenderElement& renderer) const
     return m_clients.contains(&renderer);
 }
 
+// MARK: Observer support.
+
+void StyleGeneratedImage::registerObserver(StyleImageObserver& observer)
+{
+    m_observers.add(&observer);
+}
+
+void StyleGeneratedImage::unregisterObserver(StyleImageObserver& observer)
+{
+    ASSERT(m_observers.contains(&observer));
+    m_observers.remove(&observer);
+}
+
+bool StyleGeneratedImage::hasObserver(StyleImageObserver& observer) const
+{
+    return m_observers.contains(&observer);
+}
+
 } // namespace WebCore

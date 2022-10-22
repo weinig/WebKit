@@ -68,16 +68,13 @@ void StyleMultiImage::load(CachedResourceLoader& loader, const ResourceLoaderOpt
 
     if (is<StyleGeneratedImage>(bestFitImage.image)) {
         m_selectedImage = bestFitImage.image;
-        m_selectedImage->load(loader, options);
+        if (m_selectedImage->isPending())
+            m_selectedImage->load(loader, options);
         return;
     }
     
     if (is<StyleCachedImage>(bestFitImage.image)) {
-        if (downcast<StyleCachedImage>(*bestFitImage.image).imageScaleFactor() == bestFitImage.scaleFactor)
-            m_selectedImage = bestFitImage.image;
-        else
-            m_selectedImage = StyleCachedImage::copyOverridingScaleFactor(downcast<StyleCachedImage>(*bestFitImage.image), bestFitImage.scaleFactor);
-
+        m_selectedImage = StyleCachedImage::copyOverridingScaleFactor(downcast<StyleCachedImage>(*bestFitImage.image), bestFitImage.scaleFactor);
         if (m_selectedImage->isPending())
             m_selectedImage->load(loader, options);
         return;
@@ -173,6 +170,27 @@ bool StyleMultiImage::hasClient(RenderElement& renderer) const
     if (!m_selectedImage)
         return false;
     return m_selectedImage->hasClient(renderer);
+}
+
+void StyleMultiImage::registerObserver(StyleImageObserver& observer)
+{
+    if (!m_selectedImage)
+        return;
+    m_selectedImage->registerObserver(observer);
+}
+
+void StyleMultiImage::unregisterObserver(StyleImageObserver& observer)
+{
+    if (!m_selectedImage)
+        return;
+    m_selectedImage->unregisterObserver(observer);
+}
+
+bool StyleMultiImage::hasObserver(StyleImageObserver& observer) const
+{
+    if (!m_selectedImage)
+        return false;
+    return m_selectedImage->hasObserver(observer);
 }
 
 RefPtr<Image> StyleMultiImage::image(const RenderElement* renderer, const FloatSize& size) const

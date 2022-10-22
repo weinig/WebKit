@@ -446,15 +446,13 @@ static inline Vector<SVGLengthValue> blendFunc(const Vector<SVGLengthValue>& fro
     return result;
 }
 
-static inline RefPtr<StyleImage> crossfadeBlend(StyleCachedImage& fromStyleImage, StyleCachedImage& toStyleImage, const CSSPropertyBlendingContext& context)
+static inline RefPtr<StyleImage> crossfadeBlend(StyleImage& fromStyleImage, StyleImage& toStyleImage, const CSSPropertyBlendingContext& context)
 {
     // If progress is at one of the extremes, we want getComputedStyle to show the image,
     // not a completed cross-fade, so we hand back one of the existing images.
     if (!context.progress)
         return &fromStyleImage;
     if (context.progress == 1)
-        return &toStyleImage;
-    if (!fromStyleImage.cachedImage() || !toStyleImage.cachedImage())
         return &toStyleImage;
     return StyleCrossfadeImage::create(&fromStyleImage, &toStyleImage, context.progress, false);
 }
@@ -504,30 +502,29 @@ static inline RefPtr<StyleImage> blendFunc(StyleImage* from, StyleImage* to, con
         // https://bugs.webkit.org/show_bug.cgi?id=119956
     } else if (is<StyleGeneratedImage>(*from) && is<StyleCachedImage>(*to)) {
         auto& fromGenerated = downcast<StyleGeneratedImage>(*from);
+
         if (is<StyleFilterImage>(fromGenerated)) {
             auto& fromFilter = downcast<StyleFilterImage>(fromGenerated);
             auto fromFilterInputImage = fromFilter.inputImage();
+
             if (is<StyleCachedImage>(fromFilterInputImage) && downcast<StyleCachedImage>(*to).equals(downcast<StyleCachedImage>(*fromFilterInputImage)))
                 return blendFilter(WTFMove(fromFilterInputImage), fromFilter.filterOperations(), FilterOperations(), context);
         }
-        // FIXME: Add interpolation between cross-fade and image source.
     } else if (is<StyleCachedImage>(*from) && is<StyleGeneratedImage>(*to)) {
         auto& toGenerated = downcast<StyleGeneratedImage>(*to);
+
         if (is<StyleFilterImage>(toGenerated)) {
             auto& toFilter = downcast<StyleFilterImage>(toGenerated);
             auto toFilterInputImage = toFilter.inputImage();
+
             if (is<StyleCachedImage>(toFilterInputImage) && downcast<StyleCachedImage>(*from).equals(downcast<StyleCachedImage>(*toFilterInputImage)))
                 return blendFilter(WTFMove(toFilterInputImage), FilterOperations(), toFilter.filterOperations(), context);
         }
-        // FIXME: Add interpolation between image source and cross-fade.
     }
 
     // FIXME: Add support cross fade between cached and generated images.
     // https://bugs.webkit.org/show_bug.cgi?id=78293
-    if (is<StyleCachedImage>(*from) && is<StyleCachedImage>(*to))
-        return crossfadeBlend(downcast<StyleCachedImage>(*from), downcast<StyleCachedImage>(*to), context);
-
-    return to;
+    return crossfadeBlend(*from, *to, context);
 }
 
 static inline NinePieceImage blendFunc(const NinePieceImage& from, const NinePieceImage& to, const CSSPropertyBlendingContext& context)

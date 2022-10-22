@@ -119,6 +119,9 @@ void StyleCanvasImage::canvasChanged(CanvasBase& canvasBase, const std::optional
     auto imageChangeRect = enclosingIntRect(changedRect.value());
     for (auto& client : clients().values())
         client->imageChanged(static_cast<WrappedImagePtr>(this), &imageChangeRect);
+
+    for (auto& observer : observers().values())
+        observer->styleImageDidChange(*this);
 }
 
 void StyleCanvasImage::canvasResized(CanvasBase& canvasBase)
@@ -128,6 +131,9 @@ void StyleCanvasImage::canvasResized(CanvasBase& canvasBase)
 
     for (auto& client : clients().values())
         client->imageChanged(static_cast<WrappedImagePtr>(this));
+
+    for (auto& observer : observers().values())
+        observer->styleImageDidChange(*this);
 }
 
 void StyleCanvasImage::canvasDestroyed(CanvasBase& canvasBase)

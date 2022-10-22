@@ -29,10 +29,9 @@
 
 #include "AnimationUtilities.h"
 #include "CSSCrossfadeValue.h"
-#include "CachedImage.h"
-#include "CachedResourceLoader.h"
 #include "CrossfadeGeneratedImage.h"
 #include "RenderElement.h"
+#include <wtf/PointerComparison.h>
 
 namespace WebCore {
 
@@ -42,16 +41,19 @@ StyleCrossfadeImage::StyleCrossfadeImage(RefPtr<StyleImage>&& from, RefPtr<Style
     , m_to { WTFMove(to) }
     , m_percentage { percentage }
     , m_isPrefixed { isPrefixed }
-    , m_inputImagesAreReady { false }
+    , m_inputImagesRegistered { false }
 {
 }
 
 StyleCrossfadeImage::~StyleCrossfadeImage()
 {
-    if (m_cachedFromImage)
-        m_cachedFromImage->removeClient(*this);
-    if (m_cachedToImage)
-        m_cachedToImage->removeClient(*this);
+    if (!m_inputImagesRegistered)
+        return;
+
+    if (m_from)
+        m_from->unregisterObserver(*this);
+    if (m_to)
+        m_to->unregisterObserver(*this);
 }
 
 bool StyleCrossfadeImage::operator==(const StyleImage& other) const
@@ -66,15 +68,12 @@ bool StyleCrossfadeImage::equals(const StyleCrossfadeImage& other) const
 
 bool StyleCrossfadeImage::equalInputImages(const StyleCrossfadeImage& other) const
 {
-    return m_from.get() == other.m_from.get() && m_to.get() == other.m_to.get();
+    return arePointingToEqualData(m_from, other.m_from) && arePointingToEqualData(m_to, other.m_to);
 }
 
 RefPtr<StyleCrossfadeImage> StyleCrossfadeImage::blend(const StyleCrossfadeImage& from, const BlendingContext& context) const
 {
     ASSERT(equalInputImages(from));
-
-    if (!m_cachedToImage || !m_cachedFromImage)
-        return nullptr;
 
     auto newPercentage = WebCore::blend(from.m_percentage, m_percentage, context);
     return StyleCrossfadeImage::create(m_from, m_to, newPercentage, from.m_isPrefixed && m_isPrefixed);
@@ -98,36 +97,19 @@ bool StyleCrossfadeImage::isPending() const
 
 void StyleCrossfadeImage::load(CachedResourceLoader& loader, const ResourceLoaderOptions& options)
 {
-    auto oldCachedFromImage = m_cachedFromImage;
-    auto oldCachedToImage = m_cachedToImage;
+    ASSERT(!m_inputImagesRegistered);
 
     if (m_from) {
         m_from->load(loader, options);
-        m_cachedFromImage = m_from->cachedImage();
-    } else
-        m_cachedFromImage = nullptr;
+        m_from->registerObserver(*this);
+    }
 
     if (m_to) {
         m_to->load(loader, options);
-        m_cachedToImage = m_to->cachedImage();
-    } else
-        m_cachedToImage = nullptr;
-
-    if (m_cachedFromImage != oldCachedFromImage) {
-        if (oldCachedFromImage)
-            oldCachedFromImage->removeClient(*this);
-        if (m_cachedFromImage)
-            m_cachedFromImage->addClient(*this);
+        m_to->registerObserver(*this);
     }
 
-    if (m_cachedToImage != oldCachedToImage) {
-        if (oldCachedToImage)
-            oldCachedToImage->removeClient(*this);
-        if (m_cachedToImage)
-            m_cachedToImage->addClient(*this);
-    }
-
-    m_inputImagesAreReady = true;
+    m_inputImagesRegistered = true;
 }
 
 RefPtr<Image> StyleCrossfadeImage::image(const RenderElement* renderer, const FloatSize& size) const
@@ -178,12 +160,16 @@ FloatSize StyleCrossfadeImage::fixedSize(const RenderElement& renderer) const
     return fromImageSize * inversePercentage + toImageSize * percentage;
 }
 
-void StyleCrossfadeImage::imageChanged(CachedImage*, const IntRect*)
+void StyleCrossfadeImage::styleImageDidChange(const StyleImage&)
 {
-    if (!m_inputImagesAreReady)
+    if (!m_inputImagesRegistered)
         return;
+
     for (auto& client : clients().values())
-        client->imageChanged(this);
+        client->imageChanged(static_cast<WrappedImagePtr>(this));
+
+    for (auto& observer : observers().values())
+        observer->styleImageDidChange(*this);
 }
 
 } // namespace WebCore

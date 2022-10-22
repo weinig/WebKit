@@ -345,12 +345,11 @@ static Ref<CSSValue> valueForNinePieceImageRepeat(const NinePieceImage& image)
 
 static RefPtr<CSSValue> valueForNinePieceImage(CSSPropertyID propertyID, const NinePieceImage& image, const RenderStyle& style)
 {
-    if (!image.hasImage())
+    auto* styleImage = image.image();
+    if (!styleImage)
         return CSSValuePool::singleton().createIdentifierValue(CSSValueNone);
 
-    RefPtr<CSSValue> imageValue;
-    if (image.image())
-        imageValue = image.image()->computedStyleValue(style);
+    auto imageValue = styleImage->computedStyleValue(style);
 
     // -webkit-border-image has a legacy behavior that makes fixed border slices also set the border widths.
     const LengthBox& slices = image.borderSlices();

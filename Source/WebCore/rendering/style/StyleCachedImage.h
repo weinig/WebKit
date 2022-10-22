@@ -23,8 +23,10 @@
 
 #pragma once
 
+#include "CachedImageClient.h"
 #include "CachedResourceHandle.h"
 #include "StyleImage.h"
+#include <wtf/HashCountedSet.h>
 
 namespace WebCore {
 
@@ -33,7 +35,7 @@ class CSSImageValue;
 class CachedImage;
 class Document;
 
-class StyleCachedImage final : public StyleImage {
+class StyleCachedImage final : public StyleImage, private CachedImageClient {
     WTF_MAKE_FAST_ALLOCATED;
 public:
     static Ref<StyleCachedImage> create(Ref<CSSImageValue>, float scaleFactor = 1);
@@ -45,41 +47,60 @@ public:
 
     CachedImage* cachedImage() const final;
 
-    WrappedImagePtr data() const final { return m_cachedImage.get(); }
-
-    Ref<CSSValue> computedStyleValue(const RenderStyle&) const final;
-    
-    bool canRender(const RenderElement*, float multiplier) const final;
-    bool isPending() const final;
-    void load(CachedResourceLoader&, const ResourceLoaderOptions&) final;
-    bool isLoaded() const final;
-    bool errorOccurred() const final;
-    FloatSize imageSize(const RenderElement*, float multiplier) const final;
-    bool imageHasRelativeWidth() const final;
-    bool imageHasRelativeHeight() const final;
-    void computeIntrinsicDimensions(const RenderElement*, Length& intrinsicWidth, Length& intrinsicHeight, FloatSize& intrinsicRatio) final;
-    bool usesImageContainerSize() const final;
-    void setContainerContextForRenderer(const RenderElement&, const FloatSize&, float) final;
-    void addClient(RenderElement&) final;
-    void removeClient(RenderElement&) final;
-    bool hasClient(RenderElement&) const final;
-    bool hasImage() const final;
-    RefPtr<Image> image(const RenderElement*, const FloatSize&) const final;
-    float imageScaleFactor() const final;
-    bool knownToBeOpaque(const RenderElement&) const final;
-    bool usesDataProtocol() const final;
-
     URL reresolvedURL(const Document&) const;
-
     URL imageURL() const;
 
 private:
     StyleCachedImage(Ref<CSSImageValue>&&, float);
 
+    // Computed Style representation.
+    Ref<CSSValue> computedStyleValue(const RenderStyle&) const final;
+
+    // Opaque representation.
+    WrappedImagePtr data() const final { return m_cachedImage.get(); }
+
+    // Loading.
+    bool isPending() const final;
+    void load(CachedResourceLoader&, const ResourceLoaderOptions&) final;
+    bool isLoaded() const final;
+    bool errorOccurred() const final;
+    bool usesDataProtocol() const final;
+
+    // Clients.
+    void addClient(RenderElement&) final;
+    void removeClient(RenderElement&) final;
+    bool hasClient(RenderElement&) const final;
+
+    // Observers.
+    void registerObserver(StyleImageObserver&) final;
+    void unregisterObserver(StyleImageObserver&) final;
+    bool hasObserver(StyleImageObserver&) const final;
+
+    // Size / scale.
+    FloatSize imageSize(const RenderElement*, float multiplier) const final;
+    bool usesImageContainerSize() const final;
+    void computeIntrinsicDimensions(const RenderElement*, Length& intrinsicWidth, Length& intrinsicHeight, FloatSize& intrinsicRatio) final;
+    bool imageHasRelativeWidth() const final;
+    bool imageHasRelativeHeight() const final;
+    float imageScaleFactor() const final;
+
+    // Image.
+    bool hasImage() const final;
+    RefPtr<Image> image(const RenderElement*, const FloatSize&) const final;
+
+    // Rendering.
+    bool canRender(const RenderElement*, float multiplier) const final;
+    void setContainerContextForRenderer(const RenderElement&, const FloatSize&, float) final;
+    bool knownToBeOpaque(const RenderElement&) const final;
+
+    // CachedImageClient.
+    void imageChanged(CachedImage*, const IntRect*) final;
+
     Ref<CSSImageValue> m_cssValue;
     bool m_isPending { true };
     mutable float m_scaleFactor { 1 };
     mutable CachedResourceHandle<CachedImage> m_cachedImage;
+    HashCountedSet<StyleImageObserver*> m_observers;
 };
 
 } // namespace WebCore

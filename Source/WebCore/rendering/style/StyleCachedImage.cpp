@@ -49,11 +49,17 @@ StyleCachedImage::StyleCachedImage(Ref<CSSImageValue>&& cssValue, float scaleFac
     , m_scaleFactor { scaleFactor }
 {
     m_cachedImage = m_cssValue->cachedImage();
-    if (m_cachedImage)
+    if (m_cachedImage) {
         m_isPending = false;
+        m_cachedImage->addClient(*this);
+    }
 }
 
-StyleCachedImage::~StyleCachedImage() = default;
+StyleCachedImage::~StyleCachedImage()
+{
+    if (m_cachedImage)
+        m_cachedImage->removeClient(*this);
+}
 
 bool StyleCachedImage::operator==(const StyleImage& other) const
 {
@@ -87,7 +93,16 @@ void StyleCachedImage::load(CachedResourceLoader& loader, const ResourceLoaderOp
 {
     ASSERT(m_isPending);
     m_isPending = false;
+
+    CachedResourceHandle<CachedImage> oldCachedImage = m_cachedImage;
     m_cachedImage = m_cssValue->loadImage(loader, options);
+
+    if (m_cachedImage != oldCachedImage) {
+        if (oldCachedImage)
+            oldCachedImage->removeClient(*this);
+        if (m_cachedImage)
+            m_cachedImage->addClient(*this);
+    }
 }
 
 CachedImage* StyleCachedImage::cachedImage() const
@@ -194,6 +209,22 @@ bool StyleCachedImage::hasClient(RenderElement& renderer) const
     return m_cachedImage->hasClient(renderer);
 }
 
+void StyleCachedImage::registerObserver(StyleImageObserver& observer)
+{
+    m_observers.add(&observer);
+}
+
+void StyleCachedImage::unregisterObserver(StyleImageObserver& observer)
+{
+    ASSERT(m_observers.contains(&observer));
+    m_observers.remove(&observer);
+}
+
+bool StyleCachedImage::hasObserver(StyleImageObserver& observer) const
+{
+    return m_observers.contains(&observer);
+}
+
 bool StyleCachedImage::hasImage() const
 {
     if (!m_cachedImage)
@@ -222,6 +253,12 @@ bool StyleCachedImage::knownToBeOpaque(const RenderElement& renderer) const
 bool StyleCachedImage::usesDataProtocol() const
 {
     return m_cssValue->imageURL().protocolIsData();
+}
+
+void StyleCachedImage::imageChanged(CachedImage*, const IntRect*)
+{
+    for (auto& observer : m_observers.values())
+        observer->styleImageDidChange(*this);
 }
 
 }

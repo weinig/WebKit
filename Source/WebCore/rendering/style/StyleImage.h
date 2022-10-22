@@ -38,9 +38,17 @@ class CSSValue;
 class RenderElement;
 class RenderObject;
 class RenderStyle;
+class StyleImage;
 struct ResourceLoaderOptions;
 
 typedef const void* WrappedImagePtr;
+
+class StyleImageObserver {
+public:
+    virtual ~StyleImageObserver() = default;
+
+    virtual void styleImageDidChange(const StyleImage&) = 0;
+};
 
 class StyleImage : public RefCounted<StyleImage> {
 public:
@@ -60,12 +68,16 @@ public:
     virtual bool isLoaded() const { return true; }
     virtual bool errorOccurred() const { return false; }
     virtual bool usesDataProtocol() const { return false; }
-    virtual bool hasImage() const { return false; }
 
     // Clients.
     virtual void addClient(RenderElement&) = 0;
     virtual void removeClient(RenderElement&) = 0;
     virtual bool hasClient(RenderElement&) const = 0;
+
+    // Observers.
+    virtual void registerObserver(StyleImageObserver&) = 0;
+    virtual void unregisterObserver(StyleImageObserver&) = 0;
+    virtual bool hasObserver(StyleImageObserver&) const = 0;
 
     // Size / scale.
     virtual FloatSize imageSize(const RenderElement*, float multiplier) const = 0;
@@ -76,6 +88,7 @@ public:
     virtual float imageScaleFactor() const { return 1; }
 
     // Image.
+    virtual bool hasImage() const { return false; }
     virtual RefPtr<Image> image(const RenderElement*, const FloatSize&) const = 0;
     virtual StyleImage* selectedImage() { return this; }
     virtual const StyleImage* selectedImage() const { return this; }

@@ -59,27 +59,42 @@ protected:
     CachedImage* cachedImage() const final;
 
 private:
+    // Opaque representation.
     WrappedImagePtr data() const final;
 
-    bool canRender(const RenderElement*, float multiplier) const final;
+    // Loading.
     bool isPending() const final;
     void load(CachedResourceLoader&, const ResourceLoaderOptions&) final;
     bool isLoaded() const final;
     bool errorOccurred() const final;
+
+    // Size / scale.
     FloatSize imageSize(const RenderElement*, float multiplier) const final;
+    bool usesImageContainerSize() const final;
+    void computeIntrinsicDimensions(const RenderElement*, Length& intrinsicWidth, Length& intrinsicHeight, FloatSize& intrinsicRatio) final;
     bool imageHasRelativeWidth() const final;
     bool imageHasRelativeHeight() const final;
-    void computeIntrinsicDimensions(const RenderElement*, Length& intrinsicWidth, Length& intrinsicHeight, FloatSize& intrinsicRatio) final;
-    bool usesImageContainerSize() const final;
-    void setContainerContextForRenderer(const RenderElement&, const FloatSize&, float);
+    float imageScaleFactor() const final;
+
+    // Clients.
     void addClient(RenderElement&) final;
     void removeClient(RenderElement&) final;
     bool hasClient(RenderElement&) const final;
+
+    // Observers.
+    void registerObserver(StyleImageObserver&) final;
+    void unregisterObserver(StyleImageObserver&) final;
+    bool hasObserver(StyleImageObserver&) const final;
+
+    // Image.
     RefPtr<Image> image(const RenderElement*, const FloatSize&) const final;
-    float imageScaleFactor() const final;
-    bool knownToBeOpaque(const RenderElement&) const final;
     const StyleImage* selectedImage() const final { return m_selectedImage.get(); }
     StyleImage* selectedImage() final { return m_selectedImage.get(); }
+
+    // Rendering.
+    bool canRender(const RenderElement*, float multiplier) const final;
+    void setContainerContextForRenderer(const RenderElement&, const FloatSize&, float);
+    bool knownToBeOpaque(const RenderElement&) const final;
 
     RefPtr<StyleImage> m_selectedImage;
     bool m_isPending { true };

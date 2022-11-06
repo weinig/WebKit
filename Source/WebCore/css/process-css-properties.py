@@ -90,6 +90,41 @@ class Schema:
         self.validate_types(dictionary, label=label)
 
 
+class PropertyName:
+    def __init__(self, name, *, name_for_methods):
+        self.name = name
+        self.id_without_prefix = PropertyName.convert_name_to_id(self.name)
+        self.name_for_methods = PropertyName._compute_name_for_methods(name_for_methods, self.id_without_prefix)
+
+    def __str__(self):
+        return self.name
+
+    def __repr__(self):
+        return self.__str__()
+
+    @staticmethod
+    def _compute_name_for_methods(name_for_methods, id_without_prefix):
+        if name_for_methods:
+            return name_for_methods
+        return id_without_prefix.replace("Webkit",  "")
+
+    @staticmethod
+    def convert_name_to_id(name):
+        return re.sub(r'(^[^-])|-(.)', lambda m: (m[1] or m[2]).upper(), name)
+
+    @property
+    def id_without_prefix_with_lowercase_first_letter(self):
+        return self.id_without_prefix[0].lower() + self.id_without_prefix[1:]
+
+    @property
+    def id_without_scope(self):
+        return f"CSSProperty{self.id_without_prefix}"
+
+    @property
+    def id(self):
+        return f"CSSPropertyID::CSSProperty{self.id_without_prefix}"
+
+
 class Status:
     schema = Schema(
         Schema.Entry("comment", allowed_types=[str]),
@@ -266,8 +301,9 @@ class CodeGenProperties:
         Schema.Entry("visited-link-color-support", allowed_types=[bool], default_value=False),
     )
 
-    def __init__(self, **dictionary):
+    def __init__(self, property_name, **dictionary):
         CodeGenProperties.schema.set_attributes_from_dictionary(dictionary, instance=self)
+        self.property_name = property_name
 
     def __str__(self):
         return f"CodeGenProperties {vars(self)}"
@@ -282,6 +318,8 @@ class CodeGenProperties:
 
         assert(type(json_value) is dict)
         CodeGenProperties.schema.validate_dictionary(json_value, label=f"CodeGenProperties ({key_path}.codegen-properties)")
+
+        property_name = PropertyName(name, name_for_methods=json_value.get("name-for-methods"))
 
         if json_value.get("top-priority", False):
             if json_value.get("comment") is None:
@@ -326,7 +364,25 @@ class CodeGenProperties:
             if json_value.get("high-priority", False):
                 raise Exception(f"{key_path} can't have both a related property and be high priority.")
 
-        return CodeGenProperties(**json_value)
+        if "getter" not in json_value:
+            json_value["getter"] = property_name.name_for_methods[0].lower() + property_name.name_for_methods[1:]
+
+        if "setter" not in json_value:
+            json_value["setter"] = f"set{property_name.name_for_methods}"
+
+        if "initial" not in json_value:
+            if "fill-layer-property" in json_value:
+                json_value["initial"] = f"initialFill{property_name.name_for_methods}"
+            else:
+                json_value["initial"] = f"initial{property_name.name_for_methods}"
+
+        if "custom" not in json_value:
+            json_value["custom"] = ""
+        elif json_value["custom"] == "All":
+            json_value["custom"] = "Initial|Inherit|Value"
+        json_value["custom"] = frozenset(json_value["custom"].split("|"))
+
+        return CodeGenProperties(property_name, **json_value)
 
     @property
     def is_logical(self):
@@ -355,10 +411,10 @@ class Property:
         Schema.Entry("values", allowed_types=[list]),
     )
 
-    def __init__(self, name, **dictionary):
-        self.name = name
-        self.synonymous_properties = []
+    def __init__(self, **dictionary):
         Property.schema.set_attributes_from_dictionary(dictionary, instance=self)
+        self.property_name = self.codegen_properties.property_name
+        self.synonymous_properties = []
 
     def __str__(self):
         return self.name
@@ -371,7 +427,8 @@ class Property:
         assert(type(json_value) is dict)
         Property.schema.validate_dictionary(json_value, label=f"Property ({key_path}.{name})")
 
-        json_value["codegen-properties"] = CodeGenProperties.from_json(parsing_context, f"{key_path}.{name}", name, json_value.get("codegen-properties", {}))
+        codegen_properties = CodeGenProperties.from_json(parsing_context, f"{key_path}.{name}", name, json_value.get("codegen-properties", {}))
+        json_value["codegen-properties"] = codegen_properties
 
         if "values" in json_value:
             json_value["values"] = list(filter(lambda value: value is not None, map(lambda value: Value.from_json(parsing_context, f"{key_path}.{name}", value), json_value["values"])))
@@ -391,10 +448,10 @@ class Property:
                         print(f"SKIPPED {name} due to 'skip-codegen'")
                     return None
 
-        return Property(name, **json_value)
+        return Property(**json_value)
 
     def perform_fixups_for_synonyms(self, all_properties):
-        # If 'synonym' was specified, replace the name with references to the Property object, and add a back-reference on the related object.
+        # If 'synonym' was specified, replace the name with references to the Property object, and vice-versa a back-reference on that Property object back to this.
         if self.codegen_properties.synonym:
             if self.codegen_properties.synonym not in all_properties.properties_by_name:
                 raise Exception(f"Property {self.name} has an unknown synonym: {self.codegen_properties.synonym}.")
@@ -453,30 +510,29 @@ class Property:
         self.perform_fixups_for_related_properties(all_properties)
         self.perform_fixups_for_logical_property_groups(all_properties)
 
-    def convert_name_to_id(name):
-        return re.sub(r'(^[^-])|-(.)', lambda m: (m[1] or m[2]).upper(), name)
-
     @property
-    @functools.cache
     def id_without_prefix(self):
-        return Property.convert_name_to_id(self.name)
+        return self.property_name.id_without_prefix
 
     @property
-    @functools.cache
     def id_without_prefix_with_lowercase_first_letter(self):
-        return self.id_without_prefix[0].lower() + self.id_without_prefix[1:]
+        return self.property_name.id_without_prefix_with_lowercase_first_letter
 
     @property
-    @functools.cache
+    def id_without_scope(self):
+        return self.property_name.id_without_scope
+
+    @property
     def id(self):
-        return f"CSSProperty{self.id_without_prefix}"
+        return self.property_name.id
 
     @property
-    @functools.cache
     def name_for_methods(self):
-        if self.codegen_properties.name_for_methods:
-            return self.codegen_properties.name_for_methods
-        return self.id_without_prefix.replace("Webkit",  "")
+        return self.property_name.name_for_methods
+
+    @property
+    def name(self):
+        return self.property_name.name
 
     @property
     def aliases(self):
@@ -596,17 +652,18 @@ class Properties:
     def all(self):
         return sorted(self.properties, key=functools.cmp_to_key(Properties._sort_by_descending_priority_and_name))
 
-    # Returns the set of properties that are conditionally included depending on settings. Default decreasing priority and name sorting.
+    # Returns the set of properties that are conditionally included depending on settings. Sorted lexically by name.
     @property
     @functools.cache
     def all_with_settings_flag(self):
-        # return sorted([property for property in self.all if property.codegen_properties.settings_flag], key=lambda property: property.name)
-        return [property for property in self.all if property.codegen_properties.settings_flag]
+        # FIXME: Special sort order needed to make comparison to makeprop.pl easier, but has no use and can be dropped (remember to update comment above)
+        return sorted([property for property in self.all if property.codegen_properties.settings_flag], key=lambda property: property.name)
 
-    # Returns the set of properties that are included in computed styles. Default decreasing priority and name sorting.
+    # Returns the set of properties that are included in computed styles. Sorted lexically by name with prefixed properties last.
     @property
     @functools.cache
     def all_computed(self):
+        # FIXME: Special sort order needed to make comparison to makeprop.pl easier, but has no use and can be dropped (remember to update comment above)
         return sorted([property for property in self.all if not property.is_skipped_from_computed_style], key=functools.cmp_to_key(Properties._sort_with_prefixed_properties_last))
 
     # Returns the set of properties that are NOT marked internal. Default decreasing priority and name sorting.
@@ -662,9 +719,9 @@ class Properties:
         a_is_shorthand = a.codegen_properties.longhands is not None
         b_is_shorthand = b.codegen_properties.longhands is not None
         if a_is_shorthand and not b_is_shorthand:
-            return -1
-        if not a_is_shorthand and b_is_shorthand:
             return 1
+        if not a_is_shorthand and b_is_shorthand:
+            return -1
 
         # Sort longhands with top priority to the front
         a_is_top_priority = a.codegen_properties.top_priority
@@ -694,9 +751,9 @@ class Properties:
         a_is_sink_priority = a.codegen_properties.sink_priority
         b_is_sink_priority = b.codegen_properties.sink_priority
         if a_is_sink_priority and not b_is_sink_priority:
-            return -1
-        if not a_is_sink_priority and b_is_sink_priority:
             return 1
+        if not a_is_sink_priority and b_is_sink_priority:
+            return -1
 
         return Properties._sort_with_prefixed_properties_last(a, b)
 
@@ -752,7 +809,7 @@ class GenerationContext:
         to.write(f"    switch (id) {{\n")
 
         for property in properties:
-            to.write(f"    case CSSPropertyID::{property.id}:\n")
+            to.write(f"    case {property.id}:\n")
             to.write(f"        {mapping(property)}\n")
 
         to.write(f"    default:\n")
@@ -770,7 +827,7 @@ class GenerationContext:
         to.write(f"    switch (id) {{\n")
 
         for property in properties:
-            to.write(f"    case CSSPropertyID::{property.id}:\n")
+            to.write(f"    case {property.id}:\n")
 
         to.write(f"        return true;\n")
         to.write(f"    default:\n")
@@ -860,7 +917,7 @@ class GenerationContext:
             CSSPropertyID findCSSProperty(const char* characters, unsigned length)
             {
                 auto* value = CSSPropertyNamesHash::in_word_set(characters, length);
-                return value ? static_cast<CSSPropertyID>(value->id) : CSSPropertyInvalid;
+                return value ? static_cast<CSSPropertyID>(value->id) : CSSPropertyID::CSSPropertyInvalid;
             }
 
             ASCIILiteral nameLiteral(CSSPropertyID id)
@@ -913,8 +970,8 @@ class GenerationContext:
             """))
 
     def _generate_physical_logical_conversion_function(self, *, to, signature, source, destination, resolver_enum_prefix):
-        source_as_id = Property.convert_name_to_id(source)
-        destination_as_id = Property.convert_name_to_id(destination)
+        source_as_id = PropertyName.convert_name_to_id(source)
+        destination_as_id = PropertyName.convert_name_to_id(destination)
 
         to.write(f"{signature}\n")
         to.write(f"{{\n")
@@ -923,38 +980,38 @@ class GenerationContext:
 
         for group_name, property_group in sorted(self.properties.logical_property_groups.items(), key=lambda x: x[0]):
             kind = property_group["kind"]
-            kind_as_id = Property.convert_name_to_id(kind)
+            kind_as_id = PropertyName.convert_name_to_id(kind)
 
             destinations = LogicalPropertyGroup.logical_property_group_resolvers[destination][kind]
             properties = [property_group[destination][a_destination].id for a_destination in destinations]
 
             for resolver, property in sorted(property_group[source].items(), key=lambda x: x[0]):
-                resolver_as_id = Property.convert_name_to_id(resolver)
+                resolver_as_id = PropertyName.convert_name_to_id(resolver)
                 resolver_enum = f"{resolver_enum_prefix}{kind_as_id}::{resolver_as_id}"
 
-                to.write(f"    case CSSPropertyID::{property.id}: {{\n")
+                to.write(f"    case {property.id}: {{\n")
                 to.write(f"        static constexpr CSSPropertyID properties[{len(properties)}] = {{ {', '.join(properties)} }};\n")
                 to.write(f"        return properties[static_cast<size_t>(map{source_as_id}{kind_as_id}To{destination_as_id}{kind_as_id}(textflow, {resolver_enum}))];\n")
                 to.write(f"    }}\n")
         to.write(f"    default:\n")
-        to.write(f"        return false;\n")
+        to.write(f"        return id;\n")
         to.write(f"    }}\n")
         to.write(f"}}\n\n")
 
     def _generate_is_inherited_property(self, *, to):
         to.write(f'constexpr bool isInheritedPropertyTable[numCSSProperties + {GenerationContext.number_of_predefined_properties}] = {{\n')
-        to.write(f'    false, // CSSPropertyInvalid\n')
-        to.write(f'    true , // CSSPropertyCustom\n')
+        to.write(f'    false, // CSSPropertyID::CSSPropertyInvalid\n')
+        to.write(f'    true , // CSSPropertyID::CSSPropertyCustom\n')
 
         all_inherited_and_ids = [f'    {"true " if property.inherited else "false"}, // {property.id}' for property in self.properties.all]
 
         to.write(f'\n'.join(all_inherited_and_ids))
-        to.write(f'}};\n\n')
+        to.write(f'\n}};\n\n')
 
         to.write(f"bool CSSProperty::isInheritedProperty(CSSPropertyID id)\n")
         to.write(f"{{\n")
         to.write(f"    ASSERT(id < numCSSProperties);\n")
-        to.write(f"    ASSERT(id != CSSPropertyInvalid);\n")
+        to.write(f"    ASSERT(id != CSSPropertyID::CSSPropertyInvalid);\n")
         to.write(f"    return isInheritedPropertyTable[id];\n")
         to.write(f"}}\n\n")
 
@@ -969,11 +1026,11 @@ class GenerationContext:
             for first in [logical, physical]:
                 second = physical if first is logical else logical
                 for resolver, property in sorted(first.items(), key=lambda x: x[1].name):
-                    to.write(f"    case CSSPropertyID::{property.id}:\n")
+                    to.write(f"    case {property.id}:\n")
 
                 to.write(f"        switch (id2) {{\n")
                 for resolver, property in sorted(second.items(), key=lambda x: x[1].name):
-                    to.write(f"        case CSSPropertyID::{property.id}:\n")
+                    to.write(f"        case {property.id}:\n")
 
                 to.write(f"            return true;\n")
                 to.write(f"        default:\n")
@@ -992,13 +1049,14 @@ class GenerationContext:
         settings_initializer_list = [f"{flag} {{ settings.{flag}() }}" for flag in self.properties.settings_flags]
         to.write(f"\n    , ".join(settings_initializer_list))
 
-        to.write(f"{{\n")
+        to.write(f"\n{{\n")
         to.write(f"}}\n\n")
 
     def _generate_css_property_settings_operator_equal(self, *, to):
         to.write(f"bool operator==(const CSSPropertySettings& a, const CSSPropertySettings& b)\n")
         to.write(f"{{\n")
 
+        to.write(f"    return ")
         settings_operator_equal_list = [f"a.{flag} == b.{flag}" for flag in self.properties.settings_flags]
         to.write(f"\n        && ".join(settings_operator_equal_list))
 
@@ -1044,7 +1102,7 @@ class GenerationContext:
                 mapping=lambda p: f"return settings->{p.codegen_properties.settings_flag}();",
                 default="return true;",
                 prologue=textwrap.dedent("""\
-                    if (id == CSSPropertyInvalid || isInternal(id))
+                    if (id == CSSPropertyID::CSSPropertyInvalid || isInternal(id))
                         return false;
 
                     if (!settings)
@@ -1059,7 +1117,7 @@ class GenerationContext:
                 mapping=lambda p: f"return settings->{p.codegen_properties.settings_flag};",
                 default="return true;",
                 prologue=textwrap.dedent("""\
-                    if (id == CSSPropertyInvalid || isInternal(id))
+                    if (id == CSSPropertyID::CSSPropertyInvalid || isInternal(id))
                         return false;
 
                     if (!settings)
@@ -1075,7 +1133,7 @@ class GenerationContext:
                 to=output_file,
                 signature="CSSPropertyID relatedProperty(CSSPropertyID id)",
                 properties=[p for p in self.properties.all if p.codegen_properties.related_property],
-                mapping=lambda p: f"return CSSPropertyID::{p.codegen_properties.related_property.id};",
+                mapping=lambda p: f"return {p.codegen_properties.related_property.id};",
                 default="return CSSPropertyID::CSSPropertyInvalid;"
             )
 
@@ -1096,7 +1154,8 @@ class GenerationContext:
             self._generate_property_id_switch_function(
                 to=output_file,
                 signature="UChar CSSProperty::listValuedPropertySeparator(CSSPropertyID id)",
-                properties=[p for p in self.properties.all if p.codegen_properties.separator],
+                # FIXME: Special sort order needed to make comparison to makeprop.pl easier, but has no use and can be dropped.
+                properties=sorted([p for p in self.properties.all if p.codegen_properties.separator], key=lambda property: property.name),
                 mapping=lambda p: f"return '{ p.codegen_properties.separator[0] }';",
                 default="break;",
                 epilogue="return '\\0';"
@@ -1171,6 +1230,7 @@ class GenerationContext:
             namespace WebCore {
 
             class Settings;
+
             """))
 
     def _generate_css_property_names_h_property_constants(self, *, to):
@@ -1214,7 +1274,7 @@ class GenerationContext:
                     first_deferred_property = property
                 last_deferred_property = property
 
-            to.write(f"    {property.id} = {count},\n")
+            to.write(f"    {property.id_without_scope} = {count},\n")
 
             count += 1
             max_length = max(len(property.name), max_length)
@@ -1227,7 +1287,7 @@ class GenerationContext:
         to.write(f"constexpr uint16_t numCSSProperties = {num};\n")
         to.write(f"constexpr unsigned maxCSSPropertyNameLength = {max_length};\n")
         to.write(f"constexpr auto firstTopPriorityProperty = {first_top_priority_property.id};\n")
-        to.write(f"constexpr auto lastTopPriorityProperty = {first_top_priority_property.id};\n")
+        to.write(f"constexpr auto lastTopPriorityProperty = {last_top_priority_property.id};\n")
         to.write(f"constexpr auto firstHighPriorityProperty = {first_high_priority_property.id};\n")
         to.write(f"constexpr auto lastHighPriorityProperty = {last_high_priority_property.id};\n")
         to.write(f"constexpr auto firstLowPriorityProperty = {first_low_priority_property.id};\n")
@@ -1291,7 +1351,7 @@ class GenerationContext:
             """))
 
     def _generate_css_property_names_h_hash_traits(self, *, to):
-        to.write(textwrap.dedent("""\
+        to.write(textwrap.dedent("""
             namespace WTF {
 
             template<> struct DefaultHash<WebCore::CSSPropertyID> : IntHash<unsigned> { };
@@ -1439,7 +1499,7 @@ class GenerationContext:
                     // Example: -webkit-transform -> element.style.['-webkit-transform']
                     // [CEReactions] attribute [LegacyNullToEmptyString] CSSOMString _dashed_attribute;
                     """),
-                names_and_aliases_with_properties=filter(lambda item: item[0].startswith("-"), names_and_aliases_with_properties),
+                names_and_aliases_with_properties=filter(lambda item: "-" in item[0], names_and_aliases_with_properties),
                 variant="Dashed",
                 convert_to_idl_attribute=False
             )
@@ -1499,17 +1559,20 @@ class GenerationContext:
         to.write(f"            builderState.style().setVisitedLink{property.name_for_methods}(RenderStyle::{property.codegen_properties.initial}());\n")
 
     def _generate_color_property_inherit_value_setter(self, to, property):
+        # FIXME: 'color' variable is only needed in order to make comparison to makeprop.pl easier. It can be inlined when that is no longer useful.
+        to.write(f"        auto color = builderState.parentStyle().{property.codegen_properties.getter}();\n")
         to.write(f"        if (builderState.applyPropertyToRegularStyle())\n")
-        to.write(f"            builderState.style().{property.codegen_properties.setter}(builderState.parentStyle().{property.codegen_properties.getter}());\n")
+        to.write(f"            builderState.style().{property.codegen_properties.setter}(color);\n")
         to.write(f"        if (builderState.applyPropertyToVisitedLinkStyle())\n")
-        to.write(f"            builderState.style().setVisitedLink{property.name_for_methods}(builderState.parentStyle().{property.codegen_properties.getter}());\n")
+        to.write(f"            builderState.style().setVisitedLink{property.name_for_methods}(color);\n")
 
-    def _generate_color_property_value_setter(self, to, property):
-        to.write(f"        auto& primitiveValue = downcast<CSSPrimitiveValue>(value);\n")
+    def _generate_color_property_value_setter(self, to, property, value):
+        # FIXME: 'primitiveValue' variable is only needed in order to make comparison to makeprop.pl easier. It can be inlined when that is no longer useful.
+        to.write(f"        auto& primitiveValue = {value};\n")
         to.write(f"        if (builderState.applyPropertyToRegularStyle())\n")
-        to.write(f"            builderState.style().{property.codegen_properties.setter}(  builderState.colorFromPrimitiveValue(primitiveValue, ForVisitedLink::No)  );\n")
+        to.write(f"            builderState.style().{property.codegen_properties.setter}(builderState.colorFromPrimitiveValue(primitiveValue, ForVisitedLink::No));\n")
         to.write(f"        if (builderState.applyPropertyToVisitedLinkStyle())\n")
-        to.write(f"            builderState.style().setVisitedLink{property.name_for_methods}(  builderState.colorFromPrimitiveValue(primitiveValue, ForVisitedLink::Yes)  );\n")
+        to.write(f"            builderState.style().setVisitedLink{property.name_for_methods}(builderState.colorFromPrimitiveValue(primitiveValue, ForVisitedLink::Yes));\n")
 
     # Animation property setters.
 
@@ -1628,24 +1691,24 @@ class GenerationContext:
     # SVG property setters.
 
     def _generate_svg_property_initial_value_setter(self, to, property):
-        to.write(f"        builderState.style().accessSVGStyle().{property.codegen_properties.setter}(SVGRenderStyle::{property.codegen_properties.initial})\n")
+        to.write(f"        builderState.style().accessSVGStyle().{property.codegen_properties.setter}(SVGRenderStyle::{property.codegen_properties.initial}());\n")
 
     def _generate_svg_property_inherit_value_setter(self, to, property):
-        to.write(f"        builderState.style().accessSVGStyle().{property.codegen_properties.setter}(forwardInheritedValue(builderState.parentStyle().svgStyle().{property.codegen_properties.getter}))\n")
+        to.write(f"        builderState.style().accessSVGStyle().{property.codegen_properties.setter}(forwardInheritedValue(builderState.parentStyle().svgStyle().{property.codegen_properties.getter}()));\n")
 
     def _generate_svg_property_value_setter(self, to, property, value):
-        to.write(f"        builderState.style().accessSVGStyle().{property.codegen_properties.setter}({value})\n")
+        to.write(f"        builderState.style().accessSVGStyle().{property.codegen_properties.setter}({value});\n")
 
     # All other property setters.
 
     def _generate_property_initial_value_setter(self, to, property):
-        to.write(f"        builderState.style().{property.codegen_properties.setter}(RenderStyle::{property.codegen_properties.initial})\n")
+        to.write(f"        builderState.style().{property.codegen_properties.setter}(RenderStyle::{property.codegen_properties.initial}());\n")
 
     def _generate_property_inherit_value_setter(self, to, property):
-        to.write(f"        builderState.style().{property.codegen_properties.setter}(forwardInheritedValue(builderState.parentStyle().{property.codegen_properties.getter}))\n")
+        to.write(f"        builderState.style().{property.codegen_properties.setter}(forwardInheritedValue(builderState.parentStyle().{property.codegen_properties.getter}()));\n")
 
     def _generate_property_value_setter(self, to, property, value):
-        to.write(f"        builderState.style().{property.codegen_properties.setter}({value})\n")
+        to.write(f"        builderState.style().{property.codegen_properties.setter}({value});\n")
 
     # Property setter dispatch.
 
@@ -1654,7 +1717,7 @@ class GenerationContext:
         to.write(f"    {{\n")
 
         if property.codegen_properties.auto_functions:
-            to.write(f"        builderState.style().hasAuto{property.name_for_methods}();\n")
+            to.write(f"        builderState.style().setHasAuto{property.name_for_methods}();\n")
         elif property.codegen_properties.visited_link_color_support:
             self._generate_color_property_initial_value_setter(to, property)
         elif property.animatable:
@@ -1671,7 +1734,7 @@ class GenerationContext:
         if property.codegen_properties.fast_path_inherited:
             to.write(f"        builderState.style().setDisallowsFastPathInheritance();\n")
 
-        to.write(f"    }}\n\n")
+        to.write(f"    }}\n")
 
     def _generate_style_builder_generated_cpp_inherit_value_setter(self, to, property):
         to.write(f"    static void applyInherit{property.id_without_prefix}(BuilderState& builderState)\n")
@@ -1679,7 +1742,7 @@ class GenerationContext:
 
         if property.codegen_properties.auto_functions:
             to.write(f"        if (builderState.parentStyle().hasAuto{property.name_for_methods}()) {{\n")
-            to.write(f"            builderState.style().hasAuto{property.name_for_methods}();\n")
+            to.write(f"            builderState.style().setHasAuto{property.name_for_methods}();\n")
             to.write(f"            return;\n")
             to.write(f"        }}\n")
 
@@ -1703,59 +1766,57 @@ class GenerationContext:
         if property.codegen_properties.fast_path_inherited:
             to.write(f"        builderState.style().setDisallowsFastPathInheritance();\n")
 
-        to.write(f"    }}\n\n")
+        to.write(f"    }}\n")
 
     def _generate_style_builder_generated_cpp_value_setter(self, to, property):
         if property.codegen_properties.fill_layer_property:
-            to.write(f"    static void applyValue{property.id_without_prefix}(BuilderState& builderState, CSSValue& value)\n")
-        else:
             to.write(f"    static void applyValue{property.id_without_prefix}(CSSPropertyID id, BuilderState& builderState, CSSValue& value)\n")
+        else:
+            to.write(f"    static void applyValue{property.id_without_prefix}(BuilderState& builderState, CSSValue& value)\n")
         to.write(f"    {{\n")
 
-        if property.codegen_properties.converter:
-            converted_value = f"BuilderConverter::convert{property.codegen_properties.converter}(builderState, value)"
-        elif property.codegen_properties.conditional_converter:
-            to.write(f"        auto convertedValue = BuilderConverter::convert{property.codegen_properties.conditional_converter}(builderState, value);\n")
-            converted_value = f"WTFMove(convertedValue.value())"
-        elif property.codegen_properties.color_property:
-            converted_value = f"builderState.colorFromPrimitiveValue(downcast<CSSPrimitiveValue>(value), ForVisitedLink::No)"
-        else:
-            converted_value = "downcast<CSSPrimitiveValue>(value)"
+        def converted_value(property):
+            if property.codegen_properties.converter:
+                return f"BuilderConverter::convert{property.codegen_properties.converter}(builderState, value)"
+            elif property.codegen_properties.conditional_converter:
+                return f"WTFMove(convertedValue.value())"
+            elif property.codegen_properties.color_property and not property.codegen_properties.visited_link_color_support:
+                return f"builderState.colorFromPrimitiveValue(downcast<CSSPrimitiveValue>(value), ForVisitedLink::No)"
+            else:
+                return "downcast<CSSPrimitiveValue>(value)"
 
         if property.codegen_properties.auto_functions:
             to.write(f"        if (downcast<CSSPrimitiveValue>(value).valueID() == CSSValueAuto) {{\n")
-            to.write(f"            builderState.style().hasAuto{property.name_for_methods}();\n")
+            to.write(f"            builderState.style().setHasAuto{property.name_for_methods}();\n")
             to.write(f"            return;\n")
             to.write(f"        }}\n")
 
-            if property.codegen_properties.conditional_converter:
-                to.write(f"        if (convertedValue)\n    ")
-
             if property.codegen_properties.svg:
-                self._generate_svg_property_value_setter(to, property, converted_value)
+                self._generate_svg_property_value_setter(to, property, converted_value(property))
             else:
-                self._generate_property_value_setter(to, property, converted_value)
+                self._generate_property_value_setter(to, property, converted_value(property))
         elif property.codegen_properties.visited_link_color_support:
-            self._generate_color_property_value_setter(to, property)
+            self._generate_color_property_value_setter(to, property, converted_value(property))
         elif property.animatable:
             self._generate_animation_property_value_setter(to, property)
         elif property.codegen_properties.font_property:
-            self._generate_font_property_value_setter(to, property, converted_value)
+            self._generate_font_property_value_setter(to, property, converted_value(property))
         elif property.codegen_properties.fill_layer_property:
             self._generate_fill_layer_property_value_setter(to, property)
         else:
             if property.codegen_properties.conditional_converter:
+                to.write(f"        auto convertedValue = BuilderConverter::convert{property.codegen_properties.conditional_converter}(builderState, value);\n")
                 to.write(f"        if (convertedValue)\n    ")
 
             if property.codegen_properties.svg:
-                self._generate_svg_property_value_setter(to, property, converted_value)
+                self._generate_svg_property_value_setter(to, property, converted_value(property))
             else:
-                self._generate_property_value_setter(to, property, converted_value)
+                self._generate_property_value_setter(to, property, converted_value(property))
 
         if property.codegen_properties.fast_path_inherited:
             to.write(f"        builderState.style().setDisallowsFastPathInheritance();\n")
 
-        to.write(f"    }}\n\n")
+        to.write(f"    }}\n")
 
     def _generate_style_builder_generated_cpp_builder_functions_class(self, *, to):
         to.write(f"class BuilderFunctions {{\n")
@@ -1786,9 +1847,9 @@ class GenerationContext:
             void BuilderGenerated::applyProperty(CSSPropertyID id, BuilderState& builderState, CSSValue& value, bool isInitial, bool isInherit, const CSSRegisteredCustomProperty* registered)
             {
                 switch (id) {
-                case CSSPropertyInvalid:
+                case CSSPropertyID::CSSPropertyInvalid:
                     break;
-                case CSSPropertyCustom: {
+                case CSSPropertyID::CSSPropertyCustom: {
                     auto& customProperty = downcast<CSSCustomPropertyValue>(value);
                     if (isInitial)
                         BuilderCustom::applyInitialCustomProperty(builderState, registered, customProperty.name());
@@ -1825,43 +1886,19 @@ class GenerationContext:
                     apply_value_arguments.insert(0, "id")
 
                 to.write(f"        if (isInitial)\n")
-                to.write(f"            {scope_for_function(property, 'Initial')}::applyInitial{property.id}({', '.join(apply_initial_arguments)});\n")
+                to.write(f"            {scope_for_function(property, 'Initial')}::applyInitial{property.id_without_prefix}({', '.join(apply_initial_arguments)});\n")
                 to.write(f"        else if (isInherit)\n")
-                to.write(f"            {scope_for_function(property, 'Inherit')}::applyInherit{property.id}({', '.join(apply_inherit_arguments)});\n")
+                to.write(f"            {scope_for_function(property, 'Inherit')}::applyInherit{property.id_without_prefix}({', '.join(apply_inherit_arguments)});\n")
                 to.write(f"        else\n")
-                to.write(f"            {scope_for_function(property, 'Value')}::applyValue{property.id}({', '.join(apply_value_arguments)});\n")
+                to.write(f"            {scope_for_function(property, 'Value')}::applyValue{property.id_without_prefix}({', '.join(apply_value_arguments)});\n")
 
             to.write(f"        break;\n")
 
         to.write(f"    }}\n")
         to.write(f"}}\n")
 
-    def _update_style_builder_related_default_property_values(self):
-        for property in self.properties.all:
-            name_for_methods = property.name_for_methods
-
-            if not property.codegen_properties.getter:
-                property.codegen_properties.getter = name_for_methods[0].lower() + name_for_methods[1:]
-
-            if not property.codegen_properties.setter:
-                property.codegen_properties.getter = f"set{name_for_methods}"
-
-            if not property.codegen_properties.initial:
-                if property.codegen_properties.fill_layer_property:
-                    property.codegen_properties.initial = f"initialFill{name_for_methods}"
-                else:
-                    property.codegen_properties.initial = f"initial{name_for_methods}"
-
-            if not property.codegen_properties.custom:
-                property.codegen_properties.custom = ""
-            elif property.codegen_properties.custom == "All":
-                property.codegen_properties.custom = "Initial|Inherit|Value"
-            property.codegen_properties.custom = frozenset(property.codegen_properties.custom.split("|"))
-
     def generate_style_builder_generated_cpp(self):
         with open('StyleBuilderGenerated.cpp', 'w') as output_file:
-            self._update_style_builder_related_default_property_values()
-
             self._generate_style_builder_generated_cpp_heading(
                 to=output_file
             )

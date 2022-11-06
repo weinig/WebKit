@@ -208,6 +208,8 @@ class Value:
         Value.schema.validate_dictionary(json_value, label=f"Value ({key_path}.values)")
 
         if "enable-if" in json_value and not parsing_context.is_enabled(conditional=json_value["enable-if"]):
+            if parsing_context.verbose:
+                print(f"SKIPPED value {json_value['value']} in {key_path} due to failing to satisfy 'enable-if' condition, '{json_value['enable-if']}', with active macro set")
             return None
 
         return Value(**json_value)
@@ -263,6 +265,38 @@ class LogicalPropertyGroup:
         assert(type(json_value) is dict)
         LogicalPropertyGroup.schema.validate_dictionary(json_value, label=f"LogicalPropertyGroup ({key_path}.logical-property-group)")
         return LogicalPropertyGroup(**json_value)
+
+
+class Longhand:
+    schema = Schema(
+        Schema.Entry("enable-if", allowed_types=[str]),
+        Schema.Entry("value", allowed_types=[str]),
+    )
+
+    def __init__(self, **dictionary):
+        Longhand.schema.set_attributes_from_dictionary(dictionary, instance=self)
+
+    def __str__(self):
+        return f"Longhand {vars(self)}"
+
+    def __repr__(self):
+        return self.__str__()
+
+    @staticmethod
+    def from_json(parsing_context, key_path, json_value):
+        if type(json_value) is str:
+            return Value(value=json_value)
+
+        assert(type(json_value) is dict)
+        Longhand.schema.validate_dictionary(json_value, label=f"Longhand ({key_path}.longhands)")
+
+        if "enable-if" in json_value and not parsing_context.is_enabled(conditional=json_value["enable-if"]):
+            if parsing_context.verbose:
+                print(f"SKIPPED longhand {json_value['value']} in {key_path} due to failing to satisfy 'enable-if' condition, '{json_value['enable-if']}', with active macro set")
+            return None
+
+        return Longhand(**json_value)
+
 
 class CodeGenProperties:
     schema = Schema(
@@ -321,49 +355,6 @@ class CodeGenProperties:
 
         property_name = PropertyName(name, name_for_methods=json_value.get("name-for-methods"))
 
-        if json_value.get("top-priority", False):
-            if json_value.get("comment") is None:
-                raise Exception(f"{key_path} has top priority, but no comment to justify.")
-            if json_value.get("longhands") is not None:
-                raise Exception(f"{key_path} is a shorthand, but has top priority.")
-            if json_value.get("high-priority", False):
-                raise Exception(f"{key_path} can't have conflicting top/high priority.")
-
-        if json_value.get("high-priority", False):
-            if json_value.get("longhands") is not None:
-                raise Exception(f"{key_path} is a shorthand, but has high priority.")
-
-        if json_value.get("sink-priority", False):
-            if json_value.get("longhands") is not None:
-                raise Exception(f"{key_path} is a shorthand, but has sink priority.")
-
-        if json_value.get("logical-property-group") is not None:
-            if json_value.get("longhands") is not None:
-                raise Exception(f"{key_path} is a shorthand, but belongs to a logical property group.")
-
-        if "logical-property-group" in json_value:
-            if json_value.get("longhands") is not None:
-                raise Exception(f"{key_path} is a shorthand, but belongs to a logical property group.")
-            json_value["logical-property-group"] = LogicalPropertyGroup.from_json(parsing_context, f"{key_path}.codegen-properties", json_value["logical-property-group"])
-
-        if "computable" in json_value:
-            if json_value["computable"]:
-                if json_value.get("internal-only", False):
-                    raise Exception(f"{key_path} can't be both internal-only and computable.")
-        else:
-            if json_value.get("internal-only", False):
-                json_value["computable"] = False
-            else:
-                json_value["computable"] = True
-
-        if json_value.get("related-property") is not None:
-            if json_value.get("related-property") == name:
-                raise Exception(f"{key_path} can't have itself as a related property.")
-            if json_value.get("longhands") is not None:
-                raise Exception(f"{key_path} can't have both a related property and be a shorthand.")
-            if json_value.get("high-priority", False):
-                raise Exception(f"{key_path} can't have both a related property and be high priority.")
-
         if "getter" not in json_value:
             json_value["getter"] = property_name.name_for_methods[0].lower() + property_name.name_for_methods[1:]
 
@@ -381,6 +372,50 @@ class CodeGenProperties:
         elif json_value["custom"] == "All":
             json_value["custom"] = "Initial|Inherit|Value"
         json_value["custom"] = frozenset(json_value["custom"].split("|"))
+
+        if "logical-property-group" in json_value:
+            if json_value.get("longhands"):
+                raise Exception(f"{key_path} is a shorthand, but belongs to a logical property group.")
+            json_value["logical-property-group"] = LogicalPropertyGroup.from_json(parsing_context, f"{key_path}.codegen-properties", json_value["logical-property-group"])
+
+        if "longhands" in json_value:
+            json_value["longhands"] = list(filter(lambda value: value is not None, map(lambda value: Longhand.from_json(parsing_context, f"{key_path}.codegen-properties", value), json_value["longhands"])))
+            if not json_value["longhands"]:
+                longhands = None
+
+        if "computable" in json_value:
+            if json_value["computable"]:
+                if json_value.get("internal-only", False):
+                    raise Exception(f"{key_path} can't be both internal-only and computable.")
+        else:
+            if json_value.get("internal-only", False):
+                json_value["computable"] = False
+            else:
+                json_value["computable"] = True
+
+        if json_value.get("top-priority", False):
+            if json_value.get("comment") is None:
+                raise Exception(f"{key_path} has top priority, but no comment to justify.")
+            if json_value.get("longhands"):
+                raise Exception(f"{key_path} is a shorthand, but has top priority.")
+            if json_value.get("high-priority", False):
+                raise Exception(f"{key_path} can't have conflicting top/high priority.")
+
+        if json_value.get("high-priority", False):
+            if json_value.get("longhands"):
+                raise Exception(f"{key_path} is a shorthand, but has high priority.")
+
+        if json_value.get("sink-priority", False):
+            if json_value.get("longhands") is not None:
+                raise Exception(f"{key_path} is a shorthand, but has sink priority.")
+
+        if json_value.get("related-property"):
+            if json_value.get("related-property") == name:
+                raise Exception(f"{key_path} can't have itself as a related property.")
+            if json_value.get("longhands"):
+                raise Exception(f"{key_path} can't have both a related property and be a shorthand.")
+            if json_value.get("high-priority", False):
+                raise Exception(f"{key_path} can't have both a related property and be high priority.")
 
         return CodeGenProperties(property_name, **json_value)
 
@@ -464,7 +499,7 @@ class Property:
     def perform_fixups_for_longhands(self, all_properties):
         # If 'longhands' was specified, replace the names with references to the Property objects.
         if self.codegen_properties.longhands:
-            self.codegen_properties.longhands = [all_properties.properties_by_name[longhand_name] for longhand_name in self.codegen_properties.longhands]
+            self.codegen_properties.longhands = [all_properties.properties_by_name[longhand.value] for longhand in self.codegen_properties.longhands]
 
     def perform_fixups_for_related_properties(self, all_properties):
         # If 'related-property' was specified, validate the relationship and replace the name with a reference to the Property object.
@@ -852,7 +887,7 @@ class GenerationContext:
             #include <wtf/text/AtomString.h>
             #include <string.h>
 
-            IGNORE_WARNINGS_BEGIN(\"implicit-fallthrough\")
+            IGNORE_WARNINGS_BEGIN("implicit-fallthrough")
 
             // Older versions of gperf like to use the `register` keyword.
             #define register
@@ -1010,7 +1045,7 @@ class GenerationContext:
 
         to.write(f"bool CSSProperty::isInheritedProperty(CSSPropertyID id)\n")
         to.write(f"{{\n")
-        to.write(f"    ASSERT(id < numCSSProperties);\n")
+        to.write(f"    ASSERT(id < firstCSSProperty + numCSSProperties);\n")
         to.write(f"    ASSERT(id != CSSPropertyID::CSSPropertyInvalid);\n")
         to.write(f"    return isInheritedPropertyTable[id];\n")
         to.write(f"}}\n\n")
@@ -1334,13 +1369,17 @@ class GenerationContext:
                     uint16_t index { static_cast<uint16_t>(first) };
                     constexpr CSSPropertyID operator*() const { return static_cast<CSSPropertyID>(index); }
                     constexpr Iterator& operator++() { ++index; return *this; }
+                    constexpr bool operator==(std::nullptr_t) const { return index > static_cast<uint16_t>(last); }
                     constexpr bool operator!=(std::nullptr_t) const { return index <= static_cast<uint16_t>(last); }
                 };
                 static constexpr Iterator begin() { return { }; }
                 static constexpr std::nullptr_t end() { return nullptr; }
+                static constexpr uint16_t size() { return last - first + 1; }
             };
-            constexpr CSSPropertiesRange<static_cast<CSSPropertyID>(firstCSSProperty), lastShorthandProperty> allCSSProperties() { return { }; }
-            constexpr CSSPropertiesRange<static_cast<CSSPropertyID>(firstCSSProperty), lastDeferredProperty> allLonghandCSSProperties() { return { }; }
+            using AllCSSPropertiesRange = CSSPropertiesRange<static_cast<CSSPropertyID>(firstCSSProperty), lastShorthandProperty>;
+            using AllLonghandCSSPropertiesRange = CSSPropertiesRange<static_cast<CSSPropertyID>(firstCSSProperty), lastDeferredProperty>;
+            constexpr AllCSSPropertiesRange allCSSProperties() { return { }; }
+            constexpr AllLonghandCSSPropertiesRange allLonghandCSSProperties() { return { }; }
 
             constexpr bool isLonghand(CSSPropertyID property)
             {
@@ -1362,7 +1401,17 @@ class GenerationContext:
                 static bool isDeletedValue(WebCore::CSSPropertyID value) { return static_cast<uint16_t>(value) == std::numeric_limits<uint16_t>::max(); }
             };
 
-            } // namespace WTF
+            }
+            """))
+
+    def _generate_css_property_names_h_iterator_traits(self, *, to):
+        to.write(textwrap.dedent("""
+            namespace std {
+
+            template<> struct iterator_traits<WebCore::AllCSSPropertiesRange::Iterator> { using value_type = WebCore::CSSPropertyID; };
+            template<> struct iterator_traits<WebCore::AllLonghandCSSPropertiesRange::Iterator> { using value_type = WebCore::CSSPropertyID; };
+
+            }
             """))
 
     def _generate_css_property_names_h_footing(self, *, to):
@@ -1387,6 +1436,10 @@ class GenerationContext:
             )
 
             self._generate_css_property_names_h_hash_traits(
+                to=output_file
+            )
+
+            self._generate_css_property_names_h_iterator_traits(
                 to=output_file
             )
 

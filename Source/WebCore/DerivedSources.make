@@ -1634,6 +1634,8 @@ all : \
     CSSPropertyNames.h \
     CSSPropertyParsing.cpp \
     CSSPropertyParsing.h \
+    CSSPropertySettings.cpp \
+    CSSPropertySettings.h \
     CSSValueKeywords.cpp \
     CSSValueKeywords.h \
     ColorData.cpp \
@@ -1692,6 +1694,8 @@ CSS_PROPERTY_NAME_FILES = \
     CSSPropertyNames.h \
     CSSPropertyParsing.cpp \
     CSSPropertyParsing.h \
+    CSSPropertySettings.cpp \
+    CSSPropertySettings.h \
     CSSStyleDeclaration+PropertyNames.idl \
     StyleBuilderGenerated.cpp \
     StylePropertyShorthandFunctions.cpp \

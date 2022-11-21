@@ -335,7 +335,7 @@ bool CSSPropertyParser::canParseTypedCustomPropertyValue(const String& syntax)
                 return true; // For variables, we just permit everything
         }
 
-        auto primitiveVal = consumeWidthOrHeight(m_range, m_context);
+        auto primitiveVal = consumeWidthOrHeightUnitlessForbidden(m_range, m_context);
         if (primitiveVal && primitiveVal->isPrimitiveValue() && m_range.atEnd())
             return true;
         return false;
@@ -348,7 +348,7 @@ void CSSPropertyParser::collectParsedCustomPropertyValueDependencies(const Strin
 {
     if (syntax != "*"_s) {
         m_range.consumeWhitespace();
-        auto primitiveVal = consumeWidthOrHeight(m_range, m_context);
+        auto primitiveVal = consumeWidthOrHeightUnitlessForbidden(m_range, m_context);
         if (!m_range.atEnd())
             return;
         if (primitiveVal && primitiveVal->isPrimitiveValue()) {
@@ -363,7 +363,7 @@ RefPtr<CSSCustomPropertyValue> CSSPropertyParser::parseTypedCustomPropertyValue(
 {
     if (syntax != "*"_s) {
         m_range.consumeWhitespace();
-        auto primitiveVal = consumeWidthOrHeight(m_range, m_context);
+        auto primitiveVal = consumeWidthOrHeightUnitlessForbidden(m_range, m_context);
         if (primitiveVal && primitiveVal->isPrimitiveValue() && downcast<CSSPrimitiveValue>(*primitiveVal).isLength()) {
             auto length = Style::BuilderConverter::convertLength(builderState, *primitiveVal);
             if (!length.isCalculated() && !length.isUndefined())
@@ -1844,7 +1844,7 @@ bool CSSPropertyParser::consumeOverscrollBehaviorShorthand(bool important)
     if (m_range.atEnd())
         return false;
 
-    RefPtr<CSSValue> overscrollBehaviorX = consumeOverscrollBehavior(m_range);
+    RefPtr<CSSValue> overscrollBehaviorX = consumeOverscrollBehaviorX(m_range);
     if (!overscrollBehaviorX)
         return false;
 
@@ -1853,7 +1853,7 @@ bool CSSPropertyParser::consumeOverscrollBehaviorShorthand(bool important)
     if (m_range.atEnd())
         overscrollBehaviorY = overscrollBehaviorX;
     else {
-        overscrollBehaviorY = consumeOverscrollBehavior(m_range);
+        overscrollBehaviorY = consumeOverscrollBehaviorY(m_range);
         m_range.consumeWhitespace();
         if (!m_range.atEnd())
             return false;
@@ -2285,8 +2285,8 @@ bool CSSPropertyParser::parseShorthand(CSSPropertyID property, bool important)
     case CSSPropertyWebkitPerspective:
         return consumePrefixedPerspective(important);
     case CSSPropertyGap: {
-        RefPtr<CSSValue> rowGap = consumeGapLength(m_range, m_context.mode);
-        RefPtr<CSSValue> columnGap = consumeGapLength(m_range, m_context.mode);
+        RefPtr<CSSValue> rowGap = consumeRowGap(m_range, m_context.mode);
+        RefPtr<CSSValue> columnGap = consumeColumnGap(m_range, m_context.mode);
         if (!rowGap || !m_range.atEnd())
             return false;
         if (!columnGap)

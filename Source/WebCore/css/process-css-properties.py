@@ -43,29 +43,12 @@ def count_iterable(iterable):
     return sum(1 for _ in iterable)
 
 
-class ParsingContext:
-    def __init__(self, *, defines_string, parsing_for_codegen, verbose):
-        if defines_string:
-            self.conditionals = frozenset(defines_string.split(' '))
-        else:
-            self.conditionals = frozenset()
-        self.parsing_for_codegen = parsing_for_codegen
-        self.verbose = verbose
+def compact(iterable):
+    return filter(lambda value: value is not None, iterable)
 
-    def is_enabled(self, *, conditional):
-        if conditional[0] == '!':
-            return conditional[1:] not in self.conditionals
-        return conditional in self.conditionals
 
-    def select_enabled_variant(self, variants, *, label):
-        for variant in variants:
-            if "enable-if" not in variant:
-                raise Exception(f"Invalid conditional definition for '{label}'. No 'enable-if' property found.")
-
-            if self.is_enabled(conditional=variant["enable-if"]):
-                return variant
-
-        raise Exception(f"Invalid conditional definition for '{label}'. No 'enable-if' property matched the active set.")
+def compact_map(function, iterable):
+    return compact(map(function, iterable))
 
 
 class Schema:
@@ -81,6 +64,9 @@ class Schema:
 
     def __init__(self, *entries):
         self.entries = {entry.key: entry for entry in entries}
+
+    def __add__(self, other):
+        return Schema(*list({**self.entries, **other.entries}.values()))
 
     def set_attributes_from_dictionary(self, dictionary, *, instance):
         for entry in self.entries.values():
@@ -110,6 +96,10 @@ class Schema:
 
 
 class Name(object):
+    special_case_name_to_id = {
+        "url": "URL",
+    }
+
     def __init__(self, name):
         self.name = name
         self.id_without_prefix = Name.convert_name_to_id(self.name)
@@ -122,7 +112,7 @@ class Name(object):
 
     @staticmethod
     def convert_name_to_id(name):
-        return re.sub(r'(^[^-])|-(.)', lambda m: (m[1] or m[2]).upper(), name)
+        return Name.special_case_name_to_id.get(name) or re.sub(r'(^[^-])|-(.)', lambda m: (m[1] or m[2]).upper(), name)
 
     @property
     def id_without_prefix_with_lowercase_first_letter(self):
@@ -371,7 +361,7 @@ class Longhand:
     @staticmethod
     def from_json(parsing_context, key_path, json_value):
         if type(json_value) is str:
-            return Value(value=json_value)
+            return Longhand.from_json(parsing_context, key_path, {"value": json_value})
 
         assert(type(json_value) is dict)
         Longhand.schema.validate_dictionary(json_value, label=f"Longhand ({key_path}.longhands)")
@@ -408,6 +398,9 @@ class CodeGenProperties:
         Schema.Entry("longhands", allowed_types=[list]),
         Schema.Entry("name-for-methods", allowed_types=[str]),
         Schema.Entry("parser-function", allowed_types=[str]),
+        Schema.Entry("parser-exported", allowed_types=[bool]),
+        Schema.Entry("parser-grammar", allowed_types=[list, dict, str]),
+        Schema.Entry("parser-grammar-comment", allowed_types=[str]),
         Schema.Entry("parser-requires-additional-parameters", allowed_types=[list], default_value=[]),
         Schema.Entry("parser-requires-context", allowed_types=[bool], default_value=False),
         Schema.Entry("parser-requires-context-mode", allowed_types=[bool], default_value=False),
@@ -476,7 +469,7 @@ class CodeGenProperties:
             json_value["logical-property-group"] = LogicalPropertyGroup.from_json(parsing_context, f"{key_path}.codegen-properties", json_value["logical-property-group"])
 
         if "longhands" in json_value:
-            json_value["longhands"] = list(filter(lambda value: value is not None, map(lambda value: Longhand.from_json(parsing_context, f"{key_path}.codegen-properties", value), json_value["longhands"])))
+            json_value["longhands"] = list(compact_map(lambda value: Longhand.from_json(parsing_context, f"{key_path}.codegen-properties", value), json_value["longhands"]))
             if not json_value["longhands"]:
                 longhands = None
 
@@ -514,6 +507,11 @@ class CodeGenProperties:
             if json_value.get("high-priority", False):
                 raise Exception(f"{key_path} can't have both a related property and be high priority.")
 
+        if json_value.get("parser-grammar"):
+            grammar = Grammar.from_json(parsing_context, f"{key_path}", name, json_value["parser-grammar"])
+            grammar.perform_fixups(parsing_context.parsed_grammar_rules)
+            json_value["parser-grammar"] = grammar
+
         return CodeGenProperties(property_name, **json_value)
 
     @property
@@ -548,6 +546,9 @@ class Property:
         self.property_name = self.codegen_properties.property_name
         self.synonymous_properties = []
         self._values_sorted_by_name = None
+        
+        if self.codegen_properties.parser_grammar:
+            print(f"self.codegen_properties.parser_grammar -- {self.codegen_properties.parser_grammar}")
 
 
     def __str__(self):
@@ -719,7 +720,7 @@ class Property:
             return False
         if not self.values:
             return False
-        if (self.codegen_properties.custom_parser or self.codegen_properties.parser_function) and not self.codegen_properties.partial_keyword_property:
+        if self.codegen_properties.custom_parser or self.codegen_properties.parser_function:
             return False
         return True
 
@@ -767,12 +768,6 @@ class Property:
 
 
 class Properties:
-    schema = Schema(
-        Schema.Entry("categories", allowed_types=[dict], required=True),
-        Schema.Entry("instructions", allowed_types=[list], required=True),
-        Schema.Entry("properties", allowed_types=[dict], required=True),
-    )
-
     def __init__(self, *properties):
         self.properties = properties
         self.properties_by_name = {property.name: property for property in properties}
@@ -781,35 +776,19 @@ class Properties:
         self._all_computed = None
         self._settings_flags = None
 
+        self._perform_fixups()
+
     def __str__(self):
         return "Properties"
 
     def __repr__(self):
         return self.__str__()
 
-    @staticmethod
-    def from_json(parsing_context, top_level_object):
-        Properties.schema.validate_dictionary(top_level_object, label="top level object")
-
-        properties = Properties(
-            *list(
-                filter(
-                    lambda value: value is not None,
-                    map(
-                        lambda item: Property.from_json(parsing_context, "$properties", item[0], item[1]),
-                        top_level_object["properties"].items()
-                    )
-                )
-            )
-        )
-
-        # Now that all the properties have been parsed, go back through them and replace
-        # any references to other properties that were by name (e.g. string) with a direct
-        # reference to the property object.
-        for property in properties.properties:
-            property.perform_fixups(properties)
-
-        return properties
+    # Updates any references to other properties that were by name (e.g. string) with a direct
+    # reference to the property object.
+    def _perform_fixups(self):
+        for property in self.properties:
+            property.perform_fixups(self)
 
     # Returns the set of all properties. Default decreasing priority and name sorting.
     @property
@@ -938,11 +917,516 @@ class Properties:
         return 0
 
 
-# GENERATION
+# MARK: - Property Parsing
+
+class Term:
+    schema = Schema(
+        Schema.Entry("comment", allowed_types=[str]),
+        Schema.Entry("enable-if", allowed_types=[str]),
+        Schema.Entry("kind", allowed_types=[str], required=True),
+        Schema.Entry("status", allowed_types=[str]),
+    )
+
+    @staticmethod
+    def from_json(parsing_context, key_path, json_value):
+        if type(json_value) is str:
+            if ReferenceTerm.is_reference_string(json_value):
+                return ReferenceTerm.from_json(parsing_context, key_path, {"kind": "reference", "value": json_value})
+            else:
+                return KeywordTerm.from_json(parsing_context, key_path, {"kind": "keyword", "value": json_value})
+
+        if type(json_value) is list:
+            return MatchOneTerm.from_json(parsing_context, key_path, {"kind": "match-one", "value": json_value})
+
+        assert(type(json_value) is dict)
+        if "value" not in json_value:
+            raise Exception(f"Invalid Term found at {key_path}. All terms must have a 'value' specified.")
+
+        if "kind" not in json_value:
+            # As a shorthand, allow 'keyword' and 'reference' terms to skip specifying a kind, as it is umambiguous
+            # what kind they are.
+            if type(json_value["value"] is str):
+                if ReferenceTerm.is_reference_string(json_value["value"]):
+                    return ReferenceTerm.from_json(parsing_context, key_path, {"kind": "reference", **json_value})
+                else:
+                    return KeywordTerm.from_json(parsing_context, key_path, {"kind": "keyword", **json_value})
+
+            raise Exception(f"Invalid Term found at {key_path}. All terms with non-string values must have a 'kind' specified.")
+
+        kind = json_value["kind"]
+        if kind == "match-one":
+            return MatchOneTerm.from_json(parsing_context, key_path, json_value)
+        elif kind == "match-one-or-more":
+            return MatchOneOrMoreTerm.from_json(parsing_context, key_path, json_value)
+        elif kind == "reference":
+            return ReferenceTerm.from_json(parsing_context, key_path, json_value)
+        elif kind == "keyword":
+            return KeywordTerm.from_json(parsing_context, key_path, json_value)
+        else:
+            raise Exception(f"Invalid Term found at {key_path}. Unknown 'kind' specified: '{kind}'.")
+
+
+def normalize(string):
+    return string.replace('-', '_')
+
+
+
+class BuiltinSchema:
+    class OptionalParameter:
+        def __init__(self, name, values, default):
+            self.name = name
+            self.values = values
+            self.default = default
+
+    class RequiredParameter:
+        def __init__(self, name, values):
+            self.name = name
+            self.values = values
+
+    class Entry:
+        def __init__(self, name, consume_function_name, *parameter_descriptors):
+            self.name = Name(name)
+            self.consume_function_name = consume_function_name
+
+            # Mapping of descriptor name (e.g. 'value_range' or 'mode') to OptionalParameter descriptor.
+            self.optionals = {}
+
+            # Mapping of descriptor name (e.g. 'value_range' or 'mode') to RequiredParameter descriptor.
+            self.requireds = {}
+            
+            # Mapping from all the potential values (e.g. 'svg', 'unitless-allowed') to the parameter descriptor (e.g. OptionalParameter/RequiredParameter instances).
+            self.value_to_descriptor = {}
+
+            for parameter_descriptor in parameter_descriptors:
+                if isinstance(parameter_descriptor, BuiltinSchema.OptionalParameter):
+                    self.optionals[parameter_descriptor.name] = parameter_descriptor
+                    for value in parameter_descriptor.values.keys():
+                        self.value_to_descriptor[value] = parameter_descriptor
+                if isinstance(parameter_descriptor, BuiltinSchema.RequiredParameter):
+                    self.requireds[parameter_descriptor.name] = parameter_descriptor
+                    for value in parameter_descriptor.values.keys():
+                        self.value_to_descriptor[value] = parameter_descriptor
+
+            def builtin_schema_type_init(self, parameters):
+                # Map from descriptor name (e.g. 'value_range' or 'mode') to mapped value (e.g. ValueRange::NonNegative or HTMLStandardMode) for all of the parameters.
+                self.parameter_map = { }
+
+                # Example parameters is ['svg', 'unitless-allowed'].
+                for parameter in parameters:
+                    descriptor = self.entry.value_to_descriptor[parameter]
+                    self.parameter_map[descriptor.name] = descriptor.values[parameter]
+            
+                # Fill `results` with mappings from `names` (e.g. `value_range`) to mapped to value (e.g. `ValueRange::NonNegative`)
+                self.results = {}
+                for descriptor in self.entry.optionals.values():
+                    self.results[descriptor.name] = self.parameter_map.get(descriptor.name, descriptor.default)
+                for descriptor in self.entry.requireds.values():
+                    self.results[descriptor.name] = self.parameter_map.get(descriptor.name)
+
+            def builtin_schema_type_parameter_string_getter(name, self):
+                return self.results[name]
+
+            # Dynamically generate a class that can handle validationg and generation.
+            class_name = f"Builtin{self.name.id_without_prefix}Consumer"
+            class_attributes = {
+                "__init__": builtin_schema_type_init,
+                "consume_function_name": self.consume_function_name,
+                "entry": self,
+            }
+
+            for name in itertools.chain(self.optionals.keys(), self.requireds.keys()):
+                class_attributes[normalize(name)] = property(functools.partial(builtin_schema_type_parameter_string_getter, name))
+
+            self.constructor = type(class_name, (), class_attributes)
+
+            # Also add the type to the global scope for use in other classes.
+            globals()[class_name] = self.constructor
+
+
+    def __init__(self, *entries):
+        self.entries = {entry.name.name: entry for entry in entries}
+
+    def validate_and_construct_if_builtin(self, name, parameters):
+        # FIXME: Implement validation.
+        if name.name in self.entries:
+            return self.entries[name.name].constructor(parameters)
+        return None
+
+# Reference terms look like keyword terms, but are surrounded by '<' and '>' characters (i.e. "<number>").
+# They can either reference a rule from the grammer-rules set, in which case they will be replaced by
+# the real term during fixup, or a builtin rule, in which case they will inform the generator to call
+# out to a handwritten consumer.
+#
+#   { "kind": "reference", "value": "<length unitless-forbidden>" }
+#
+# or using shorthand
+#
+#   "<length unitless-forbidden>"
+#
+class ReferenceTerm:
+    schema = Term.schema + Schema(
+        Schema.Entry("value", allowed_types=[str], required=True),
+    )
+
+    builtins = BuiltinSchema(
+        BuiltinSchema.Entry("angle", "consumeAngle",
+            BuiltinSchema.OptionalParameter("mode", values={"svg": "SVGAttributeMode", "strict": "HTMLStandardMode"}, default=None),
+            BuiltinSchema.RequiredParameter("unitless", values={"unitless-allowed": "UnitlessQuirk::Allow", "unitless-forbidden": "UnitlessQuirk::Forbid"}),
+            BuiltinSchema.RequiredParameter("unitless-zero", values={"unitless-zero-allowed": "UnitlessZeroQuirk::Allow", "unitless-zero-forbidden": "UnitlessZeroQuirk::Forbid"})),
+        BuiltinSchema.Entry("length", "consumeLength",
+            BuiltinSchema.OptionalParameter("value_range", values={"[0,∞]": "ValueRange::NonNegative"}, default="ValueRange::All"),
+            BuiltinSchema.OptionalParameter("mode", values={"svg": "SVGAttributeMode", "strict": "HTMLStandardMode"}, default=None),
+            BuiltinSchema.RequiredParameter("unitless", values={"unitless-allowed": "UnitlessQuirk::Allow", "unitless-forbidden": "UnitlessQuirk::Forbid"})),
+        BuiltinSchema.Entry("length-percentage", "consumeLengthOrPercent",
+            BuiltinSchema.OptionalParameter("value_range", values={"[0,∞]": "ValueRange::NonNegative"}, default="ValueRange::All"),
+            BuiltinSchema.OptionalParameter("mode", values={"svg": "SVGAttributeMode", "strict": "HTMLStandardMode"}, default=None),
+            BuiltinSchema.RequiredParameter("unitless", values={"unitless-allowed": "UnitlessQuirk::Allow", "unitless-forbidden": "UnitlessQuirk::Forbid"})),
+        BuiltinSchema.Entry("time", "consumeTime",
+            BuiltinSchema.OptionalParameter("value_range", values={"[0,∞]": "ValueRange::NonNegative"}, default="ValueRange::All"),
+            BuiltinSchema.OptionalParameter("mode", values={"svg": "SVGAttributeMode", "strict": "HTMLStandardMode"}, default=None),
+            BuiltinSchema.RequiredParameter("unitless", values={"unitless-allowed": "UnitlessQuirk::Allow", "unitless-forbidden": "UnitlessQuirk::Forbid"})),
+        BuiltinSchema.Entry("integer", "consumeInteger",
+            BuiltinSchema.OptionalParameter("value_range", values={"[1,∞]": "IntegerValueRange::Positive"}, default="IntegerValueRange::All")),
+        BuiltinSchema.Entry("number", "consumeNumber",
+            BuiltinSchema.OptionalParameter("value_range", values={"[0,∞]": "ValueRange::NonNegative"}, default="ValueRange::All")),
+        BuiltinSchema.Entry("percentage", "consumePercent",
+            BuiltinSchema.OptionalParameter("value_range", values={"[0,∞]": "ValueRange::NonNegative"}, default="ValueRange::All")),
+        BuiltinSchema.Entry("color", "consumeColor",
+            BuiltinSchema.OptionalParameter("quirky_colors", values={"accept-quirky-colors-in-quirks-mode": True}, default=False)),
+    )
+
+    def __init__(self, **dictionary):
+        ReferenceTerm.schema.set_attributes_from_dictionary(dictionary, instance=self)
+
+        # Removes the '<' and '>' characters and splits on whitespace to get the parts.
+        parts = self.value[1:-1].split()
+
+        # Store the first (and perhaps only) part as the reference's name (e.g. for <length-percentage [0,∞] unitless-allowed> store 'length-percentage').
+        self.name = Name(parts[0])
+
+        # Store any remaining pars as the parameters (e.g. for <length-percentage [0,∞] unitless-allowed> store ['[0,∞]', 'unitless-allowed']).
+        self.parameters = parts[1:]
+
+        # Check name and parameters against the builtins schemas to verify if they are well formed.
+        self.builtin = ReferenceTerm.builtins.validate_and_construct_if_builtin(self.name, self.parameters)
+
+    def __str__(self):
+        return f"'{self.value}'"
+
+    def __repr__(self):
+        return self.__str__()
+
+    @staticmethod
+    def is_reference_string(string):
+        string = string.strip()
+        return string.startswith('<') and string.endswith('>')
+
+    @staticmethod
+    def from_json(parsing_context, key_path, json_value):
+        assert(type(json_value) is dict)
+        ReferenceTerm.schema.validate_dictionary(json_value, label=f"ReferenceTerm ({key_path})")
+
+        if "enable-if" in json_value and not parsing_context.is_enabled(conditional=json_value["enable-if"]):
+            if parsing_context.verbose:
+                print(f"SKIPPED grammar term {json_value['value']} in {key_path} due to failing to satisfy 'enable-if' condition, '{json_value['enable-if']}', with active macro set")
+            return None
+
+        return ReferenceTerm(**json_value)
+
+    def perform_fixups(self, all_rules):
+        # Replace a reference with the term it references if it can be found.
+        if self.value in all_rules.rules_by_name:
+            return all_rules.rules_by_name[self.value].grammar.root_term
+        return self
+
+    @property
+    def is_builtin(self):
+        return self.builtin is not None
+
+
+#   { "kind": "keyword", "value": "auto" }
+#
+# or using shorthand
+#
+#   "auto"
+class KeywordTerm:
+    schema = Term.schema + Schema(
+        Schema.Entry("aliased-to", allowed_types=[str]),
+        Schema.Entry("settings-flag", allowed_types=[str]),
+        Schema.Entry("value", allowed_types=[str], required=True),
+    )
+
+    def __init__(self, **dictionary):
+        KeywordTerm.schema.set_attributes_from_dictionary(dictionary, instance=self)
+
+    def __str__(self):
+        return f"'{self.value}'"
+
+    def __repr__(self):
+        return self.__str__()
+
+    @staticmethod
+    def from_json(parsing_context, key_path, json_value):
+        assert(type(json_value) is dict)
+        KeywordTerm.schema.validate_dictionary(json_value, label=f"KeywordTerm ({key_path})")
+
+        if "enable-if" in json_value and not parsing_context.is_enabled(conditional=json_value["enable-if"]):
+            if parsing_context.verbose:
+                print(f"SKIPPED grammar term {json_value['value']} in {key_path} due to failing to satisfy 'enable-if' condition, '{json_value['enable-if']}', with active macro set")
+            return None
+
+        json_value["value"] = ValueKeywordName(json_value["value"])
+
+        return KeywordTerm(**json_value)
+
+    def perform_fixups(self, all_rules):
+        return self
+
+    @property
+    def requires_context(self):
+        return self.settings_flag or self.status == "internal"
+
+
+#   {
+#       "kind": "match-one",
+#       "value": [
+#           "auto"
+#           "reverse",
+#           "<angle unitless-forbidden unitless-zero-forbidden>"
+#       ]
+#   }
+#
+#   or using shorthand
+#
+#   ["auto", "reverse", "<angle unitless-forbidden unitless-zero-forbidden>"]
+#
+class MatchOneTerm:
+    schema = Term.schema + Schema(
+        Schema.Entry("value", allowed_types=[list], required=True),
+    )
+
+    def __init__(self, terms):
+        self.terms = terms
+
+    def __str__(self):
+        return f"[{' | '.join(map(lambda t: str(t), self.terms))}]"
+
+    def __repr__(self):
+        return self.__str__()
+
+    @staticmethod
+    def from_json(parsing_context, key_path, json_value):
+        assert(type(json_value) is dict)
+        MatchOneTerm.schema.validate_dictionary(json_value, label=f"MatchOneTerm ({key_path})")
+
+        if "enable-if" in json_value and not parsing_context.is_enabled(conditional=json_value["enable-if"]):
+            if parsing_context.verbose:
+                print(f"SKIPPED grammar term {json_value['value']} in {key_path} due to failing to satisfy 'enable-if' condition, '{json_value['enable-if']}', with active macro set")
+            return None
+
+        return MatchOneTerm(
+            list(compact_map(lambda value: Term.from_json(parsing_context, f"{key_path}", value), json_value["value"]))
+        )
+
+    def perform_fixups(self, all_rules):
+        updated_terms = []
+        for term in self.terms:
+            updated_term = term.perform_fixups(all_rules)
+            if isinstance(updated_term, MatchOneTerm):
+                updated_terms += updated_term.terms
+            else:
+                updated_terms += [updated_term]
+
+        self.terms = updated_terms
+
+        if len(self.terms) == 1:
+            return self.terms[0]
+        return self
+
+
+#   {
+#       "kind": "one-or-more",
+#       "value": [
+#           ["auto", "reverse"],
+#           "<angle unitless-forbidden unitless-zero-forbidden>"
+#       ]
+#   }
+class MatchOneOrMoreTerm:
+    schema = Term.schema + Schema(
+        Schema.Entry("value", allowed_types=[list], required=True),
+    )
+
+    def __init__(self, terms):
+        self.terms = terms
+
+    def __str__(self):
+        return f"[{' || '.join(map(lambda t: str(t), self.terms))}]"
+
+    def __repr__(self):
+        return self.__str__()
+
+    @staticmethod
+    def from_json(parsing_context, key_path, json_value):
+        assert(type(json_value) is dict)
+        MatchOneOrMoreTerm.schema.validate_dictionary(json_value, label=f"MatchOneOrMoreTerm ({key_path})")
+
+        if "enable-if" in json_value and not parsing_context.is_enabled(conditional=json_value["enable-if"]):
+            if parsing_context.verbose:
+                print(f"SKIPPED grammar term {json_value['value']} in {key_path} due to failing to satisfy 'enable-if' condition, '{json_value['enable-if']}', with active macro set")
+            return None
+
+        return MatchOneOrMoreTerm(
+            list(compact_map(lambda value: Term.from_json(parsing_context, f"{key_path}", value), json_value["value"]))
+        )
+
+    def perform_fixups(self, all_rules):
+        self.terms = [term.perform_fixups(all_rules) for term in self.terms]
+        return self
+
+
+# Container for the name and root term for a grammar. Used for both shared rules and property specific grammars.
+class Grammar:
+    def __init__(self, name, root_term):
+        self.name = name
+        self.root_term = root_term
+
+    def __str__(self):
+        return f"{self.name} {self.root_term}"
+
+    def __repr__(self):
+        return self.__str__()
+
+    @staticmethod
+    def from_json(parsing_context, key_path, name, json_value):
+        return Grammar(name, Term.from_json(parsing_context, key_path, json_value))
+
+    def perform_fixups(self, all_rules):
+        self.root_term = self.root_term.perform_fixups(all_rules)
+
+
+# A shared grammar rule and metadata describing it. Part of the set of rules tracked by GrammarRules.
+class GrammarRule:
+    schema = Schema(
+        Schema.Entry("exported", allowed_types=[bool], default_value=False),
+        Schema.Entry("grammar", allowed_types=[list, dict], required=True),
+        Schema.Entry("specification", allowed_types=[dict]),
+        Schema.Entry("status", allowed_types=[dict, str]),
+    )
+
+    def __init__(self, name, **dictionary):
+        GrammarRule.schema.set_attributes_from_dictionary(dictionary, instance=self)
+        self.name = name
+
+    def __str__(self):
+        return self.name
+
+    def __repr__(self):
+        return self.__str__()
+
+    @staticmethod
+    def from_json(parsing_context, key_path, name, json_value):
+        assert(type(json_value) is dict)
+        GrammarRule.schema.validate_dictionary(json_value, label=f"GrammarRule ({key_path}.{name})")
+
+        json_value["grammar"] = Grammar.from_json(parsing_context, f"{key_path}.{name}", name, json_value["grammar"])
+        if "status" in json_value:
+            json_value["status"] = Status.from_json(parsing_context, f"{key_path}.{name}", json_value["status"])
+        if "specification" in json_value:
+            json_value["specification"] = Specification.from_json(parsing_context, f"{key_path}.{name}", json_value["specification"])
+
+        return GrammarRule(name, **json_value)
+
+    def perform_fixups(self, all_rules):
+        self.grammar.perform_fixups(all_rules)
+
+
+# Shared grammar rules used to aid in defining property specific grammars.
+class GrammarRules:
+    def __init__(self, *rules):
+        self.rules = rules
+        self.rules_by_name = {rule.name: rule for rule in rules}
+
+        self._perform_fixups()
+
+    def __str__(self):
+        return "GrammarRules"
+
+    def __repr__(self):
+        return self.__str__()
+
+    # Updates any references to other rules with a direct reference to the rule object.
+    def _perform_fixups(self):
+        for rule in self.rules:
+            rule.perform_fixups(self)
+
+
+class ParsingContext:
+    class TopLevelObject:
+        schema = Schema(
+            Schema.Entry("categories", allowed_types=[dict], required=True),
+            Schema.Entry("instructions", allowed_types=[list], required=True),
+            Schema.Entry("properties", allowed_types=[dict], required=True),
+            Schema.Entry("grammar-rules", allowed_types=[dict], required=True),
+        )
+
+    def __init__(self, json_value, *, defines_string, parsing_for_codegen, verbose):
+        ParsingContext.TopLevelObject.schema.validate_dictionary(json_value, label="top level object")
+
+        self.json_value = json_value
+        self.conditionals = frozenset((defines_string or '').split(' '))
+        self.parsing_for_codegen = parsing_for_codegen
+        self.verbose = verbose
+        self.parsed_grammar_rules = None
+        self.parsed_properties = None
+
+    def parse_grammar_rules(self):
+        self.parsed_grammar_rules = GrammarRules(
+            *list(
+                filter(
+                    lambda value: value is not None,
+                    map(
+                        lambda item: GrammarRule.from_json(self, "$grammar-rules", item[0], item[1]),
+                        self.json_value["grammar-rules"].items()
+                    )
+                )
+            )
+        )
+
+    def parse_properties(self):
+        self.parsed_properties = Properties(
+            *list(
+                filter(
+                    lambda value: value is not None,
+                    map(
+                        lambda item: Property.from_json(self, "$properties", item[0], item[1]),
+                        self.json_value["properties"].items()
+                    )
+                )
+            )
+        )
+
+    def is_enabled(self, *, conditional):
+        if conditional[0] == '!':
+            return conditional[1:] not in self.conditionals
+        return conditional in self.conditionals
+
+    def select_enabled_variant(self, variants, *, label):
+        for variant in variants:
+            if "enable-if" not in variant:
+                raise Exception(f"Invalid conditional definition for '{label}'. No 'enable-if' property found.")
+
+            if self.is_enabled(conditional=variant["enable-if"]):
+                return variant
+
+        raise Exception(f"Invalid conditional definition for '{label}'. No 'enable-if' property matched the active set.")
+
+
+# MARK: - Code Generation
 
 class GenerationContext:
-    def __init__(self, properties, *, verbose, gperf_executable):
+    def __init__(self, properties, grammar_rules, *, verbose, gperf_executable):
         self.properties = properties
+        self.grammar_rules = grammar_rules
         self.verbose = verbose
         self.gperf_executable = gperf_executable
 
@@ -1008,6 +1492,7 @@ class GenerationContext:
             #include "CSSPropertyNames.h"
 
             #include "CSSProperty.h"
+            #include "CSSPropertySettings.h"
             #include "Settings.h"
             #include <wtf/ASCIICType.h>
             #include <wtf/Hasher.h>
@@ -1212,7 +1697,7 @@ class GenerationContext:
         """))
 
     def _generate_is_inherited_property(self, *, to):
-        to.write(f'constexpr bool isInheritedPropertyTable[numCSSProperties + {GenerationContext.number_of_predefined_properties}] = {{\n')
+        to.write(f'\nconstexpr bool isInheritedPropertyTable[numCSSProperties + {GenerationContext.number_of_predefined_properties}] = {{\n')
         to.write(f'    false, // CSSPropertyID::CSSPropertyInvalid\n')
         to.write(f'    true , // CSSPropertyID::CSSPropertyCustom\n')
 
@@ -1253,39 +1738,6 @@ class GenerationContext:
         to.write(f"    default:\n")
         to.write(f"        return false;\n")
         to.write(f"    }}\n")
-        to.write(f"}}\n\n")
-
-    def _generate_css_property_settings_constructor(self, *, to):
-        to.write(f"CSSPropertySettings::CSSPropertySettings(const Settings& settings)\n")
-        to.write(f"    : ")
-
-        settings_initializer_list = (f"{flag} {{ settings.{flag}() }}" for flag in self.properties.settings_flags)
-        to.write(f"\n    , ".join(settings_initializer_list))
-
-        to.write(f"\n{{\n")
-        to.write(f"}}\n\n")
-
-    def _generate_css_property_settings_operator_equal(self, *, to):
-        to.write(f"bool operator==(const CSSPropertySettings& a, const CSSPropertySettings& b)\n")
-        to.write(f"{{\n")
-
-        to.write(f"    return ")
-        settings_operator_equal_list = (f"a.{flag} == b.{flag}" for flag in self.properties.settings_flags)
-        to.write(f"\n        && ".join(settings_operator_equal_list))
-
-        to.write(f";\n")
-        to.write(f"}}\n\n")
-
-    def _generate_css_property_settings_hasher(self, *, to):
-        to.write(f"void add(Hasher& hasher, const CSSPropertySettings& settings)\n")
-        to.write(f"{{\n")
-        to.write(f"    unsigned bits = ")
-
-        settings_hasher_list = (f"settings.{flag} << {i}" for (i, flag) in enumerate(self.properties.settings_flags))
-        to.write(f"\n        | ".join(settings_hasher_list))
-
-        to.write(f";\n")
-        to.write(f"    add(hasher, bits);\n")
         to.write(f"}}\n\n")
 
     def generate_css_property_names_gperf(self):
@@ -1385,18 +1837,6 @@ class GenerationContext:
                 properties=(p for p in self.properties.all if p.codegen_properties.descriptor_only)
             )
 
-            self._generate_css_property_settings_constructor(
-                to=output_file
-            )
-
-            self._generate_css_property_settings_operator_equal(
-                to=output_file
-            )
-
-            self._generate_css_property_settings_hasher(
-                to=output_file
-            )
-
             self._generate_css_property_names_gperf_footing(
                 to=output_file
             )
@@ -1415,6 +1855,7 @@ class GenerationContext:
 
             namespace WebCore {
 
+            struct CSSPropertySettings;
             class Settings;
 
             """))
@@ -1485,21 +1926,6 @@ class GenerationContext:
         to.write(f"constexpr uint16_t numCSSPropertyLonghands = firstShorthandProperty - firstCSSProperty;\n\n")
 
         to.write(f"extern const std::array<CSSPropertyID, {count_iterable(self.properties.all_computed)}> computedPropertyIDs;\n\n")
-
-    def _generate_css_property_names_h_property_settings(self, *, to):
-        to.write(f"struct CSSPropertySettings {{\n")
-        to.write(f"    WTF_MAKE_STRUCT_FAST_ALLOCATED;\n")
-
-        settings_variable_declarations = (f"    bool {flag} {{ false }};\n" for flag in self.properties.settings_flags)
-        to.write("".join(settings_variable_declarations))
-
-        to.write(f"    CSSPropertySettings() = default;\n")
-        to.write(f"    explicit CSSPropertySettings(const Settings&);\n")
-        to.write(f"}};\n\n")
-
-        to.write(f"bool operator==(const CSSPropertySettings&, const CSSPropertySettings&);\n")
-        to.write(f"inline bool operator!=(const CSSPropertySettings& a, const CSSPropertySettings& b) {{ return !(a == b); }}\n")
-        to.write(f"void add(Hasher&, const CSSPropertySettings&);\n\n")
 
     def _generate_css_property_names_h_forward_declarations(self, *, to):
         to.write(textwrap.dedent("""\
@@ -1580,10 +2006,6 @@ class GenerationContext:
                 to=output_file
             )
 
-            self._generate_css_property_names_h_property_settings(
-                to=output_file
-            )
-
             self._generate_css_property_names_h_forward_declarations(
                 to=output_file
             )
@@ -1597,6 +2019,132 @@ class GenerationContext:
             )
 
             self._generate_css_property_names_h_footing(
+                to=output_file
+            )
+
+    # MARK: - Helper generator functions for CSSPropertySettings.cpp
+
+    def _generate_css_property_settings_cpp_heading(self, *, to):
+        to.write(textwrap.dedent("""\
+            // This file is automatically generated from CSSProperties.json by the process-css-properties script. Do not edit it.
+
+            #include "config.h"
+            #include "CSSPropertySettings.h"
+
+            #include "Settings.h"
+            #include <wtf/Hasher.h>
+
+            namespace WebCore {
+
+            """))
+
+    def _generate_css_property_settings_cpp_constructor(self, *, to):
+        to.write(f"CSSPropertySettings::CSSPropertySettings(const Settings& settings)\n")
+        to.write(f"    : ")
+
+        settings_initializer_list = (f"{flag} {{ settings.{flag}() }}" for flag in self.properties.settings_flags)
+        to.write(f"\n    , ".join(settings_initializer_list))
+
+        to.write(f"\n{{\n")
+        to.write(f"}}\n\n")
+
+    def _generate_css_property_settings_cpp_operator_equal(self, *, to):
+        to.write(f"bool operator==(const CSSPropertySettings& a, const CSSPropertySettings& b)\n")
+        to.write(f"{{\n")
+
+        to.write(f"    return ")
+        settings_operator_equal_list = (f"a.{flag} == b.{flag}" for flag in self.properties.settings_flags)
+        to.write(f"\n        && ".join(settings_operator_equal_list))
+
+        to.write(f";\n")
+        to.write(f"}}\n\n")
+
+    def _generate_css_property_settings_cpp_hasher(self, *, to):
+        to.write(f"void add(Hasher& hasher, const CSSPropertySettings& settings)\n")
+        to.write(f"{{\n")
+        to.write(f"    unsigned bits = ")
+
+        settings_hasher_list = (f"settings.{flag} << {i}" for (i, flag) in enumerate(self.properties.settings_flags))
+        to.write(f"\n        | ".join(settings_hasher_list))
+
+        to.write(f";\n")
+        to.write(f"    add(hasher, bits);\n")
+        to.write(f"}}\n\n")
+
+    def _generate_css_property_settings_cpp_footing(self, *, to):
+        to.write(textwrap.dedent("""\
+            } // namespace WebCore
+            """))
+
+    def generate_css_property_settings_cpp(self):
+        with open('CSSPropertySettings.cpp', 'w') as output_file:
+            self._generate_css_property_settings_cpp_heading(
+                to=output_file
+            )
+
+            self._generate_css_property_settings_cpp_constructor(
+                to=output_file
+            )
+
+            self._generate_css_property_settings_cpp_operator_equal(
+                to=output_file
+            )
+
+            self._generate_css_property_settings_cpp_hasher(
+                to=output_file
+            )
+
+            self._generate_css_property_settings_cpp_footing(
+                to=output_file
+            )
+
+    # MARK: - Helper generator functions for CSSPropertySettings.h
+
+    def _generate_css_property_settings_h_heading(self, *, to):
+        to.write(textwrap.dedent("""\
+            // This file is automatically generated from CSSProperties.json by the process-css-properties script. Do not edit it.
+
+            #pragma once
+
+            #include <wtf/Forward.h>
+
+            namespace WebCore {
+
+            class Settings;
+
+            """))
+
+    def _generate_css_property_settings_h_declarations(self, *, to):
+        to.write(f"struct CSSPropertySettings {{\n")
+        to.write(f"    WTF_MAKE_STRUCT_FAST_ALLOCATED;\n")
+
+        settings_variable_declarations = (f"    bool {flag} {{ false }};\n" for flag in self.properties.settings_flags)
+        to.write("".join(settings_variable_declarations))
+
+        to.write(f"    CSSPropertySettings() = default;\n")
+        to.write(f"    explicit CSSPropertySettings(const Settings&);\n")
+        to.write(f"}};\n\n")
+
+        to.write(f"bool operator==(const CSSPropertySettings&, const CSSPropertySettings&);\n")
+        to.write(f"inline bool operator!=(const CSSPropertySettings& a, const CSSPropertySettings& b) {{ return !(a == b); }}\n")
+        to.write(f"void add(Hasher&, const CSSPropertySettings&);\n\n")
+
+    def _generate_css_property_settings_h_footing(self, *, to):
+        to.write(textwrap.dedent("""\
+            } // namespace WebCore
+            """))
+
+    def generate_css_property_settings_h(self):
+        with open('CSSPropertySettings.h', 'w') as output_file:
+            self._generate_css_property_settings_h_heading(
+                to=output_file
+            )
+
+            self._generate_css_property_settings_h_declarations(
+                to=output_file
+            )
+
+            self._generate_css_property_settings_h_footing(
                 to=output_file
             )
 
@@ -2265,6 +2813,36 @@ class GenerationContext:
                 to=output_file
             )
 
+# OFFSET_ROTATE
+#                "parser-grammar": {
+#                    "kind": "match-one-or-more",
+#                    "value": [
+#                        ["auto", "reverse"],
+#                        "<angle unitless-forbidden unitless-zero-forbidden>"
+#                    ]
+#                }
+
+class GenerateCSSPropertyParsing:
+    class GenerationRequirements:
+        def __init__(self, property):
+            self.property = property
+            self.requires_keyword_check_function = False
+            self.requires_exported_keyword_check_function = False
+            self.requires_exported_consume_function = False
+            self.consume_kind = None # skip | consume{property} | consume{common_rule} | consumeIdent(keyword_predicate) 
+
+    def __init__(self, generation_context):
+        self.generation_context = generation_context
+        self.property_function_generators = GenerateCSSPropertyParsing._build_property_function_generators(generation_context)
+
+    @staticmethod
+    def _build_property_function_generators(generation_context):
+        return {property: ConsumeGeneratorPropertyFunction(property) for property in generation_context.properties.all if property.codegen_properties.parser_grammar}
+
+    @property
+    def properties(self):
+        return self.generation_context.properties
+
     # MARK: - Helper generator functions for CSSPropertyParsing.h
 
     def _generate_css_property_parsing_h_heading(self, *, to):
@@ -2303,6 +2881,14 @@ class GenerationContext:
                 // that it validates is that the property can be valid with a keyword value. (For example,
                 // 'list-style-type' supports a litany of keyword values, but also supports a string value.)
                 static bool isKeywordProperty(CSSPropertyID);
+
+            """))
+
+        for property in self.properties.all:
+            if property.codegen_properties.parser_grammar and property.codegen_properties.parser_exported:
+                self.property_function_generators[property].generate_declaration(to=to)
+
+        to.write(textwrap.dedent("""\
             };
             """))
 
@@ -2421,7 +3007,22 @@ class GenerationContext:
                 property=property
             )
 
-        to.write(f"\n}} // namespace (anonymous)\n\n")
+        to.write(f"\n")
+
+        # -- FIXME --
+        # 1. Find all grammars and unique them.
+        # 2. Create consume functions for all non-trivial ones.
+
+        for property in self.properties.all:
+            if property.codegen_properties.parser_grammar and not property.codegen_properties.parser_exported:
+                self.property_function_generators[property].generate_definition(to=to)
+
+        to.write(f"}} // namespace (anonymous)\n\n")
+
+        for property in self.properties.all:
+            if property.codegen_properties.parser_grammar and property.codegen_properties.parser_exported:
+                self.property_function_generators[property].generate_definition(to=to)
+
 
     def _generate_css_property_parsing_cpp_parse(self, *, to):
         to.write(f"RefPtr<CSSValue> CSSPropertyParsing::parse(CSSParserTokenRange& range, CSSPropertyID id, CSSPropertyID currentShorthand, const CSSParserContext& context)\n")
@@ -2468,6 +3069,11 @@ class GenerationContext:
 
                 # Merge the scope, function and parameters to form the final invocation.
                 return_expression = f"{function}({', '.join(parameters)})"
+            elif property.codegen_properties.parser_grammar:
+
+                consume_generator = ConsumeGeneratorPropertyFunction(property)
+                return_expression = consume_generator.generate_call_string(range_string="range", context_string="context")
+
             elif property.accepts_a_single_value_keyword:
                 parameters = ["range", f"isKeywordValidFor{property.id_without_prefix}"]
                 if property.a_value_requires_a_settings_flag_or_is_internal:
@@ -2524,7 +3130,7 @@ class GenerationContext:
                 to=output_file
             )
 
-            self._generate_property_id_switch_function_bool(
+            self.generation_context._generate_property_id_switch_function_bool(
                 to=output_file,
                 signature="bool CSSPropertyParsing::isKeywordProperty(CSSPropertyID id)",
                 properties=self.properties.all_accepting_a_single_value_keyword,
@@ -2534,6 +3140,230 @@ class GenerationContext:
                 to=output_file
             )
 
+
+class FunctionParameter:
+    def __init__(self, type, name):
+        self.type = type
+        self.name = name
+
+    @property
+    def declaration_string(self):
+        return f"{self.type}"
+
+    @property
+    def definition_string(self):
+        return f"{self.type} {self.name}"
+
+
+class Signature:
+    def __init__(self, *, result_type, scope, name, parameters):
+        self.result_type = result_type
+        self.scope = scope
+        self.name = name
+        self.parameters = parameters
+
+    @property
+    def _declaration_parameters_string(self):
+        return ", ".join(parameter.declaration_string for parameter in self.parameters)
+
+    @property
+    def _definition_parameters_string(self):
+        return ", ".join(parameter.definition_string for parameter in self.parameters)
+
+    @property
+    def _scope_string(self):
+        return f"{self.scope}::" if self.scope else ""
+
+    @property
+    def declaration_string(self):
+        return f"{self.result_type} {self.name}({self._declaration_parameters_string})"
+
+    @property
+    def definition_string(self):
+        return f"{self.result_type} {self._scope_string}{self.name}({self._definition_parameters_string})"
+
+
+class ConsumeGeneratorReferenceTerm:
+    def __init__(self, term):
+        self.term = term
+
+    @property
+    def call_string(self):
+        if self.term.is_builtin:
+            builtin = self.term.builtin
+            if isinstance(builtin, BuiltinAngleConsumer):
+                return f"{builtin.consume_function_name}(range, context.mode, {builtin.unitless}, {builtin.unitless_zero})"
+            elif isinstance(builtin, BuiltinTimeConsumer):
+                return f"{builtin.consume_function_name}(range, context.mode, {builtin.value_range}, {builtin.unitless})"
+            elif isinstance(builtin, BuiltinLengthConsumer):
+                return f"{builtin.consume_function_name}(range, {builtin.mode or 'context.mode'}, {builtin.value_range}, {builtin.unitless})"
+            elif isinstance(builtin, BuiltinLengthPercentageConsumer):
+                return f"{builtin.consume_function_name}(range, {builtin.mode or 'context.mode'}, {builtin.value_range}, {builtin.unitless})"
+            elif isinstance(builtin, BuiltinIntegerConsumer):
+                return f"{builtin.consume_function_name}(range)"
+            elif isinstance(builtin, BuiltinNumberConsumer):
+                return f"{builtin.consume_function_name}(range, {builtin.value_range})"
+            elif isinstance(builtin, BuiltinPercentageConsumer):
+                return f"{builtin.consume_function_name}(range, {builtin.value_range})"
+            elif isinstance(builtin, BuiltinColorConsumer):
+                if builtin.quirky_colors:
+                    return f"{builtin.consume_function_name}(range, context, context.mode == HTMLQuirksMode)"
+                return f"{builtin.consume_function_name}(range, context)"
+            else:
+                raise Exception("Unknown builtin type used: {builtin.name.name}")
+        else:
+            return f"consume{self.term.name.id_without_prefix}(range, context)"
+
+    @property
+    def requires_context(self):
+        if self.term.is_builtin:
+            builtin = self.term.builtin
+            if isinstance(builtin, BuiltinAngleConsumer):
+                return True
+            elif isinstance(builtin, BuiltinTimeConsumer):
+                return True
+            elif isinstance(builtin, BuiltinLengthConsumer):
+                return builtin.mode is None
+            elif isinstance(builtin, BuiltinLengthPercentageConsumer):
+                return builtin.mode is None
+            elif isinstance(builtin, BuiltinIntegerConsumer):
+                return False
+            elif isinstance(builtin, BuiltinNumberConsumer):
+                return False
+            elif isinstance(builtin, BuiltinPercentageConsumer):
+                return False
+            elif isinstance(builtin, BuiltinColorConsumer):
+                return True
+            else:
+                raise Exception("Unknown builtin type used: {builtin.name.name}")
+        else:
+            return True
+
+
+class ConsumeGeneratorKeywordTerms:
+    def __init__(self, property, terms):
+        self.property = property
+        self.terms = terms
+        self.requires_context = any(term.requires_context for term in self.terms)
+
+    @property
+    def call_string(self):
+        parameters = ["range", f"isKeywordValidFor{self.property.id_without_prefix}"]
+        if self.requires_context:
+            parameters.append("context")
+
+        return f"consumeIdent({', '.join(parameters)})"
+
+
+class ConsumeGeneratorPropertyFunction:
+    def __init__(self, property):
+        self.property = property
+        self.generators = ConsumeGeneratorPropertyFunction._build_generators(property)
+        self.signature = ConsumeGeneratorPropertyFunction._build_signature(property, self.generators)
+
+    @staticmethod
+    def _build_parameters(property, generators):
+        parameters = [FunctionParameter("CSSParserTokenRange&", "range")]
+        if any(generator.requires_context for generator in generators):
+            parameters += [FunctionParameter("const CSSParserContext&", "context")]
+        return parameters
+
+    @staticmethod
+    def _build_scope(property):
+        if property.codegen_properties.parser_exported:
+            return "CSSPropertyParsing"
+        return None
+
+    @staticmethod
+    def _build_signature(property, generators):
+        return Signature(
+            result_type="RefPtr<CSSValue>",
+            scope=ConsumeGeneratorPropertyFunction._build_scope(property),
+            name=f"consume{property.id_without_prefix}",
+            parameters=ConsumeGeneratorPropertyFunction._build_parameters(property, generators)
+        )
+
+    @staticmethod
+    def _build_generators(property):
+        root_term = property.codegen_properties.parser_grammar.root_term
+
+        if isinstance(root_term, ReferenceTerm):
+            return [ConsumeGeneratorReferenceTerm(root_term)]
+        elif isinstance(root_term, MatchOneTerm):
+            # Partition the sub-terms into keywords and references (and eventually more things):
+            keyword_terms = []
+            reference_terms = []
+            for sub_term in root_term.terms:
+                if isinstance(sub_term, KeywordTerm):
+                    keyword_terms.append(sub_term)
+                elif isinstance(sub_term, ReferenceTerm):
+                    reference_terms.append(sub_term)
+                else:
+                    raise Exception(f"Only KeywordTerm and ReferenceTerm terms are supported inside MatchOneTerm at this time: '{property.name}' - {sub_term}")
+    
+            # Build a list of generators for the terms, starting with all (if any) the keywords at once.
+            generators = []
+
+            if keyword_terms:
+                generators += [ConsumeGeneratorKeywordTerms(property, keyword_terms)]
+            if reference_terms:
+                generators += [ConsumeGeneratorReferenceTerm(sub_term) for sub_term in reference_terms]
+
+            return generators
+        else:
+            raise Exception(f"Only ReferenceTerm and MatchOneTerm terms are supported at the root at this time: '{property.name}' - {root_term}")
+
+    def generate_call_string(self, *, range_string, context_string):
+        return f"consume{self.property.id_without_prefix}({range_string}, {context_string})"
+
+    def generate_declaration(self, *, to):
+        to.write(f"    static {self.signature.declaration_string};\n")
+
+    def generate_definition(self, *, to):
+        if self.property.codegen_properties.parser_exported:
+            to.write(f"{self.signature.definition_string}\n")
+        else:
+            to.write(f"static {self.signature.definition_string}\n")
+        to.write(f"{{\n")
+        
+        # Pop the last generator off, as that one will be the special, non-if case.
+        *remaining_generators, last_generator = self.generators
+
+        # For any remaining generators, call the consume function and return the result if non-null.
+        for generator in remaining_generators:
+            to.write(f"    if (auto result = {generator.call_string})\n")
+            to.write(f"         return result;\n")
+
+        # And finally call that last generator we popped of back.
+        to.write(f"    return {last_generator.call_string};\n")
+
+        to.write(f"}}\n\n")
+
+#class ConsumeCommonRuleFunction:
+#    def __init__(self, rule):
+#        self.rule = property
+#        self.signature = ConsumeFunction._build_signature(property)
+#
+#    @staticmethod
+#    def _build_parameters(property):
+#        return [FunctionParameter("CSSParserTokenRange&", "range"), FunctionParameter("const CSSParserContext&", "context")]
+#
+#    @staticmethod
+#    def _build_signature(property):
+#        return Signature(result_type="RefPtr<CSSValue>", scope="CSSPropertyParsing", name=f"consume{property.id_without_prefix}", parameters = ConsumeFunction._build_parameters(property))
+#
+#    def generate_declaration(self, *, to):
+#        to.write(f"    {self.signature.declaration_string}\n")
+#
+#    def generate_definition(self, *, to):
+#        to.write(f"{self.signature.definition_string}\n")
+#        to.write(f"{{\n")
+#
+#        if self.property.codegen_properties.
+#
+#        to.write(f"}}\n")
+
+
 def main():
     parser = argparse.ArgumentParser(description='Process CSS property definitions.')
     parser.add_argument('--properties', default="CSSProperties.json")
@@ -2542,23 +3372,30 @@ def main():
     parser.add_argument('-v', '--verbose', action='store_true')
     args = parser.parse_args()
 
+    args.verbose = True
+
     with open(args.properties, "r") as properties_file:
         properties_json = json.load(properties_file)
 
-    parsing_context = ParsingContext(defines_string=args.defines, parsing_for_codegen=True, verbose=args.verbose)
-    properties = Properties.from_json(parsing_context, properties_json)
+    parsing_context = ParsingContext(properties_json, defines_string=args.defines, parsing_for_codegen=True, verbose=args.verbose)
+    parsing_context.parse_grammar_rules()
+    parsing_context.parse_properties()
 
     if args.verbose:
-        print(f"{len(properties.properties)} properties active for code generation")
+        print(f"{len(parsing_context.parsed_properties.properties)} properties active for code generation")
 
-    generation_context = GenerationContext(properties, verbose=args.verbose, gperf_executable=args.gperf_executable)
-
-    generation_context.generate_css_property_parsing_h()
-    generation_context.generate_css_property_parsing_cpp()
+    generation_context = GenerationContext(parsing_context.parsed_properties, parsing_context.parsed_grammar_rules, verbose=args.verbose, gperf_executable=args.gperf_executable)
 
     generation_context.generate_css_property_names_h()
     generation_context.generate_css_property_names_gperf()
     generation_context.run_gperf()
+
+    css_propery_parsing_generator = GenerateCSSPropertyParsing(generation_context)
+    css_propery_parsing_generator.generate_css_property_parsing_h()
+    css_propery_parsing_generator.generate_css_property_parsing_cpp()
+
+    generation_context.generate_css_property_settings_h()
+    generation_context.generate_css_property_settings_cpp()
 
     generation_context.generate_css_style_declaration_property_names_idl()
 

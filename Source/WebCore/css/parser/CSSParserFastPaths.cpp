@@ -49,59 +49,6 @@
 
 namespace WebCore {
 
-static inline bool isSimpleLengthPropertyID(CSSPropertyID propertyId, bool& acceptsNegativeNumbers)
-{
-    switch (propertyId) {
-    case CSSPropertyFontSize:
-    case CSSPropertyHeight:
-    case CSSPropertyWidth:
-    case CSSPropertyMinHeight:
-    case CSSPropertyMinWidth:
-    case CSSPropertyPaddingBottom:
-    case CSSPropertyPaddingLeft:
-    case CSSPropertyPaddingRight:
-    case CSSPropertyPaddingTop:
-    case CSSPropertyInlineSize:
-    case CSSPropertyBlockSize:
-    case CSSPropertyMinInlineSize:
-    case CSSPropertyMinBlockSize:
-    case CSSPropertyPaddingBlockEnd:
-    case CSSPropertyPaddingBlockStart:
-    case CSSPropertyPaddingInlineEnd:
-    case CSSPropertyPaddingInlineStart:
-    case CSSPropertyR:
-    case CSSPropertyRx:
-    case CSSPropertyRy:
-    case CSSPropertyShapeMargin:
-        acceptsNegativeNumbers = false;
-        return true;
-    case CSSPropertyBottom:
-    case CSSPropertyCx:
-    case CSSPropertyCy:
-    case CSSPropertyLeft:
-    case CSSPropertyInsetBlockEnd:
-    case CSSPropertyInsetBlockStart:
-    case CSSPropertyInsetInlineEnd:
-    case CSSPropertyInsetInlineStart:
-    case CSSPropertyMarginBottom:
-    case CSSPropertyMarginLeft:
-    case CSSPropertyMarginRight:
-    case CSSPropertyMarginTop:
-    case CSSPropertyRight:
-    case CSSPropertyTop:
-    case CSSPropertyMarginBlockEnd:
-    case CSSPropertyMarginBlockStart:
-    case CSSPropertyMarginInlineEnd:
-    case CSSPropertyMarginInlineStart:
-    case CSSPropertyX:
-    case CSSPropertyY:
-        acceptsNegativeNumbers = true;
-        return true;
-    default:
-        return false;
-    }
-}
-
 template<typename CharacterType> static inline std::optional<double> parseCSSNumber(const CharacterType* characters, unsigned length)
 {
     // The charactersToDouble() function allows a trailing '.' but that is not allowed in CSS number values.
@@ -152,13 +99,12 @@ static inline bool parseSimpleAngle(const CharacterType* characters, unsigned le
     return parsedNumber.has_value();
 }
 
-static RefPtr<CSSValue> parseSimpleLengthValue(CSSPropertyID propertyId, StringView string, CSSParserMode cssParserMode)
+static RefPtr<CSSValue> parseSimpleLengthValue(StringView string, CSSParserMode cssParserMode, bool acceptsNegativeNumbers)
 {
     ASSERT(!string.isEmpty());
-    bool acceptsNegativeNumbers = false;
 
     // In @viewport, width and height are shorthands, not simple length values.
-    if (isCSSViewportParsingEnabledForMode(cssParserMode) || !isSimpleLengthPropertyID(propertyId, acceptsNegativeNumbers))
+    if (isCSSViewportParsingEnabledForMode(cssParserMode))
         return nullptr;
 
     unsigned length = string.length();
@@ -521,10 +467,9 @@ static std::optional<SRGBA<uint8_t>> parseNumericColor(StringView string, const 
     return parseNumericColor(string.characters16(), string.length(), strict);
 }
 
-static RefPtr<CSSValue> parseColor(StringView string, const CSSParserContext& context)
+static RefPtr<CSSValue> parseColor(StringView string, CSSValueID valueID, const CSSParserContext& context)
 {
     ASSERT(!string.isEmpty());
-    auto valueID = cssValueKeywordID(string);
     if (StyleColor::isColorKeyword(valueID)) {
         if (!isValueAllowedInMode(valueID, context.mode))
             return nullptr;
@@ -606,30 +551,35 @@ static bool isUniversalKeyword(StringView string)
         || equalLettersIgnoringASCIICase(string, "revert-layer"_s);
 }
 
+
+static RefPtr<CSSValue> parseUniversalKeywordValue(CSSPropertyID propertyId, StringView string, const CSSParserContext& context)
+{
+    ASSERT(!string.isEmpty());
+
+    // Descriptors do not support the CSS-wide keywords.
+    bool parsingDescriptor = context.enclosingRuleType && *context.enclosingRuleType != StyleRuleType::Style;
+    if (parsingDescriptor)
+        return nullptr;
+
+    // FIXME: What is more effecient, running the cssValue lookup function or comparing agains the 6 universal keyword strings.
+    auto valueID = cssValueKeywordID(string);
+
+    if (!isCSSWideKeyword(valueID))
+        return CSSValuePool::singleton().createIdentifierValue(valueID);
+
+    return nullptr;
+}
+
 static RefPtr<CSSValue> parseKeywordValue(CSSPropertyID propertyId, StringView string, const CSSParserContext& context)
 {
     ASSERT(!string.isEmpty());
+    ASSERT(CSSParserFastPaths::isKeywordPropertyID(propertyId));
 
     bool parsingDescriptor = context.enclosingRuleType && *context.enclosingRuleType != StyleRuleType::Style;
     // FIXME: The "!context.enclosingRuleType" is suspicious.
     ASSERT(!CSSProperty::isDescriptorOnly(propertyId) || parsingDescriptor || !context.enclosingRuleType);
 
-    if (!CSSParserFastPaths::isKeywordPropertyID(propertyId)) {
-        // All properties, including non-keyword properties, accept the CSS-wide keywords.
-        if (!isUniversalKeyword(string))
-            return nullptr;
-
-        // Leave shorthands to parse CSS-wide keywords using CSSPropertyParser.
-        if (shorthandForProperty(propertyId).length())
-            return nullptr;
-
-        // Descriptors do not support the CSS-wide keywords.
-        if (parsingDescriptor)
-            return nullptr;
-    }
-
     CSSValueID valueID = cssValueKeywordID(string);
-
     if (!valueID)
         return nullptr;
 
@@ -895,35 +845,339 @@ static RefPtr<CSSValueList> parseSimpleTransformList(const CharType* chars, unsi
     return transformList;
 }
 
-static RefPtr<CSSValue> parseSimpleTransform(CSSPropertyID propertyID, StringView string)
+static RefPtr<CSSValue> parseSimpleTransform(StringView string)
 {
     ASSERT(!string.isEmpty());
-    if (propertyID != CSSPropertyTransform)
-        return nullptr;
     if (string.is8Bit())
         return parseSimpleTransformList(string.characters8(), string.length());
     return parseSimpleTransformList(string.characters16(), string.length());
 }
 
-static RefPtr<CSSValue> parseColorWithAuto(StringView string, const CSSParserContext& context)
+static RefPtr<CSSValue> parseColorOrAuto(StringView string, const CSSParserContext& context)
 {
     ASSERT(!string.isEmpty());
-    if (cssValueKeywordID(string) == CSSValueAuto)
-        return CSSValuePool::singleton().createIdentifierValue(CSSValueAuto);
-    return parseColor(string, context);
+    auto valueID = cssValueKeywordID(string);
+    if (valueID == CSSValueAuto)
+        return CSSValuePool::singleton().createIdentifierValue(valueID);
+    return parseColor(string, valueID, context);
 }
 
 RefPtr<CSSValue> CSSParserFastPaths::maybeParseValue(CSSPropertyID propertyID, StringView string, const CSSParserContext& context)
 {
-    if (auto result = parseSimpleLengthValue(propertyID, string, context.mode))
-        return result;
-    if ((propertyID == CSSPropertyCaretColor || propertyID == CSSPropertyAccentColor) && isExposed(propertyID, &context.propertySettings))
-        return parseColorWithAuto(string, context);
-    if (CSSProperty::isColorProperty(propertyID))
-        return parseColor(string, context);
-    if (auto result = parseKeywordValue(propertyID, string, context))
-        return result;
-    return parseSimpleTransform(propertyID, string);
+    if (!isExposed(propertyID, context.propertySettings))
+        return nullptr;
+
+    switch (propertyID) {
+    case CSSPropertyTransform:
+        return parseSimpleTransform(string);
+
+    case CSSPropertyFontSize:
+    case CSSPropertyHeight:
+    case CSSPropertyWidth:
+    case CSSPropertyMinHeight:
+    case CSSPropertyMinWidth:
+    case CSSPropertyPaddingBottom:
+    case CSSPropertyPaddingLeft:
+    case CSSPropertyPaddingRight:
+    case CSSPropertyPaddingTop:
+    case CSSPropertyInlineSize:
+    case CSSPropertyBlockSize:
+    case CSSPropertyMinInlineSize:
+    case CSSPropertyMinBlockSize:
+    case CSSPropertyPaddingBlockEnd:
+    case CSSPropertyPaddingBlockStart:
+    case CSSPropertyPaddingInlineEnd:
+    case CSSPropertyPaddingInlineStart:
+    case CSSPropertyR:
+    case CSSPropertyRx:
+    case CSSPropertyRy:
+    case CSSPropertyShapeMargin:
+        return parseSimpleLengthValue(string, context.mode, false);
+    case CSSPropertyBottom:
+    case CSSPropertyCx:
+    case CSSPropertyCy:
+    case CSSPropertyLeft:
+    case CSSPropertyInsetBlockEnd:
+    case CSSPropertyInsetBlockStart:
+    case CSSPropertyInsetInlineEnd:
+    case CSSPropertyInsetInlineStart:
+    case CSSPropertyMarginBottom:
+    case CSSPropertyMarginLeft:
+    case CSSPropertyMarginRight:
+    case CSSPropertyMarginTop:
+    case CSSPropertyRight:
+    case CSSPropertyTop:
+    case CSSPropertyMarginBlockEnd:
+    case CSSPropertyMarginBlockStart:
+    case CSSPropertyMarginInlineEnd:
+    case CSSPropertyMarginInlineStart:
+    case CSSPropertyX:
+    case CSSPropertyY:
+        return parseSimpleLengthValue(string, context.mode, true);
+
+    case CSSPropertyCaretColor:
+    case CSSPropertyAccentColor:
+        return parseColorOrAuto(string, context);
+
+    // CSSProperty::isColorProperty(...) - CSSPropertyCaretColor & CSSPropertyAccentColor.
+    case CSSPropertyColor:
+    case CSSPropertyBackgroundColor:
+    case CSSPropertyColumnRuleColor:
+    case CSSPropertyFill:
+    case CSSPropertyFloodColor:
+    case CSSPropertyLightingColor:
+    case CSSPropertyOutlineColor:
+    case CSSPropertyStopColor:
+    case CSSPropertyStroke:
+    case CSSPropertyStrokeColor:
+    case CSSPropertyTextDecorationColor:
+    case CSSPropertyTextEmphasisColor:
+    case CSSPropertyWebkitTextFillColor:
+    case CSSPropertyWebkitTextStrokeColor:
+    case CSSPropertyBorderBlockEndColor:
+    case CSSPropertyBorderBlockStartColor:
+    case CSSPropertyBorderBottomColor:
+    case CSSPropertyBorderInlineEndColor:
+    case CSSPropertyBorderInlineStartColor:
+    case CSSPropertyBorderLeftColor:
+    case CSSPropertyBorderRightColor:
+    case CSSPropertyBorderTopColor:
+        return parseColor(string, cssValueKeywordID(string), context);
+
+    // CSSPropertyParsing::isKeywordProperty(...)
+    case CSSPropertyWritingMode:
+    case CSSPropertyWebkitRubyPosition:
+    case CSSPropertyDirection:
+    case CSSPropertyFontKerning:
+    case CSSPropertyFontOpticalSizing:
+    case CSSPropertyFontSynthesisSmallCaps:
+    case CSSPropertyFontSynthesisStyle:
+    case CSSPropertyFontSynthesisWeight:
+    case CSSPropertyFontVariantCaps:
+    case CSSPropertyFontVariantPosition:
+    case CSSPropertyTextOrientation:
+    case CSSPropertyTextRendering:
+    case CSSPropertyWebkitFontSmoothing:
+    case CSSPropertyWebkitTextZoom:
+    case CSSPropertyAlignmentBaseline:
+    case CSSPropertyAppearance:
+    case CSSPropertyBackfaceVisibility:
+    case CSSPropertyBorderCollapse:
+    case CSSPropertyBoxSizing:
+    case CSSPropertyBreakAfter:
+    case CSSPropertyBreakBefore:
+    case CSSPropertyBreakInside:
+    case CSSPropertyBufferedRendering:
+    case CSSPropertyCaptionSide:
+    case CSSPropertyClear:
+    case CSSPropertyClipRule:
+    case CSSPropertyColorInterpolation:
+    case CSSPropertyColorInterpolationFilters:
+    case CSSPropertyColumnFill:
+    case CSSPropertyColumnRuleStyle:
+    case CSSPropertyColumnSpan:
+    case CSSPropertyContainerType:
+    case CSSPropertyContentVisibility:
+    case CSSPropertyDominantBaseline:
+    case CSSPropertyEmptyCells:
+    case CSSPropertyFillRule:
+    case CSSPropertyFlexDirection:
+    case CSSPropertyFlexWrap:
+    case CSSPropertyFloat:
+    case CSSPropertyImageOrientation:
+    case CSSPropertyImageRendering:
+    case CSSPropertyInputSecurity:
+    case CSSPropertyIsolation:
+    case CSSPropertyLineBreak:
+    case CSSPropertyListStylePosition:
+    case CSSPropertyListStyleType:
+    case CSSPropertyMaskType:
+    case CSSPropertyMathStyle:
+    case CSSPropertyMixBlendMode:
+    case CSSPropertyObjectFit:
+    case CSSPropertyOutlineStyle:
+    case CSSPropertyOverflowAnchor:
+    case CSSPropertyOverflowWrap:
+    case CSSPropertyOverflowX:
+    case CSSPropertyOverflowY:
+    case CSSPropertyPointerEvents:
+    case CSSPropertyPosition:
+    case CSSPropertyPrintColorAdjust:
+    case CSSPropertyResize:
+    case CSSPropertyScrollBehavior:
+    case CSSPropertyScrollSnapStop:
+    case CSSPropertyShapeRendering:
+    case CSSPropertyStrokeLinecap:
+    case CSSPropertyStrokeLinejoin:
+    case CSSPropertyTableLayout:
+    case CSSPropertyTextAlign:
+    case CSSPropertyTextAlignLast:
+    case CSSPropertyTextAnchor:
+    case CSSPropertyTextDecorationSkipInk:
+    case CSSPropertyTextDecorationStyle:
+    case CSSPropertyTextJustify:
+    case CSSPropertyTextOverflow:
+    case CSSPropertyTextTransform:
+    case CSSPropertyTextUnderlinePosition:
+    case CSSPropertyTransformBox:
+    case CSSPropertyTransformStyle:
+    case CSSPropertyUnicodeBidi:
+    case CSSPropertyVectorEffect:
+    case CSSPropertyVisibility:
+    case CSSPropertyWhiteSpace:
+    case CSSPropertyWordBreak:
+    case CSSPropertyApplePayButtonStyle:
+    case CSSPropertyApplePayButtonType:
+    case CSSPropertyWebkitBoxAlign:
+    case CSSPropertyWebkitBoxDecorationBreak:
+    case CSSPropertyWebkitBoxDirection:
+    case CSSPropertyWebkitBoxLines:
+    case CSSPropertyWebkitBoxOrient:
+    case CSSPropertyWebkitBoxPack:
+    case CSSPropertyWebkitColumnAxis:
+    case CSSPropertyWebkitColumnProgression:
+    case CSSPropertyWebkitCursorVisibility:
+    case CSSPropertyWebkitHyphens:
+    case CSSPropertyWebkitLineAlign:
+    case CSSPropertyWebkitLineSnap:
+    case CSSPropertyWebkitMarqueeDirection:
+    case CSSPropertyWebkitMarqueeStyle:
+    case CSSPropertyWebkitNbspMode:
+    case CSSPropertyWebkitRtlOrdering:
+    case CSSPropertyWebkitTextSecurity:
+    case CSSPropertyWebkitUserDrag:
+    case CSSPropertyWebkitUserModify:
+    case CSSPropertyWebkitUserSelect:
+    case CSSPropertyBorderBlockEndStyle:
+    case CSSPropertyBorderBlockStartStyle:
+    case CSSPropertyBorderBottomStyle:
+    case CSSPropertyBorderInlineEndStyle:
+    case CSSPropertyBorderInlineStartStyle:
+    case CSSPropertyBorderLeftStyle:
+    case CSSPropertyBorderRightStyle:
+    case CSSPropertyBorderTopStyle:
+    case CSSPropertyOverscrollBehaviorBlock:
+    case CSSPropertyOverscrollBehaviorInline:
+    case CSSPropertyOverscrollBehaviorX:
+    case CSSPropertyOverscrollBehaviorY:
+    case CSSPropertyTextCombineUpright:
+    case CSSPropertyWebkitTextCombine:
+        return parseKeywordValue(propertyID, string, context);
+
+    // Descriptors and shorthands must use the normal CSSPropertyParser based path.
+
+    // CSSProperty::isDescriptorOnly(...)
+    case CSSPropertyAdditiveSymbols:
+    case CSSPropertyBasePalette:
+    case CSSPropertyFallback:
+    case CSSPropertyFontDisplay:
+    case CSSPropertyNegative:
+    case CSSPropertyOverrideColors:
+    case CSSPropertyPad:
+    case CSSPropertyPrefix:
+    case CSSPropertyRange:
+    case CSSPropertySrc:
+    case CSSPropertySuffix:
+    case CSSPropertySymbols:
+    case CSSPropertySystem:
+    case CSSPropertyUnicodeRange:
+
+    // CSSProperty::isShorthand(...)
+    case CSSPropertyAll:
+    case CSSPropertyAnimation:
+    case CSSPropertyBackground:
+    case CSSPropertyBackgroundPosition:
+    case CSSPropertyBorder:
+    case CSSPropertyBorderBlock:
+    case CSSPropertyBorderBlockColor:
+    case CSSPropertyBorderBlockEnd:
+    case CSSPropertyBorderBlockStart:
+    case CSSPropertyBorderBlockStyle:
+    case CSSPropertyBorderBlockWidth:
+    case CSSPropertyBorderBottom:
+    case CSSPropertyBorderColor:
+    case CSSPropertyBorderImage:
+    case CSSPropertyBorderInline:
+    case CSSPropertyBorderInlineColor:
+    case CSSPropertyBorderInlineEnd:
+    case CSSPropertyBorderInlineStart:
+    case CSSPropertyBorderInlineStyle:
+    case CSSPropertyBorderInlineWidth:
+    case CSSPropertyBorderLeft:
+    case CSSPropertyBorderRadius:
+    case CSSPropertyBorderRight:
+    case CSSPropertyBorderSpacing:
+    case CSSPropertyBorderStyle:
+    case CSSPropertyBorderTop:
+    case CSSPropertyBorderWidth:
+    case CSSPropertyColumnRule:
+    case CSSPropertyColumns:
+    case CSSPropertyContainIntrinsicSize:
+    case CSSPropertyContainer:
+    case CSSPropertyFlex:
+    case CSSPropertyFlexFlow:
+    case CSSPropertyFont:
+    case CSSPropertyFontSynthesis:
+    case CSSPropertyFontVariant:
+    case CSSPropertyGap:
+    case CSSPropertyGrid:
+    case CSSPropertyGridArea:
+    case CSSPropertyGridColumn:
+    case CSSPropertyGridRow:
+    case CSSPropertyGridTemplate:
+    case CSSPropertyInset:
+    case CSSPropertyInsetBlock:
+    case CSSPropertyInsetInline:
+    case CSSPropertyListStyle:
+    case CSSPropertyMargin:
+    case CSSPropertyMarginBlock:
+    case CSSPropertyMarginInline:
+    case CSSPropertyMarker:
+    case CSSPropertyMask:
+    case CSSPropertyMaskPosition:
+    case CSSPropertyOffset:
+    case CSSPropertyOutline:
+    case CSSPropertyOverflow:
+    case CSSPropertyOverscrollBehavior:
+    case CSSPropertyPadding:
+    case CSSPropertyPaddingBlock:
+    case CSSPropertyPaddingInline:
+    case CSSPropertyPageBreakAfter:
+    case CSSPropertyPageBreakBefore:
+    case CSSPropertyPageBreakInside:
+    case CSSPropertyPerspectiveOrigin:
+    case CSSPropertyPlaceContent:
+    case CSSPropertyPlaceItems:
+    case CSSPropertyPlaceSelf:
+    case CSSPropertyScrollMargin:
+    case CSSPropertyScrollMarginBlock:
+    case CSSPropertyScrollMarginInline:
+    case CSSPropertyScrollPadding:
+    case CSSPropertyScrollPaddingBlock:
+    case CSSPropertyScrollPaddingInline:
+    case CSSPropertyTextDecoration:
+    case CSSPropertyTextDecorationSkip:
+    case CSSPropertyTextEmphasis:
+    case CSSPropertyTransformOrigin:
+    case CSSPropertyTransition:
+    case CSSPropertyWebkitBackgroundSize:
+    case CSSPropertyWebkitBorderImage:
+    case CSSPropertyWebkitBorderRadius:
+    case CSSPropertyWebkitColumnBreakAfter:
+    case CSSPropertyWebkitColumnBreakBefore:
+    case CSSPropertyWebkitColumnBreakInside:
+    case CSSPropertyWebkitMask:
+    case CSSPropertyWebkitMaskPosition:
+    case CSSPropertyWebkitPerspective:
+    case CSSPropertyWebkitTextDecoration:
+    case CSSPropertyWebkitTextOrientation:
+    case CSSPropertyWebkitTextStroke:
+        return nullptr;
+
+    // Anything remaining should try to parse as a universal keyword.
+    default:
+        return parseUniversalKeywordValue(propertyID, string);
+    }
 }
 
 } // namespace WebCore

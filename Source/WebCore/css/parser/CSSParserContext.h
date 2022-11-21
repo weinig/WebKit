@@ -26,7 +26,7 @@
 #pragma once
 
 #include "CSSParserMode.h"
-#include "CSSPropertyNames.h"
+#include "CSSPropertySettings.h"
 #include "StyleRuleType.h"
 #include <pal/text/TextEncoding.h>
 #include <wtf/HashFunctions.h>

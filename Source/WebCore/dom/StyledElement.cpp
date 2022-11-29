@@ -113,17 +113,13 @@ private:
             return { };
 
         auto& document = downcast<Document>(*context);
-        Vector<StylePropertyMapEntry> result;
         auto* inlineStyle = m_element->inlineStyle();
         if (!inlineStyle)
             return { };
 
-        result.reserveInitialCapacity(inlineStyle->propertyCount());
-        for (unsigned i = 0; i < inlineStyle->propertyCount(); ++i) {
-            auto propertyReference = inlineStyle->propertyAt(i);
-            result.uncheckedAppend(makeKeyValuePair(propertyReference.cssName(), reifyValueToVector(RefPtr<CSSValue> { propertyReference.value() }, document)));
-        }
-        return result;
+        return map(*inlineStyle, [&] (auto property) {
+            return StylePropertyMapEntry { property.cssName(), reifyValueToVector(RefPtr<CSSValue> { property.value() }, document) };
+        });
     }
 
     void removeProperty(CSSPropertyID propertyID) final

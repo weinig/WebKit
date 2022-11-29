@@ -168,13 +168,8 @@ MutableStyleProperties::MutableStyleProperties(const StyleProperties& other)
 {
     if (is<MutableStyleProperties>(other))
         m_propertyVector = downcast<MutableStyleProperties>(other).m_propertyVector;
-    else {
-        const auto& immutableOther = downcast<ImmutableStyleProperties>(other);
-        unsigned propertyCount = immutableOther.propertyCount();
-        m_propertyVector.reserveInitialCapacity(propertyCount);
-        for (unsigned i = 0; i < propertyCount; ++i)
-            m_propertyVector.uncheckedAppend(immutableOther.propertyAt(i).toCSSProperty());
-    }
+    else
+        m_propertyVector = map(downcast<ImmutableStyleProperties>(other), [] (auto property) { return property.toCSSProperty(); });
 }
 
 String StyleProperties::commonShorthandChecks(CSSPropertyID propertyID) const
@@ -1723,11 +1718,9 @@ StringBuilder StyleProperties::asTextInternal() const
     std::bitset<shorthandPropertyCount> shorthandPropertyUsed;
     std::bitset<shorthandPropertyCount> shorthandPropertyAppeared;
 
-    unsigned size = propertyCount();
     unsigned numDecls = 0;
-    for (unsigned n = 0; n < size; ++n) {
-        PropertyReference property = propertyAt(n);
-        CSSPropertyID propertyID = property.id();
+    for (auto property : *this) {
+        auto propertyID = property.id();
         ASSERT(isLonghand(propertyID) || propertyID == CSSPropertyCustom);
         Vector<CSSPropertyID> shorthands;
 
@@ -1794,16 +1787,14 @@ bool StyleProperties::hasCSSOMWrapper() const
 
 void MutableStyleProperties::mergeAndOverrideOnConflict(const StyleProperties& other)
 {
-    unsigned size = other.propertyCount();
-    for (unsigned i = 0; i < size; ++i)
-        addParsedProperty(other.propertyAt(i).toCSSProperty());
+    for (auto property : other)
+        addParsedProperty(property.toCSSProperty());
 }
 
 bool StyleProperties::traverseSubresources(const Function<bool(const CachedResource&)>& handler) const
 {
-    unsigned size = propertyCount();
-    for (unsigned i = 0; i < size; ++i) {
-        if (propertyAt(i).value()->traverseSubresources(handler))
+    for (auto property : *this) {
+        if (property.value()->traverseSubresources(handler))
             return true;
     }
     return false;

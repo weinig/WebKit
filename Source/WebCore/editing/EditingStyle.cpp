@@ -769,14 +769,12 @@ void EditingStyle::removeStyleConflictingWithStyleOfNode(Node& node)
     if (!node.parentNode() || !m_mutableStyle)
         return;
 
-    RefPtr<MutableStyleProperties> parentStyle = copyPropertiesFromComputedStyle(node.parentNode(), EditingPropertiesInEffect);
+    auto parentStyle = copyPropertiesFromComputedStyle(node.parentNode(), EditingPropertiesInEffect);
     auto nodeStyle = EditingStyle::create(&node, EditingPropertiesInEffect);
-    nodeStyle->removeEquivalentProperties(*parentStyle);
+    nodeStyle->removeEquivalentProperties(parentStyle);
 
-    MutableStyleProperties* style = nodeStyle->style();
-    unsigned propertyCount = style->propertyCount();
-    for (unsigned i = 0; i < propertyCount; ++i)
-        m_mutableStyle->removeProperty(style->propertyAt(i).id());
+    for (auto property : *nodeStyle->style())
+        m_mutableStyle->removeProperty(property.id());
 }
 
 void EditingStyle::collapseTextDecorationProperties()
@@ -918,9 +916,11 @@ bool EditingStyle::conflictsWithInlineStyleOfElement(StyledElement& element, Ref
         }
     }
 
-    unsigned propertyCount = m_mutableStyle ? m_mutableStyle->propertyCount() : 0;
-    for (unsigned i = 0; i < propertyCount; ++i) {
-        CSSPropertyID propertyID = m_mutableStyle->propertyAt(i).id();
+    if (!m_mutableStyle)
+        return conflicts;
+
+    for (auto property : *m_mutableStyle) {
+        auto propertyID = property.id();
 
         // We don't override whitespace property of a tab span because that would collapse the tab into a space.
         if (propertyID == CSSPropertyWhiteSpace && isTabSpanNode(&element))
@@ -1104,10 +1104,9 @@ bool EditingStyle::elementIsStyledSpanOrHTMLEquivalent(const HTMLElement& elemen
         matchedAttributes++;
 
     if (element.hasAttribute(HTMLNames::styleAttr)) {
-        if (const StyleProperties* style = element.inlineStyle()) {
-            unsigned propertyCount = style->propertyCount();
-            for (unsigned i = 0; i < propertyCount; ++i) {
-                if (!isEditingProperty(style->propertyAt(i).id()))
+        if (const auto* style = element.inlineStyle()) {
+            for (auto property : *style) {
+                if (!isEditingProperty(property.id()))
                     return false;
             }
         }
@@ -1287,10 +1286,8 @@ void EditingStyle::mergeStyle(const StyleProperties* style, CSSPropertyOverrideM
         return;
     }
 
-    unsigned propertyCount = style->propertyCount();
-    for (unsigned i = 0; i < propertyCount; ++i) {
-        StyleProperties::PropertyReference property = style->propertyAt(i);
-        RefPtr<CSSValue> value = m_mutableStyle->getPropertyCSSValue(property.id());
+    for (auto property : *style) {
+        auto value = m_mutableStyle->getPropertyCSSValue(property.id());
 
         // text decorations never override values.
         if ((property.id() == CSSPropertyTextDecorationLine || property.id() == CSSPropertyWebkitTextDecorationsInEffect)
@@ -1369,10 +1366,8 @@ void EditingStyle::mergeStyleFromRulesForSerialization(StyledElement& element, S
 
     bool shouldRemoveFontFamily = false;
     {
-        unsigned propertyCount = m_mutableStyle->propertyCount();
-        for (unsigned i = 0; i < propertyCount; ++i) {
-            StyleProperties::PropertyReference property = m_mutableStyle->propertyAt(i);
-            CSSValue& value = *property.value();
+        for (auto property : *m_mutableStyle) {
+            auto& value = *property.value();
             if (property.id() == CSSPropertyFontFamily) {
                 auto familyName = loneFontFamilyName(value);
                 if (FontCache::isSystemFontForbiddenForEditing(familyName)
@@ -1397,10 +1392,7 @@ void EditingStyle::mergeStyleFromRulesForSerialization(StyledElement& element, S
 
 static void removePropertiesInStyle(MutableStyleProperties* styleToRemovePropertiesFrom, MutableStyleProperties* style)
 {
-    unsigned propertyCount = style->propertyCount();
-    Vector<CSSPropertyID> propertiesToRemove(propertyCount);
-    for (unsigned i = 0; i < propertyCount; ++i)
-        propertiesToRemove[i] = style->propertyAt(i).id();
+    auto propertiesToRemove = map(*style, [] (auto property) { return property.id() });
 
     styleToRemovePropertiesFrom->removePropertiesInSet(propertiesToRemove.data(), propertiesToRemove.size());
 }

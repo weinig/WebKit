@@ -32,6 +32,19 @@ namespace WebCore {
 
 class Rect;
 
+using CSSNumberOrPercentage = Ref<CSSPrimitiveValue>;
+
+struct CSSBorderImageSlice {
+    // [<number [0,∞]> | <percentage [0,∞]>]{1,4} && fill?
+    std::variant<
+        CSSNumberOrPercentage,
+        std::tuple<CSSNumberOrPercentage, CSSNumberOrPercentage>,
+        std::tuple<CSSNumberOrPercentage, CSSNumberOrPercentage, CSSNumberOrPercentage>,
+        std::tuple<CSSNumberOrPercentage, CSSNumberOrPercentage, CSSNumberOrPercentage, CSSNumberOrPercentage>
+    > edges;
+    bool fill;
+};
+
 class CSSBorderImageSliceValue final : public CSSValue {
 public:
     static Ref<CSSBorderImageSliceValue> create(Ref<Quad>&& slices, bool fill)

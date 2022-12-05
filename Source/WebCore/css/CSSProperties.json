@@ -2788,7 +2788,19 @@
         "counter-increment": {
             "codegen-properties": {
                 "custom": "All",
-                "custom-parser": true
+                "parser-grammar": [
+                    "none",
+                    {
+                        "as": "Box",
+                        "kind": "repetition",
+                        "value":
+                            {
+                                "as": "Edges",
+                                "kind": "group",
+                                "value": ["<length-percentage>", "<integer>?"]
+                            }
+                    }
+                ]
             },
             "specification": {
                 "category": "css-lists",

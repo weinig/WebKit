@@ -34,6 +34,7 @@ import subprocess
 import sys
 import textwrap
 
+import contextlib
 
 def quote_iterable(iterable, suffix=""):
     return (f'"{x}"{suffix}' for x in iterable)
@@ -61,10 +62,23 @@ def flatten(list_to_flatten):
     return flattened_list
 
 
+@contextlib.contextmanager
+def writing(filename):
+    f = open(filename, 'w')
+    writer = Writer(f)
+    try:
+        yield writer
+    finally:
+        writer.finalize()
+        f.close()
+
 class Writer:
     def __init__(self, output):
         self.output = output
         self._indentation_level = 0
+
+    def finalize(self):
+        pass
 
     TAB_SIZE = 4
 
@@ -124,7 +138,10 @@ class Schema:
 
     def set_attributes_from_dictionary(self, dictionary, *, instance):
         for entry in self.entries.values():
-            setattr(instance, entry.key.replace("-", "_"), dictionary.get(entry.key, entry.default_value))
+            attr_name = entry.key.replace("-", "_")
+            if attr_name == "as":
+                attr_name = "known_as"
+            setattr(instance, attr_name, dictionary.get(entry.key, entry.default_value))
 
     def validate_keys(self, parsing_context, key_path, dictionary, *, label):
         invalid_keys = list(filter(lambda key: key not in self.entries.keys(), dictionary.keys()))
@@ -649,7 +666,10 @@ class Property:
             values = list(filter(lambda value: value is not None, map(lambda value: Value.from_json(parsing_context, f"{key_path}.{name}", value), json_value["values"])))
             if codegen_properties.parser_grammar:
                 codegen_properties.parser_grammar.perform_fixups_for_values_references(values)
-            json_value["values"] = values
+            else:
+                codegen_properties.parser_grammar = Grammar.from_values(name, values)
+                codegen_properties.parser_grammar.perform_fixups(parsing_context.parsed_shared_grammar_rules)
+            del json_value["values"]
 
         return Property(**json_value)
 
@@ -771,7 +791,7 @@ class Property:
             return []
         if self.codegen_properties.parser_grammar:
             return self.codegen_properties.parser_grammar.fast_path_keyword_terms
-        return (value.keyword_term for value in self.values if value.keyword_term.is_eligible_for_fast_path)
+        return []
 
     @property
     def fast_path_keyword_terms_sorted_by_name(self):
@@ -785,7 +805,7 @@ class Property:
     def has_only_keyword_terms(self):
         if self.codegen_properties.parser_grammar:
             return self.codegen_properties.parser_grammar.has_only_keyword_terms
-        return self.values is not None
+        return False
 
     @property
     def has_fast_path_keyword_terms(self):
@@ -793,7 +813,7 @@ class Property:
             return False
         if self.codegen_properties.parser_grammar:
             return self.codegen_properties.parser_grammar.has_fast_path_keyword_terms
-        return self.values and any(value.keyword_term.is_eligible_for_fast_path for value in self.values)
+        return False
 
     @property
     def has_only_fast_path_keyword_terms(self):
@@ -801,7 +821,7 @@ class Property:
             return False
         if self.codegen_properties.parser_grammar:
             return self.codegen_properties.parser_grammar.has_only_fast_path_keyword_terms
-        return self.values and all(value.keyword_term.is_eligible_for_fast_path for value in self.values)
+        return False
 
     # Specialized properties to compute method names.
 
@@ -1000,6 +1020,7 @@ class Properties:
 
 class Term:
     schema = Schema(
+        Schema.Entry("as", allowed_types=[str]),
         Schema.Entry("comment", allowed_types=[str]),
         Schema.Entry("enable-if", allowed_types=[str]),
         Schema.Entry("kind", allowed_types=[str], required=True),
@@ -1009,9 +1030,11 @@ class Term:
     @staticmethod
     def from_json(parsing_context, key_path, json_value):
         if type(json_value) is str:
-            if RepetitionTerm.is_repetition_term(json_value):
+            if RepetitionTerm.is_repetition_term_string(json_value):
                 return RepetitionTerm.from_json(parsing_context, key_path, {"kind": "repetition", "value": json_value})
-            elif ReferenceTerm.is_reference_term(json_value):
+            elif OptionalTerm.is_optional_term_string(json_value):
+                return OptionalTerm.from_json(parsing_context, key_path, {"kind": "optional", "value": json_value})
+            elif ReferenceTerm.is_reference_term_string(json_value):
                 return ReferenceTerm.from_json(parsing_context, key_path, {"kind": "reference", "value": json_value})
             else:
                 return KeywordTerm.from_json(parsing_context, key_path, {"kind": "keyword", "value": json_value})
@@ -1026,9 +1049,11 @@ class Term:
         if "kind" not in json_value:
             # If "kind" is not explicitly defined, check to see if one of the shorthands is being used.
             if type(json_value["value"]) is str:
-                if RepetitionTerm.is_repetition_term(json_value["value"]):
+                if RepetitionTerm.is_repetition_term_string(json_value["value"]):
                     return RepetitionTerm.from_json(parsing_context, key_path, {"kind": "repetition", **json_value})
-                elif ReferenceTerm.is_reference_term(json_value["value"]):
+                elif OptionalTerm.is_optional_term_string(json_value["value"]):
+                    return OptionalTerm.from_json(parsing_context, key_path, {"kind": "optional", **json_value})
+                elif ReferenceTerm.is_reference_term_string(json_value["value"]):
                     return ReferenceTerm.from_json(parsing_context, key_path, {"kind": "reference", **json_value})
                 else:
                     return KeywordTerm.from_json(parsing_context, key_path, {"kind": "keyword", **json_value})
@@ -1044,8 +1069,118 @@ class Term:
             return KeywordTerm.from_json(parsing_context, key_path, json_value)
         elif kind == "repetition":
             return RepetitionTerm.from_json(parsing_context, key_path, json_value)
+        elif kind == "group":
+            return GroupTerm.from_json(parsing_context, key_path, json_value)
+        elif kind == "optional":
+            return OptionalTerm.from_json(parsing_context, key_path, json_value)
         else:
             raise Exception(f"Invalid Term found at {key_path}. Unknown 'kind' specified: '{kind}'.")
+
+
+class GroupTerm:
+    schema = Term.schema + Schema(
+        Schema.Entry("value", allowed_types=[list], required=True),
+    )
+
+    def __init__(self, **dictionary):
+        GroupTerm.schema.set_attributes_from_dictionary(dictionary, instance=self)
+        self.type = TupleType(of=[subterm.type for subterm in self.subterms], known_as=self.known_as)
+
+    def __str__(self):
+        return f"[{' '.join(str(subterm) for subterm in self.subterms)}]"
+
+    def __repr__(self):
+        return self.__str__()
+
+    @property
+    def subterms(self):
+        return self.value
+
+    @subterms.setter
+    def subterms(self, value):
+        self.value = value
+
+    @staticmethod
+    def from_json(parsing_context, key_path, json_value):
+        assert(type(json_value) is dict)
+        GroupTerm.schema.validate_dictionary(parsing_context, key_path, json_value, label=f"GroupTerm")
+
+        if "enable-if" in json_value and not parsing_context.is_enabled(conditional=json_value["enable-if"]):
+            if parsing_context.verbose:
+                print(f"SKIPPED grammar term {json_value['value']} in {key_path} due to failing to satisfy 'enable-if' condition, '{json_value['enable-if']}', with active macro set")
+            return None
+
+        json_value["value"] = list(compact_map(lambda value: Term.from_json(parsing_context, f"{key_path}", value), json_value["value"]))
+
+        return GroupTerm(**json_value)
+
+    def perform_fixups(self, all_rules):
+        self.subterms = [subterm.perform_fixups(all_rules) for subterm in self.subterms]
+
+        if len(self.subterms) == 1:
+            return self.subterms[0]
+        return self
+
+    def perform_fixups_for_values_references(self, values):
+        self.subterms = [subterm.perform_fixups_for_values_references(values) for subterm in self.subterms]
+
+        if len(self.subterms) == 1:
+            return self.subterms[0]
+        return self
+
+
+class OptionalTerm:
+    schema = Term.schema + Schema(
+        Schema.Entry("value", allowed_types=[list, dict, str], required=True),
+    )
+
+    def __init__(self, subterm, **dictionary):
+        OptionalTerm.schema.set_attributes_from_dictionary(dictionary, instance=self)
+        self.subterm = subterm
+        self.type = OptionalType(of=subterm.type, known_as=self.known_as)
+
+    def __str__(self):
+        return f"[{str(self.subterm)}?]"
+
+    def __repr__(self):
+        return self.__str__()
+
+    @staticmethod
+    def is_optional_term_string(string):
+        return string.strip().endswith('?')
+
+    @staticmethod
+    def extract_subterm(string):
+        assert(OptionalTerm.is_optional_term_string(string))
+        return string.strip()[:-1]
+
+    @staticmethod
+    def from_json(parsing_context, key_path, json_value):
+        assert(type(json_value) is dict)
+        OptionalTerm.schema.validate_dictionary(parsing_context, key_path, json_value, label=f"OptionalTerm")
+
+        if "enable-if" in json_value and not parsing_context.is_enabled(conditional=json_value["enable-if"]):
+            if parsing_context.verbose:
+                print(f"SKIPPED grammar term {json_value['value']} in {key_path} due to failing to satisfy 'enable-if' condition, '{json_value['enable-if']}', with active macro set")
+            return None
+
+        if type(json_value["value"]) is str:
+            if not OptionalTerm.is_optional_term_string(json_value["value"]):
+                raise Exception(f"Invalid string value '{json_value['value']}' for optional term at '{key_path}.")
+            subterm = Term.from_json(parsing_context, key_path, OptionalTerm.extract_subterm(json_value["value"]))
+        else:
+            subterm = json_value["value"]
+        del json_value["value"]
+
+        return OptionalTerm(subterm, **json_value)
+
+    def perform_fixups(self, all_rules):
+        self.subterm = self.subterm.perform_fixups(all_rules)
+        return self
+
+    def perform_fixups_for_values_references(self, values):
+        self.subterm = self.subterm.perform_fixups_for_values_references(values)
+        return self
 
 
 class BuiltinSchema:
@@ -1204,6 +1339,8 @@ class ReferenceTerm:
 
         # Check name and parameters against the builtins schemas to verify if they are well formed.
         self.builtin = ReferenceTerm.builtins.validate_and_construct_if_builtin(self.name, self.parameters)
+        
+        self.type = ExternalType(self.name)
 
     def __str__(self):
         return f"'{self.value}'"
@@ -1212,7 +1349,7 @@ class ReferenceTerm:
         return self.__str__()
 
     @staticmethod
-    def is_reference_term(string):
+    def is_reference_term_string(string):
         string = string.strip()
         return string.startswith('<') and string.endswith('>')
 
@@ -1237,8 +1374,7 @@ class ReferenceTerm:
     def perform_fixups_for_values_references(self, values):
         # NOTE: The actual name in the JSON is "<<values>>", but the out layer is stripped on construction.
         if self.name.name == "<values>":
-            # FIXME: This should really return a "MatchOneTerm" if len(values) > 1 and not a list.
-            return [value.keyword_term for value in values]
+            return MatchOneTerm.from_values(values)
         return self
 
     @property
@@ -1263,6 +1399,7 @@ class KeywordTerm:
 
     def __init__(self, **dictionary):
         KeywordTerm.schema.set_attributes_from_dictionary(dictionary, instance=self)
+        self.type = StructType(named=self.value.id_without_prefix, of={ })
 
     def __str__(self):
         return f"'{self.value}'"
@@ -1326,6 +1463,7 @@ class MatchOneTerm:
 
     def __init__(self, **dictionary):
         MatchOneTerm.schema.set_attributes_from_dictionary(dictionary, instance=self)
+        self.type = VariantType(of=[term.type for term in self.terms], known_as=self.known_as)
 
     def __str__(self):
         return f"[{' | '.join(map(lambda t: str(t), self.terms))}]"
@@ -1355,24 +1493,37 @@ class MatchOneTerm:
 
         return MatchOneTerm(**json_value)
 
-    def perform_fixups(self, all_rules):
-        updated_terms = []
-        for term in self.terms:
-            updated_term = term.perform_fixups(all_rules)
-            if isinstance(updated_term, MatchOneTerm):
-                updated_terms += updated_term.terms
-            else:
-                updated_terms += [updated_term]
+    @staticmethod
+    def from_values(values):
+        dictionary = {
+            "value": list(compact_map(lambda value: value.keyword_term, values))
+        }
 
-        self.terms = updated_terms
+        return MatchOneTerm(**dictionary)
+
+    def perform_fixups(self, all_rules):
+        self.terms = MatchOneTerm.simplify(term.perform_fixups(all_rules) for term in self.terms)
 
         if len(self.terms) == 1:
             return self.terms[0]
         return self
 
     def perform_fixups_for_values_references(self, values):
-        self.terms = flatten([term.perform_fixups_for_values_references(values) for term in self.terms])
+        self.terms = MatchOneTerm.simplify(term.perform_fixups_for_values_references(values) for term in self.terms)
+
+        if len(self.terms) == 1:
+            return self.terms[0]
         return self
+
+    @staticmethod
+    def simplify(terms):
+        simplified_terms = []
+        for term in terms:
+            if isinstance(term, MatchOneTerm):
+                simplified_terms += term.terms
+            else:
+                simplified_terms += [term]
+        return simplified_terms
 
     @property
     def is_values_reference(self):
@@ -1412,6 +1563,7 @@ class RepetitionTerm:
     def __init__(self, repeated_term, **dictionary):
         RepetitionTerm.schema.set_attributes_from_dictionary(dictionary, instance=self)
         self.repeated_term = repeated_term
+        self.type = VectorType(of=repeated_term.type, known_as=self.known_as)
 
     def __str__(self):
         return f"[{str(self.repeated_term)}#]"
@@ -1420,12 +1572,12 @@ class RepetitionTerm:
         return self.__str__()
 
     @staticmethod
-    def is_repetition_term(string):
+    def is_repetition_term_string(string):
         return string.strip().endswith('#')
 
     @staticmethod
     def extract_subterm(string):
-        assert(RepetitionTerm.is_repetition_term(string))
+        assert(RepetitionTerm.is_repetition_term_string(string))
         return string.strip()[:-1]
 
     @staticmethod
@@ -1439,11 +1591,11 @@ class RepetitionTerm:
             return None
 
         if type(json_value["value"]) is str:
-            if not RepetitionTerm.is_repetition_term(json_value["value"]):
+            if not RepetitionTerm.is_repetition_term_string(json_value["value"]):
                 raise Exception(f"Invalid string value '{json_value['value']}' for repetition term at '{key_path}.")
             repeated_term = Term.from_json(parsing_context, key_path, RepetitionTerm.extract_subterm(json_value["value"]))
         else:
-            repeated_term = json_value["value"]
+            repeated_term = Term.from_json(parsing_context, key_path, json_value["value"])
         del json_value["value"]
 
         return RepetitionTerm(repeated_term, **json_value)
@@ -1472,6 +1624,10 @@ class Grammar:
     @staticmethod
     def from_json(parsing_context, key_path, name, json_value):
         return Grammar(name, Term.from_json(parsing_context, key_path, json_value))
+
+    @staticmethod
+    def from_values(name, values):
+        return Grammar(name, MatchOneTerm.from_values(values))
 
     def perform_fixups(self, all_rules):
         self.root_term = self.root_term.perform_fixups(all_rules)
@@ -3398,6 +3554,236 @@ class GenerateCSSPropertyParsing:
         to.write(f"}}")
         to.newline()
 
+# Generates `CSSPropertyTypes.h`.
+class GenerateCSSPropertyTypes:
+    def __init__(self, generation_context):
+        self.generation_context = generation_context
+
+    def generate(self):
+        self.generate_css_property_types_h()
+
+    @property
+    def properties(self):
+        return self.generation_context.properties
+
+    @property
+    def shared_grammar_rules(self):
+        return self.generation_context.shared_grammar_rules
+
+    def generate_css_property_types_h(self):
+        with writing('CSSPropertyType.h') as writer:
+            self.generation_context.generate_heading(
+                to=writer
+            )
+
+            self.generation_context.generate_required_header_pragma(
+                to=writer
+            )
+
+            self.generation_context.generate_includes(
+                to=writer,
+                system_headers=[
+                    "<array>",
+                    "<optional>",
+                    "<tuple>",
+                    "<variant>"
+                ]
+            )
+
+            with self.generation_context.namespace("WebCore", to=writer):
+                self._generate_css_property_types_h_parsing_ast_declarations(
+                    to=writer
+                )
+
+    # MARK: - Helper generator functions for CSSPropertyType.h
+
+    def _generate_css_property_types_h_parsing_ast_declaration_for_property(self, *, to, property):
+        if property.codegen_properties.parser_grammar:
+            property_type = StructType(named=f"{property.id_without_prefix}Property", of={ 'value': property.codegen_properties.parser_grammar.root_term.type })
+            property_type.generate_definition(to=to)
+            to.newline()
+
+    def _generate_css_property_types_h_parsing_ast_declarations(self, *, to):
+        for property in self.generation_context.properties.all:
+            self._generate_css_property_types_h_parsing_ast_declaration_for_property(
+                to=to,
+                property=property
+            )
+    
+        to.newline()
+
+
+# EXAMPLE = PropA = [ 'auto' | 'none' ]
+# RESULT_1  = struct PropA { struct Auto { }; struct None { }; std::variant<Auto, None> propA; };
+# RESULT_2  = struct PropA { struct Auto { }; struct None { }; };
+#             using PropAType = std::variant<Auto, None>;
+
+# EXAMPLE = PropB = [ 'auto' | <length> ]
+# RESULT_1  = struct PropB { struct Auto { }; std::variant<Auto, CSSLength> propB; };
+# RESULT_2  = struct PropB { struct Auto { }; };
+#             using PropBType = std::variant<Auto, CSSLength>;
+
+# EXAMPLE = PropC = [ <length> ]
+# RESULT_1  = struct PropC { CSSLength propC; };
+# RESULT_2  = using PropCType = CSSLength;
+
+# EXAMPLE = PropD = [ <length> <length> ]
+# RESULT_1  = struct PropD { CSSLength propD_1; CSSLength propD_2; };
+# RESULT_2  = struct PropD { std::array<CSSLength, 2> propD; };
+# RESULT_3  = struct PropD { std::tuple<CSSLength, CSSLength> propD; };
+# RESULT_4  = using PropDType = std::array<CSSLength, 2>;
+# RESULT_4  = using PropDType = std::tuple<CSSLength, CSSLength>;
+
+# EXAMPLE = BorderImageSlice = [<number [0,∞]> | <percentage [0,∞]>]{1,4} && fill?
+# RESULT_1  = struct BorderImageSlice {
+#                 using CSSNumberOrPercentage = std::variant<CSSNumber, CSSPercengage>;
+#                 struct Fill { };
+#
+#                 CSSBoundedRepetition<CSSNumberOrPercentage, 1, 4> edges;
+#                 std::optional<Fill> fill;
+#             };
+
+
+# REPETITION TYPES:
+
+# 0 or 1.
+class OptionalType:
+    def __init__(self, *, of, known_as):
+        self.type = of
+
+    def generate_definition(self, *, to):
+        self.type.generate_definition(to=to)
+
+    def generate_type_string(self):
+        return f"std::optional<{self.type.generate_type_string()}>"
+
+    def generate_variable(self, to, *, named):
+        to.write(f"{self.generate_type_string()} {named};")
+
+# 0 or MORE.
+class VectorType:
+    def __init__(self, *, of, known_as):
+        self.type = of
+        self.known_as = known_as
+
+    def _type_string(self):
+        return f"Vector<{self.type.generate_type_string()}>"
+
+    def generate_definition(self, *, to):
+        self.type.generate_definition(to=to)
+        if self.known_as:
+            to.write(f"using {self.known_as} = {self._type_string()};")
+
+    def generate_type_string(self):
+        return self.known_as or self._type_string()
+
+    def generate_variable(self, to, *, named):
+        to.write(f"{self.generate_type_string()} {named};")
+
+
+# Unamed Struct.
+class TupleType:
+    def __init__(self, *, of, known_as):
+        self.members = of
+        self.known_as = known_as
+
+    def _type_string(self):
+        return f"std::tuple<{', '.join(member.generate_type_string() for member in self.members)}>"
+
+    def generate_definition(self, *, to):
+        for member in self.members:
+            member.generate_definition(to=to)
+        if self.known_as:
+            to.write(f"using {self.known_as} = {self._type_string()};")
+
+    def generate_type_string(self):
+        return self.known_as or self._type_string()
+
+    def generate_variable(self, to, *, named):
+        to.write(f"{self.generate_type_string()} {named};")
+
+class StructType:
+    def __init__(self, *, named, of):
+        self.name = named
+        self.members = of
+
+    def generate_definition(self, *, to):
+        if not self.members:
+            to.write(f"struct {self.name} {{ }};")
+        else:
+            to.write(f"struct {self.name} {{")
+    
+            with to.indent():
+                # Add any nested definitions.
+                for member in self.members.values():
+                    member.generate_definition(to=to)
+
+                # Then add member declarations.
+                for name, member in self.members.items():
+                    member.generate_variable(to=to, named=name)
+
+            to.write(f"}};")
+
+    def generate_type_string(self):
+        return f"{self.name}"
+
+    def generate_variable(self, to, *, named):
+        to.write(f"{self.generate_type_string()} {named};")
+
+
+class VariantType:
+    def __init__(self, *, of, known_as):
+        self.alternatives = of
+        self.known_as = known_as
+
+    def generate_definition(self, *, to):
+        for alternative in self.alternatives:
+            alternative.generate_definition(to=to)
+        if self.known_as:
+            to.write(f"using {self.known_as} = {self._type_string()};")
+
+    def _type_string(self):
+        return f"std::variant<{', '.join(alternative.generate_type_string() for alternative in self.alternatives)}>"
+
+    def generate_type_string(self):
+        return self.known_as or self._type_string()
+
+    def generate_variable(self, to, *, named):
+        to.write(f"{self.generate_type_string()} {named};")
+
+
+class BuiltinType:
+    def __init__(self, name):
+        self.name = name
+
+    def generate_definition(self, *, to):
+        pass
+
+    def generate_type_string(self):
+        return self.name.id_without_prefix
+
+    def generate_variable(self, to, *, named):
+        to.write(f"{self.generate_type_string()} {named};")
+
+class ExternalType:
+    def __init__(self, name):
+        self.name = name
+
+    def generate_definition(self, *, to):
+        pass
+
+    def generate_type_string(self):
+        return self.name.id_without_prefix
+
+    def generate_variable(self, to, *, named):
+        to.write(f"{self.generate_type_string()} {named};")
+
+
+
+
+
+
+
 
 # Helper class for representing a function parameter.
 class FunctionParameter:
@@ -3458,10 +3844,39 @@ class TermGenerator(object):
             return TermGeneratorMatchOneTerm(term, keyword_fast_path_generator)
         elif isinstance(term, RepetitionTerm):
             return TermGeneratorRepetitionTerm(term)
+        elif isinstance(term, OptionalTerm):
+            return TermGeneratorOptionalTerm(term)
+        elif isinstance(term, GroupTerm):
+            return TermGeneratorGroupTerm(term)
         elif isinstance(term, ReferenceTerm):
             return TermGeneratorReferenceTerm(term)
         else:
             raise Exception(f"Unknown term type - {type(term)} - {term}")
+
+
+class TermGeneratorGroupTerm:
+    def __init__(self, term):
+        self.term = term
+        self.subterm_generators = [TermGenerator.make(subterm) for subterm in term.subterms]
+        self.requires_context = any(subterm_generator.requires_context for subterm_generator in self.subterm_generators)
+
+    def generate_conditional(self, *, to, range_string, context_string):
+        pass
+
+    def generate_unconditional(self, *, to, range_string, context_string):
+        pass
+
+class TermGeneratorOptionalTerm:
+    def __init__(self, optional_term):
+        self.term = optional_term
+        self.subterm_generator = TermGenerator.make(term.subterm, None)
+        self.requires_context = self.subterm_generator.requires_context
+
+    def generate_conditional(self, *, to, range_string, context_string):
+        pass
+
+    def generate_unconditional(self, *, to, range_string, context_string):
+        pass
 
 
 class TermGeneratorRepetitionTerm(TermGenerator):
@@ -3954,11 +4369,6 @@ class PropertyConsumer(object):
                 return DirectPropertyConsumer(property)
             return GeneratedPropertyConsumer(property)
 
-        if property.has_only_keyword_terms:
-            if property.has_only_fast_path_keyword_terms:
-                return FastPathKeywordOnlyPropertyConsumer(property)
-            return GeneratedPropertyConsumer(property)
-
         raise Exception(f"Invalid property definition for '{property.id}'. Style properties must either specify values or a custom parser.")
 
 
@@ -4238,6 +4648,7 @@ def main():
     generators = [
         GenerateCSSPropertyNames,
         GenerateCSSPropertyParsing,
+        GenerateCSSPropertyTypes,
         GenerateCSSStyleDeclarationPropertyNames,
         GenerateStyleBuilderGenerated,
         GenerateStylePropertyShorthandFunctions,

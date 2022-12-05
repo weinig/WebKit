@@ -7054,27 +7054,77 @@ RefPtr<CSSValue> consumeBorderImageRepeat(CSSParserTokenRange& range)
     return createPrimitiveValuePair(horizontal.releaseNonNull(), vertical.releaseNonNull(), Pair::IdenticalValueEncoding::Coalesce);
 }
 
+template<typename T, size_t min, size_t max, typename F>
+std::optional<std::array<std::optional<T>, max>> consume(CSSParserTokenRange& range, F&& functor)
+{
+    std::array<std::optional<T>, max> result;
+    for (size_t i = 0; i < max; ++i) {
+        auto value = std::invoke(functor, range);
+        if (!value)
+            break;
+        result[i] = WTFMove(value);
+    }
+    
+    if (!result[min - 1])
+        return std::nullopt;
+
+    return { WTFMove(result) };
+}
+
+template<typename T, size_t min, size_t max, typename F>
+std::optional<std::array<T, max>> consumeRefPtr(CSSParserTokenRange& range, F&& functor)
+{
+    std::array<T, max> result;
+    for (size_t i = 0; i < max; ++i) {
+        auto value = std::invoke(functor, range);
+        if (!value)
+            break;
+        result[i] = WTFMove(value);
+    }
+    
+    if (!result[min - 1])
+        return std::nullopt;
+
+    return { WTFMove(result) };
+}
+
+template<typename T>
+static std::array<T, 4> complete(std::array<T, 4> sides)
+{
+    auto copy = sides;
+
+    if (copy[3])
+        return;
+    if (!copy[2]) {
+        if (!copy[1])
+            copy[1] = copy[0];
+        copy[2] = copy[0];
+    }
+    copy[3] = copy[1];
+
+    return copy;
+}
+
 RefPtr<CSSValue> consumeBorderImageSlice(CSSPropertyID property, CSSParserTokenRange& range)
 {
     bool fill = consumeIdent<CSSValueFill>(range);
-    RefPtr<CSSPrimitiveValue> slices[4] = { nullptr };
 
-    for (size_t index = 0; index < 4; ++index) {
-        RefPtr<CSSPrimitiveValue> value = consumePercent(range, ValueRange::NonNegative);
-        if (!value)
-            value = consumeNumber(range, ValueRange::NonNegative);
-        if (!value)
-            break;
-        slices[index] = value;
-    }
-    if (!slices[0])
+    auto slices = consume<RefPtr<CSSPrimitiveValue>, 1, 4>(range, [] (auto& range) -> RefPtr<CSSPrimitiveValue> {
+        if (auto value = consumePercent(range, ValueRange::NonNegative))
+            return value;
+        return consumeNumber(range, ValueRange::NonNegative);
+    });
+    if (!slices)
         return nullptr;
+
     if (consumeIdent<CSSValueFill>(range)) {
         if (fill)
             return nullptr;
         fill = true;
     }
-    complete4Sides(slices);
+    
+    auto compltedSlices = complete(*slices);
+
     // FIXME: For backwards compatibility, -webkit-border-image, -webkit-mask-box-image and -webkit-box-reflect have to do a fill by default.
     // FIXME: What do we do with -webkit-box-reflect and -webkit-mask-box-image? Probably just have to leave them filling...
     if (property == CSSPropertyWebkitBorderImage || property == CSSPropertyWebkitMaskBoxImage || property == CSSPropertyWebkitBoxReflect)

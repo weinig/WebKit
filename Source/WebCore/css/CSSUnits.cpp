@@ -273,4 +273,155 @@ TextStream& operator<<(TextStream& ts, CSSUnitType unitType)
     return ts;
 }
 
+
+namespace CSS {
+
+enum class AbsoluteLengthUnit : uint8_t;
+enum class FontRelativeLengthUnit : uint8_t;
+enum class ViewportRelativeLengthUnit : unit8_t;
+enum class ContainerLengthUnit : uint8_t;
+enum class QuirkyLengthUnit : uint8_t;
+enum class LengthUnit : uint8_t;
+
+template<typename T> struct UnitTraits;
+template<typename T> struct SubsetOffset;
+
+template<typename SizesMap> constexpr uint8_t addSizesUpTo(const SizesMap& sizesMap, uint8_t index)
+{
+    uint8_t result = 0;
+    for (uint8_t i = 0; i < index; ++i)
+        result += sizesMap[i];
+    return result;
+}
+
+#define EMIT_ENUM_DEFINITION(VALUE) VALUE,
+#define EMIT_ENUM_SERIALIZATION(VALUE) STRINGIZE(VALUE)_s,
+
+#define EMIT_SUBSET_SIZES_DEFINITION(VALUE) UnitTraits<VALUE>::numberOfUnits,
+#define EMIT_SUBSET_OFFSETS_DEFINITION(VALUE) addSizesUpTo(SubsetSizes, Subsets::VALUE),
+#define EMIT_SUBSET_OFFSETS_ACCESSOR(VALUE) static constexpr uint8_t offsetFor(VALUE value) { return SubsetOffset[Subsets::VALUE] + value; }
+
+#define EMIT_ENUM_DEFINITIONS_FROM_SUBSET(VALUE) VALUE##_FOR_EACH(EMIT_ENUM_DEFINITION)
+#define EMIT_ENUM_SERIALIZATION_FROM_SUBSET(VALUE) VALUE##_FOR_EACH(EMIT_ENUM_SERIALIZATION)
+
+#define DEFINE_UNIT_SUBET(UNIT) \
+    enum class UNIT : uint8_t { \
+        UNIT##_FOR_EACH(EMIT_ENUM_DEFINITION) \
+    }; \
+    \
+    template<> struct UnitTraits<UNIT> { \
+        static constexpr auto numberOfUnits = std::to_underlying(UNIT::UNIT##_LAST); \
+    }; \
+    \
+    static constexpr ASCIILiteral UNIT ## Serializations[] = { \
+        UNIT##_FOR_EACH(EMIT_ENUM_SERIALIZATION) \
+    }; \
+    \
+    constexpr ASCIILiteral serializationForCSS(UNIT unit) \
+    { \
+        return UNIT ## Serializations[unit]; \
+    } \
+\
+
+#define DEFINE_UNIT(UNIT) \
+    struct UNIT##Metrics { \
+        enum class Subsets : uint8_t { \
+            UNIT##_FOR_EACH_SUBSET(EMIT_ENUM_DEFINITION) \
+        }; \
+        \
+        static constexpr uint8_t SubsetSizes[] = { \
+            UNIT##_FOR_EACH_SUBSET(EMIT_SUBSET_SIZES_DEFINITION) \
+        }; \
+        \
+        static constexpr uint8_t SubsetOffset[] = { \
+            UNIT##_FOR_EACH_SUBSET(EMIT_SUBSET_OFFSETS_DEFINITION) \
+        }; \
+        \
+        UNIT##_FOR_EACH_SUBSET(EMIT_SUBSET_OFFSETS_ACCESSOR) \
+    }; \
+    \
+    enum class UNIT : uint8_t { \
+        UNIT##_FOR_EACH_SUBSET(EMIT_ENUM_DEFINITIONS_FROM_SUBSET) \
+    }; \
+    \
+    template<> struct UnitTraits<UNIT> { \
+        static constexpr auto numberOfUnits = std::to_underlying(UNIT::UNIT##_LAST); \
+    }; \
+    \
+    static constexpr ASCIILiteral UNIT ## Serializations[] = { \
+        UNIT##_FOR_EACH_SUBSET(EMIT_ENUM_SERIALIZATION_FROM_SUBSET) \
+    }; \
+    \
+    constexpr ASCIILiteral serializationForCSS(UNIT unit) \
+    { \
+        return UNIT ## Serializations[unit]; \
+    } \
+\
+
+// https://drafts.csswg.org/css-values/#absolute-lengths
+#define UNIT AbsoluteLengthUnit
+#define AbsoluteLengthUnit_FOR_EACH(CASE) \
+    CASE(cm)   /* centimeters          1cm = 96px/2.54        */ \
+    CASE(mm)   /* millimeters          1mm = 1/10th of 1cm    */ \
+    CASE(Q)    /* quarter-millimeters   1Q = 1/40th of 1cm    */ \
+    CASE(in)   /* inches               1in = 2.54cm = 96px    */ \
+    CASE(pc)   /* picas                1pc = 1/6th of 1in     */ \
+    CASE(pt)   /* points               1pt = 1/72nd of 1in    */ \
+    CASE(px)   /* pixels               1px = 1/96th of 1in    */
+#define AbsoluteLengthUnit_LAST px
+DEFINE_UNIT_SUBET(AbsoluteLengthUnit)
+
+// https://drafts.csswg.org/css-values/#font-relative-lengths
+#define FontRelativeLengthUnit_FOR_EACH(CASE) \
+    CASE(em)    /* font size of the element */ \
+    CASE(ex)    /* x-height of the element’s font */ \
+    CASE(cap)   /* cap height (the nominal height of capital letters) of the element’s font */ \
+    CASE(ch)    /* typical character advance of a narrow glyph in the element’s font, as represented by the “0” (ZERO, U+0030) glyph */ \
+    CASE(ic)    /* typical character advance of a fullwidth glyph in the element’s font, as represented by the “水” (CJK water ideograph, U+6C34) glyph */ \
+    CASE(rem)   /* font size of the root element */ \
+    CASE(lh)    /* line height of the element */ \
+    CASE(rlh)   /* line height of the root element */
+DEFINE_UNIT_SUBET(FontRelativeLengthUnit)
+
+// https://drafts.csswg.org/css-values/#viewport-relative-lengths
+#define ViewportRelativeLengthUnit_FOR_EACH(CASE) \
+    CASE(vw)    /* 1% of viewport’s width */ \
+    CASE(vh)    /* 1% of viewport’s height */ \
+    CASE(vi)    /* 1% of viewport’s size in the root element’s inline axis */ \
+    CASE(vb)    /* 1% of viewport’s size in the root element’s block axis */ \
+    CASE(vmin)  /* 1% of viewport’s smaller dimension */ \
+    CASE(vmax)  /* 1% of viewport’s larger dimension */
+#define ViewportRelativeLengthUnit_LAST vmax
+DEFINE_UNIT_SUBET(ViewportRelativeLengthUnit)
+
+// https://drafts.csswg.org/css-conditional-5/#container-lengths
+#define ContainerRelativeLengthUnit_FOR_EACH(CASE) \
+    CASE(cqw)   /* 1% of a query container’s width */ \
+    CASE(cqh)   /* 1% of a query container’s height */ \
+    CASE(cqi)   /* 1% of a query container’s inline size */ \
+    CASE(cqb)   /* 1% of a query container’s block size */ \
+    CASE(cqmin) /* The smaller value of cqi or cqb */ \
+    CASE(cqmax) /* The larger value of cqi or cqb */
+#define ContainerRelativeLengthUnit_LAST cqmax
+DEFINE_UNIT_SUBET(ContainerRelativeLengthUnit)
+
+#define QuirkyLengthUnit_FOR_EACH(CASE) \
+    CASE(_qem)   /* Non standard */
+#define QuirkyLengthUnit_LAST _qem
+DEFINE_UNIT_SUBET(QuirkyLengthUnit)
+
+
+#define LengthUnit_FOR_EACH_SUBSET(CASE) \
+    CASE(AbsoluteLengthUnit) \
+    CASE(FontRelativeLengthUnit) \
+    CASE(ViewportRelativeLengthUnit) \
+    CASE(ContainerRelativeLengthUnit) \
+    CASE(QuirkyLengthUnit)
+#define LengthUnit_LAST _qem
+DEFINE_UNIT(LengthUnit)
+
+static_assert(std::to_underlying(LengthUnit::cqh) == LengthUnitMetrics::offsetFor(ViewportRelativeLengthUnit::cqh);
+
+} // namespace CSS
+
 } // namespace WebCore

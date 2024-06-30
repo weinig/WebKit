@@ -27,6 +27,145 @@ class TextStream;
 
 namespace WebCore {
 
+//enum class AbsoluteLengthUnit : uint8_t {
+//    // https://drafts.csswg.org/css-values/#absolute-lengths
+//    cm,     // centimeters          1cm = 96px/2.54
+//    mm,     // millimeters          1mm = 1/10th of 1cm
+//    Q,      // quarter-millimeters   1Q = 1/40th of 1cm
+//    in,     // inches               1in = 2.54cm = 96px
+//    pc,     // picas                1pc = 1/6th of 1in
+//    pt,     // points               1pt = 1/72nd of 1in
+//    px,     // pixels               1px = 1/96th of 1in
+//};
+//template<> struct UnitTraits<AbsoluteLengthUnit> {
+//    static constexpr auto first = AbsoluteLengthUnit::cm;
+//    static constexpr auto last = AbsoluteLengthUnit::px;
+//};
+//
+//enum class FontRelativeLengthUnit : uint8_t {
+//    em,     /* font size of the element */
+//    ex,     /* x-height of the element’s font */
+//    cap,    /* cap height (the nominal height of capital letters) of the element’s font */
+//    ch,     /* typical character advance of a narrow glyph in the element’s font, as represented by the “0” (ZERO, U+0030) glyph */
+//    ic,     /* typical character advance of a fullwidth glyph in the element’s font, as represented by the “水” (CJK water ideograph, U+6C34) glyph */
+//    rem,    /* font size of the root element */
+//    lh,     /* line height of the element */
+//    rlh,    /* line height of the root element */
+//};
+//template<> struct UnitTraits<FontRelativeLengthUnit> {
+//    static constexpr auto first = FontRelativeLengthUnit::em;
+//    static constexpr auto last = FontRelativeLengthUnit::rlh;
+//};
+//
+//enum class ViewportRelativeLengthUnit : uint8_t {
+//    // https://drafts.csswg.org/css-values/#viewport-relative-lengths
+//    vw,     /* 1% of viewport’s width */
+//    vh,     /* 1% of viewport’s height */
+//    vi,     /* 1% of viewport’s size in the root element’s inline axis */
+//    vb,     /* 1% of viewport’s size in the root element’s block axis */
+//    vmin,   /* 1% of viewport’s smaller dimension */
+//    vmax,   /* 1% of viewport’s larger dimension */
+//};
+//template<> struct UnitTraits<ViewportRelativeLengthUnit> {
+//    static constexpr auto first = ViewportRelativeLengthUnit::vw;
+//    static constexpr auto last = ViewportRelativeLengthUnit::vmax;
+//};
+//
+//enum class ContainerLengthUnit : uint8_t {
+//    // https://drafts.csswg.org/css-conditional-5/#container-lengths
+//    cqw,    // 1% of a query container’s width
+//    cqh,    // 1% of a query container’s height
+//    cqi,    // 1% of a query container’s inline size
+//    cqb,    // 1% of a query container’s block size
+//    cqmin,  // The smaller value of cqi or cqb
+//    cqmax,  // The larger value of cqi or cqb
+//};
+//template<> struct UnitTraits<ContainerLengthUnit> {
+//    static constexpr auto first = ContainerLengthUnit::cqw;
+//    static constexpr auto last = ContainerLengthUnit::cqmax;
+//};
+//
+//
+//
+//
+//struct LengthUnitMetrics {
+//    enum class Subsets : uint8_t {
+//        AbsoluteLengthUnit          = 0,
+//        FontRelativeLengthUnit      = 1,
+//        ViewportRelativeLengthUnit  = 2,
+//        ContainerLengthUnit         = 3,
+//    };
+//
+//    static constexpr uint8_t SubsetSizes[] = {
+//        UnitTraits<AbsoluteLengthUnit>::numberOfUnits,
+//        UnitTraits<FontRelativeLengthUnit>::numberOfUnits,
+//        UnitTraits<ViewportRelativeLengthUnit>::numberOfUnits,
+//        UnitTraits<ContainerLengthUnit>::numberOfUnits,
+//    };
+//
+//    static constexpr uint8_t SubsetOffsets[] = {
+//        addSizesUpTo(SubsetSizes, Subsets::AbsoluteLengthUnit),
+//        addSizesUpTo(SubsetSizes, Subsets::FontRelativeLengthUnit),
+//        addSizesUpTo(SubsetSizes, Subsets::ViewportRelativeLengthUnit),
+//        addSizesUpTo(SubsetSizes, Subsets::ContainerLengthUnit),
+//    };
+//
+//    static constexpr uint8_t offsetFor(AbsoluteLengthUnit value)
+//    {
+//        return LengthUnitMetrics::SubsetOffset[LengthUnitMetrics::Subsets::AbsoluteLengthUnit] + value;
+//    }
+//    static constexpr uint8_t offsetFor(FontRelativeLengthUnit value)
+//    {
+//        return LengthUnitMetrics::SubsetOffset[LengthUnitMetrics::Subsets::FontRelativeLengthUnit] + value;
+//    }
+//    static constexpr uint8_t offsetFor(ViewportRelativeLengthUnit value)
+//    {
+//        return LengthUnitMetrics::SubsetOffset[LengthUnitMetrics::Subsets::ViewportRelativeLengthUnit] + value;
+//    }
+//    static constexpr uint8_t offsetFor(ContainerLengthUnit value)
+//    {
+//        return LengthUnitMetrics::SubsetOffset[LengthUnitMetrics::Subsets::ContainerLengthUnit] + value;
+//    }
+//};
+//
+//enum class LengthUnit : uint8_t {
+//    cm  = LengthUnitMetrics::offsetFor(AbsoluteLengthUnit::cm),     // centimeters          1cm = 96px/2.54
+//    mm  = LengthUnitMetrics::offsetFor(AbsoluteLengthUnit::mm),     // millimeters          1mm = 1/10th of 1cm
+//    Q   = LengthUnitMetrics::offsetFor(AbsoluteLengthUnit::Q),      // quarter-millimeters   1Q = 1/40th of 1cm
+//    In  = LengthUnitMetrics::offsetFor(AbsoluteLengthUnit::In),     // inches               1in = 2.54cm = 96px
+//    pc  = LengthUnitMetrics::offsetFor(AbsoluteLengthUnit::pc),     // picas                1pc = 1/6th of 1in
+//    pt  = LengthUnitMetrics::offsetFor(AbsoluteLengthUnit::pt),     // points               1pt = 1/72nd of 1in
+//    px  = LengthUnitMetrics::offsetFor(AbsoluteLengthUnit::px),     // pixels               1px = 1/96th of 1in
+//
+//    // https://drafts.csswg.org/css-values/#relative-lengths
+//    em,     // font size of the element
+//    ex,     // x-height of the element’s font
+//    cap,    // cap height (the nominal height of capital letters) of the element’s font
+//    ch,     // typical character advance of a narrow glyph in the element’s font, as represented by the “0” (ZERO, U+0030) glyph
+//    ic,     // typical character advance of a fullwidth glyph in the element’s font, as represented by the “水” (CJK water ideograph, U+6C34) glyph
+//    rem,    // font size of the root element
+//    lh,     // line height of the element
+//    rlh,    // line height of the root element
+//    vw,     // 1% of viewport’s width
+//    vh,     // 1% of viewport’s height
+//    vi,     // 1% of viewport’s size in the root element’s inline axis
+//    vb,     // 1% of viewport’s size in the root element’s block axis
+//    vmin,   // 1% of viewport’s smaller dimension
+//    vmax,   // 1% of viewport’s larger dimension
+//
+//    // https://drafts.csswg.org/css-conditional-5/#container-lengths
+//    cqw,    // 1% of a query container’s width
+//    cqh,    // 1% of a query container’s height
+//    cqi,    // 1% of a query container’s inline size
+//    cqb,    // 1% of a query container’s block size
+//    cqmin,  // The smaller value of cqi or cqb
+//    cqmax,  // The larger value of cqi or cqb
+//
+//    // Non-standard
+//    qem,    // Quirky em.
+//};
+
+
 // FIXME: No need to use all capitals and a CSS prefix on all these names. Should fix that.
 enum class CSSUnitType : uint8_t {
     CSS_UNKNOWN,

@@ -278,13 +278,12 @@ namespace CSS {
 
 enum class AbsoluteLengthUnit : uint8_t;
 enum class FontRelativeLengthUnit : uint8_t;
-enum class ViewportRelativeLengthUnit : unit8_t;
+enum class ViewportRelativeLengthUnit : uint8_t;
 enum class ContainerLengthUnit : uint8_t;
 enum class QuirkyLengthUnit : uint8_t;
 enum class LengthUnit : uint8_t;
 
-template<typename T> struct UnitTraits;
-template<typename T> struct SubsetOffset;
+template<typename> struct UnitTraits;
 
 template<typename SizesMap> constexpr uint8_t addSizesUpTo(const SizesMap& sizesMap, uint8_t index)
 {
@@ -295,11 +294,11 @@ template<typename SizesMap> constexpr uint8_t addSizesUpTo(const SizesMap& sizes
 }
 
 #define EMIT_ENUM_DEFINITION(VALUE) VALUE,
-#define EMIT_ENUM_SERIALIZATION(VALUE) STRINGIZE(VALUE)_s,
+#define EMIT_ENUM_SERIALIZATION(VALUE) #VALUE##_s,
 
 #define EMIT_SUBSET_SIZES_DEFINITION(VALUE) UnitTraits<VALUE>::numberOfUnits,
-#define EMIT_SUBSET_OFFSETS_DEFINITION(VALUE) addSizesUpTo(SubsetSizes, Subsets::VALUE),
-#define EMIT_SUBSET_OFFSETS_ACCESSOR(VALUE) static constexpr uint8_t offsetFor(VALUE value) { return SubsetOffset[Subsets::VALUE] + value; }
+#define EMIT_SUBSET_OFFSETS_DEFINITION(VALUE) addSizesUpTo(SubsetSizes, std::to_underlying(Subsets::VALUE)),
+#define EMIT_SUBSET_OFFSETS_ACCESSOR(VALUE) static constexpr uint8_t offsetFor(VALUE value) { return SubsetOffset[std::to_underlying(Subsets::VALUE)] + std::to_underlying(value); }
 
 #define EMIT_ENUM_DEFINITIONS_FROM_SUBSET(VALUE) VALUE##_FOR_EACH(EMIT_ENUM_DEFINITION)
 #define EMIT_ENUM_SERIALIZATION_FROM_SUBSET(VALUE) VALUE##_FOR_EACH(EMIT_ENUM_SERIALIZATION)
@@ -310,16 +309,17 @@ template<typename SizesMap> constexpr uint8_t addSizesUpTo(const SizesMap& sizes
     }; \
     \
     template<> struct UnitTraits<UNIT> { \
-        static constexpr auto numberOfUnits = std::to_underlying(UNIT::UNIT##_LAST); \
+        static constexpr auto numberOfUnits = std::to_underlying(UNIT::UNIT##_LAST) + 1; \
     }; \
     \
     static constexpr ASCIILiteral UNIT ## Serializations[] = { \
         UNIT##_FOR_EACH(EMIT_ENUM_SERIALIZATION) \
+        ""_s \
     }; \
     \
     constexpr ASCIILiteral serializationForCSS(UNIT unit) \
     { \
-        return UNIT ## Serializations[unit]; \
+        return UNIT ## Serializations[std::to_underlying(unit)]; \
     } \
 \
 
@@ -331,10 +331,12 @@ template<typename SizesMap> constexpr uint8_t addSizesUpTo(const SizesMap& sizes
         \
         static constexpr uint8_t SubsetSizes[] = { \
             UNIT##_FOR_EACH_SUBSET(EMIT_SUBSET_SIZES_DEFINITION) \
+            0 \
         }; \
         \
         static constexpr uint8_t SubsetOffset[] = { \
             UNIT##_FOR_EACH_SUBSET(EMIT_SUBSET_OFFSETS_DEFINITION) \
+            0 \
         }; \
         \
         UNIT##_FOR_EACH_SUBSET(EMIT_SUBSET_OFFSETS_ACCESSOR) \
@@ -345,21 +347,21 @@ template<typename SizesMap> constexpr uint8_t addSizesUpTo(const SizesMap& sizes
     }; \
     \
     template<> struct UnitTraits<UNIT> { \
-        static constexpr auto numberOfUnits = std::to_underlying(UNIT::UNIT##_LAST); \
+        static constexpr auto numberOfUnits = std::to_underlying(UNIT::UNIT##_LAST) + 1; \
     }; \
     \
     static constexpr ASCIILiteral UNIT ## Serializations[] = { \
         UNIT##_FOR_EACH_SUBSET(EMIT_ENUM_SERIALIZATION_FROM_SUBSET) \
+        ""_s \
     }; \
     \
     constexpr ASCIILiteral serializationForCSS(UNIT unit) \
     { \
-        return UNIT ## Serializations[unit]; \
+        return UNIT ## Serializations[std::to_underlying(unit)]; \
     } \
 \
 
 // https://drafts.csswg.org/css-values/#absolute-lengths
-#define UNIT AbsoluteLengthUnit
 #define AbsoluteLengthUnit_FOR_EACH(CASE) \
     CASE(cm)   /* centimeters          1cm = 96px/2.54        */ \
     CASE(mm)   /* millimeters          1mm = 1/10th of 1cm    */ \
@@ -381,6 +383,7 @@ DEFINE_UNIT_SUBET(AbsoluteLengthUnit)
     CASE(rem)   /* font size of the root element */ \
     CASE(lh)    /* line height of the element */ \
     CASE(rlh)   /* line height of the root element */
+#define FontRelativeLengthUnit_LAST rlh
 DEFINE_UNIT_SUBET(FontRelativeLengthUnit)
 
 // https://drafts.csswg.org/css-values/#viewport-relative-lengths
@@ -410,7 +413,6 @@ DEFINE_UNIT_SUBET(ContainerRelativeLengthUnit)
 #define QuirkyLengthUnit_LAST _qem
 DEFINE_UNIT_SUBET(QuirkyLengthUnit)
 
-
 #define LengthUnit_FOR_EACH_SUBSET(CASE) \
     CASE(AbsoluteLengthUnit) \
     CASE(FontRelativeLengthUnit) \
@@ -420,7 +422,10 @@ DEFINE_UNIT_SUBET(QuirkyLengthUnit)
 #define LengthUnit_LAST _qem
 DEFINE_UNIT(LengthUnit)
 
-static_assert(std::to_underlying(LengthUnit::cqh) == LengthUnitMetrics::offsetFor(ViewportRelativeLengthUnit::cqh);
+static_assert(std::to_underlying(LengthUnit::cm) == LengthUnitMetrics::offsetFor(AbsoluteLengthUnit::cm));
+static_assert(std::to_underlying(LengthUnit::in) == LengthUnitMetrics::offsetFor(AbsoluteLengthUnit::in));
+static_assert(std::to_underlying(LengthUnit::cqh) == LengthUnitMetrics::offsetFor(ContainerRelativeLengthUnit::cqh));
+static_assert(std::to_underlying(LengthUnit::_qem) == LengthUnitMetrics::offsetFor(QuirkyLengthUnit::_qem));
 
 } // namespace CSS
 

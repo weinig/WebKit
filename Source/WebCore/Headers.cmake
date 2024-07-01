@@ -2163,7 +2163,6 @@ set(WebCore_PRIVATE_FRAMEWORK_HEADERS
     platform/graphics/filters/FilterFunction.h
     platform/graphics/filters/FilterImage.h
     platform/graphics/filters/FilterImageVector.h
-    platform/graphics/filters/FilterOperation.h
     platform/graphics/filters/FilterOperations.h
     platform/graphics/filters/FilterRenderingMode.h
     platform/graphics/filters/FilterResults.h

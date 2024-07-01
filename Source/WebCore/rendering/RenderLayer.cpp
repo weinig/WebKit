@@ -140,6 +140,7 @@
 #include "Settings.h"
 #include "ShadowRoot.h"
 #include "SourceGraphic.h"
+#include "StyleFilterOperations.h"
 #include "StyleProperties.h"
 #include "StyleResolver.h"
 #include "Styleable.h"
@@ -905,7 +906,7 @@ bool RenderLayer::paintsWithFilters() const
     if (filter.isEmpty())
         return false;
 
-    if (renderer().isRenderOrLegacyRenderSVGRoot() && filter.isReferenceFilter())
+    if (renderer().isRenderOrLegacyRenderSVGRoot() && filter.hasReferenceFilterOnly())
         return false;
 
     if (RenderLayerFilters::isIdentity(renderer()))
@@ -5671,7 +5672,7 @@ void RenderLayer::updateFiltersAfterStyleChange(StyleDifference diff, const Rend
     else if (m_filters)
         m_filters->removeReferenceFilterClients();
 
-    if (diff >= StyleDifference::RepaintLayer && oldStyle && oldStyle->filter() != renderer().style().filter())
+    if (diff >= StyleDifference::RepaintLayer && oldStyle && Style::FilterOperations::filtersProduceDifferentOutput(oldStyle->filter(), renderer().style().filter(), *oldStyle, renderer().style()))
         clearLayerFilters();
 }
 

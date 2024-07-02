@@ -289,6 +289,9 @@ CSSUnitCategory unitCategory(CSSUnitType);
 CSSUnitType canonicalUnitTypeForCategory(CSSUnitCategory);
 CSSUnitType canonicalUnitTypeForUnitType(CSSUnitType);
 
+ASCIILiteral unitTypeString(CSSUnitType);
+std::optional<double> conversionToCanonicalUnitsScaleFactor(CSSUnitType);
+
 WTF::TextStream& operator<<(WTF::TextStream&, CSSUnitCategory);
 WTF::TextStream& operator<<(WTF::TextStream&, CSSUnitType);
 

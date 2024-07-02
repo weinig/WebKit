@@ -525,6 +525,10 @@ private:
     mutable RefPtr<StyleImage> m_cachedStyleImage;
 };
 
+using LengthPercentage = Alternative<Length, Percentage>;
+    // expands out to:
+    //  Alternative<unit::cm, unit::mm, ..., quantity::percentage, calc<Length, Percentage>>;
+
 class CSSPrefixedRadialGradientValue final : public CSSValue {
 public:
     enum class ShapeKeyword : bool { Circle, Ellipse };
@@ -535,11 +539,13 @@ public:
         bool operator==(const ShapeAndExtent&) const = default;
     };
     struct MeasuredSize {
+        std::pair<LengthPercentage, LengthPercentage> size;
         std::pair<Ref<CSSPrimitiveValue>, Ref<CSSPrimitiveValue>> size; // <length-percentage [0,∞]>, <length-percentage [0,∞]>
         bool operator==(const MeasuredSize&) const;
     };
 
-    using GradientBox = std::variant<std::monostate, ShapeKeyword, ExtentKeyword, ShapeAndExtent, MeasuredSize>;
+    // using GradientBox = std::variant<std::monostate, ShapeKeyword, ExtentKeyword, ShapeAndExtent, MeasuredSize>;
+    using GradientBox = Alternative<std::monostate, ShapeKeyword, ExtentKeyword, ShapeAndExtent, MeasuredSize>;
 
     struct Data {
         GradientBox gradientBox;

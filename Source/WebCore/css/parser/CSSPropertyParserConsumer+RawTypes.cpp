@@ -34,32 +34,32 @@ namespace WebCore {
 
 void serializationForCSS(StringBuilder& builder, const AngleRaw& value)
 {
-    formatCSSNumberValue(builder, value.value, CSSPrimitiveValue::unitTypeString(value.type));
+    formatCSSNumberValue(builder, value.value, unitTypeString(value.type));
 }
 
 void serializationForCSS(StringBuilder& builder, const NumberRaw& value)
 {
-    formatCSSNumberValue(builder, value.value, CSSPrimitiveValue::unitTypeString(CSSUnitType::CSS_NUMBER));
+    formatCSSNumberValue(builder, value.value, unitTypeString(CSSUnitType::CSS_NUMBER));
 }
 
 void serializationForCSS(StringBuilder& builder, const PercentRaw& value)
 {
-    formatCSSNumberValue(builder, value.value, CSSPrimitiveValue::unitTypeString(CSSUnitType::CSS_PERCENTAGE));
+    formatCSSNumberValue(builder, value.value, unitTypeString(CSSUnitType::CSS_PERCENTAGE));
 }
 
 void serializationForCSS(StringBuilder& builder, const LengthRaw& value)
 {
-    formatCSSNumberValue(builder, value.value, CSSPrimitiveValue::unitTypeString(value.type));
+    formatCSSNumberValue(builder, value.value, unitTypeString(value.type));
 }
 
 void serializationForCSS(StringBuilder& builder, const TimeRaw& value)
 {
-    formatCSSNumberValue(builder, value.value, CSSPrimitiveValue::unitTypeString(value.type));
+    formatCSSNumberValue(builder, value.value, unitTypeString(value.type));
 }
 
 void serializationForCSS(StringBuilder& builder, const ResolutionRaw& value)
 {
-    formatCSSNumberValue(builder, value.value, CSSPrimitiveValue::unitTypeString(value.type));
+    formatCSSNumberValue(builder, value.value, unitTypeString(value.type));
 }
 
 void serializationForCSS(StringBuilder& builder, const NoneRaw&)

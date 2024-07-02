@@ -21,6 +21,7 @@
 #include "config.h"
 #include "CSSUnits.h"
 
+#include <wtf/Brigand.h>
 #include <wtf/text/TextStream.h>
 
 namespace WebCore {
@@ -273,6 +274,156 @@ TextStream& operator<<(TextStream& ts, CSSUnitType unitType)
     return ts;
 }
 
+ASCIILiteral unitTypeString(CSSUnitType unitType)
+{
+    switch (unitType) {
+    case CSSUnitType::CSS_CAP: return "cap"_s;
+    case CSSUnitType::CSS_CH: return "ch"_s;
+    case CSSUnitType::CSS_CM: return "cm"_s;
+    case CSSUnitType::CSS_CQB: return "cqb"_s;
+    case CSSUnitType::CSS_CQH: return "cqh"_s;
+    case CSSUnitType::CSS_CQI: return "cqi"_s;
+    case CSSUnitType::CSS_CQMAX: return "cqmax"_s;
+    case CSSUnitType::CSS_CQMIN: return "cqmin"_s;
+    case CSSUnitType::CSS_CQW: return "cqw"_s;
+    case CSSUnitType::CSS_DEG: return "deg"_s;
+    case CSSUnitType::CSS_DPCM: return "dpcm"_s;
+    case CSSUnitType::CSS_DPI: return "dpi"_s;
+    case CSSUnitType::CSS_DPPX: return "dppx"_s;
+    case CSSUnitType::CSS_DVB: return "dvb"_s;
+    case CSSUnitType::CSS_DVH: return "dvh"_s;
+    case CSSUnitType::CSS_DVI: return "dvi"_s;
+    case CSSUnitType::CSS_DVMAX: return "dvmax"_s;
+    case CSSUnitType::CSS_DVMIN: return "dvmin"_s;
+    case CSSUnitType::CSS_DVW: return "dvw"_s;
+    case CSSUnitType::CSS_EM: return "em"_s;
+    case CSSUnitType::CSS_EX: return "ex"_s;
+    case CSSUnitType::CSS_FR: return "fr"_s;
+    case CSSUnitType::CSS_GRAD: return "grad"_s;
+    case CSSUnitType::CSS_HZ: return "hz"_s;
+    case CSSUnitType::CSS_IC: return "ic"_s;
+    case CSSUnitType::CSS_IN: return "in"_s;
+    case CSSUnitType::CSS_KHZ: return "khz"_s;
+    case CSSUnitType::CSS_LH: return "lh"_s;
+    case CSSUnitType::CSS_LVB: return "lvb"_s;
+    case CSSUnitType::CSS_LVH: return "lvh"_s;
+    case CSSUnitType::CSS_LVI: return "lvi"_s;
+    case CSSUnitType::CSS_LVMAX: return "lvmax"_s;
+    case CSSUnitType::CSS_LVMIN: return "lvmin"_s;
+    case CSSUnitType::CSS_LVW: return "lvw"_s;
+    case CSSUnitType::CSS_MM: return "mm"_s;
+    case CSSUnitType::CSS_MS: return "ms"_s;
+    case CSSUnitType::CSS_PC: return "pc"_s;
+    case CSSUnitType::CSS_PERCENTAGE: return "%"_s;
+    case CSSUnitType::CSS_PT: return "pt"_s;
+    case CSSUnitType::CSS_PX: return "px"_s;
+    case CSSUnitType::CSS_Q: return "q"_s;
+    case CSSUnitType::CSS_RAD: return "rad"_s;
+    case CSSUnitType::CSS_RCAP: return "rcap"_s;
+    case CSSUnitType::CSS_RCH: return "rch"_s;
+    case CSSUnitType::CSS_REM: return "rem"_s;
+    case CSSUnitType::CSS_REX: return "rex"_s;
+    case CSSUnitType::CSS_RIC: return "ric"_s;
+    case CSSUnitType::CSS_RLH: return "rlh"_s;
+    case CSSUnitType::CSS_S: return "s"_s;
+    case CSSUnitType::CSS_SVB: return "svb"_s;
+    case CSSUnitType::CSS_SVH: return "svh"_s;
+    case CSSUnitType::CSS_SVI: return "svi"_s;
+    case CSSUnitType::CSS_SVMAX: return "svmax"_s;
+    case CSSUnitType::CSS_SVMIN: return "svmin"_s;
+    case CSSUnitType::CSS_SVW: return "svw"_s;
+    case CSSUnitType::CSS_TURN: return "turn"_s;
+    case CSSUnitType::CSS_VB: return "vb"_s;
+    case CSSUnitType::CSS_VH: return "vh"_s;
+    case CSSUnitType::CSS_VI: return "vi"_s;
+    case CSSUnitType::CSS_VMAX: return "vmax"_s;
+    case CSSUnitType::CSS_VMIN: return "vmin"_s;
+    case CSSUnitType::CSS_VW: return "vw"_s;
+    case CSSUnitType::CSS_X: return "x"_s;
+
+    case CSSUnitType::CSS_ANCHOR:
+    case CSSUnitType::CSS_ATTR:
+    case CSSUnitType::CSS_CALC:
+    case CSSUnitType::CSS_CALC_PERCENTAGE_WITH_LENGTH:
+    case CSSUnitType::CSS_CALC_PERCENTAGE_WITH_NUMBER:
+    case CSSUnitType::CSS_DIMENSION:
+    case CSSUnitType::CSS_FONT_FAMILY:
+    case CSSUnitType::CSS_IDENT:
+    case CSSUnitType::CSS_INTEGER:
+    case CSSUnitType::CSS_NUMBER:
+    case CSSUnitType::CSS_PROPERTY_ID:
+    case CSSUnitType::CSS_QUIRKY_EM:
+    case CSSUnitType::CSS_RGBCOLOR:
+    case CSSUnitType::CSS_STRING:
+    case CSSUnitType::CSS_UNKNOWN:
+    case CSSUnitType::CSS_UNRESOLVED_COLOR:
+    case CSSUnitType::CSS_URI:
+    case CSSUnitType::CSS_VALUE_ID:
+    case CSSUnitType::CustomIdent:
+        return ""_s;
+    }
+    ASSERT_NOT_REACHED();
+    return ""_s;
+}
+
+std::optional<double> CSSPrimitiveValue::conversionToCanonicalUnitsScaleFactor(CSSUnitType unitType)
+{
+    // FIXME: the switch can be replaced by an array of scale factors.
+    switch (unitType) {
+    // These are "canonical" units in their respective categories.
+    case CSSUnitType::CSS_PX:
+    case CSSUnitType::CSS_DEG:
+    case CSSUnitType::CSS_S:
+    case CSSUnitType::CSS_HZ:
+    case CSSUnitType::CSS_DPPX:
+        return 1.0;
+
+    case CSSUnitType::CSS_X:
+        // This is semantically identical to (canonical) dppx
+        return 1.0;
+
+    case CSSUnitType::CSS_CM:
+        return cssPixelsPerInch / cmPerInch;
+
+    case CSSUnitType::CSS_DPCM:
+        return cmPerInch / cssPixelsPerInch; // (2.54 cm/in)
+
+    case CSSUnitType::CSS_MM:
+        return cssPixelsPerInch / mmPerInch;
+
+    case CSSUnitType::CSS_Q:
+        return cssPixelsPerInch / QPerInch;
+
+    case CSSUnitType::CSS_IN:
+        return cssPixelsPerInch;
+
+    case CSSUnitType::CSS_DPI:
+        return 1 / cssPixelsPerInch;
+
+    case CSSUnitType::CSS_PT:
+        return cssPixelsPerInch / 72.0;
+
+    case CSSUnitType::CSS_PC:
+        return cssPixelsPerInch * 12.0 / 72.0; // 1 pc == 12 pt
+
+    case CSSUnitType::CSS_RAD:
+        return degreesPerRadianDouble;
+
+    case CSSUnitType::CSS_GRAD:
+        return degreesPerGradientDouble;
+
+    case CSSUnitType::CSS_TURN:
+        return degreesPerTurnDouble;
+
+    case CSSUnitType::CSS_MS:
+        return 0.001;
+    case CSSUnitType::CSS_KHZ:
+        return 1000;
+
+    default:
+        return std::nullopt;
+    }
+}
 
 namespace CSS {
 
@@ -426,6 +577,92 @@ static_assert(std::to_underlying(LengthUnit::cm) == LengthUnitMetrics::offsetFor
 static_assert(std::to_underlying(LengthUnit::in) == LengthUnitMetrics::offsetFor(AbsoluteLengthUnit::in));
 static_assert(std::to_underlying(LengthUnit::cqh) == LengthUnitMetrics::offsetFor(ContainerRelativeLengthUnit::cqh));
 static_assert(std::to_underlying(LengthUnit::_qem) == LengthUnitMetrics::offsetFor(QuirkyLengthUnit::_qem));
+
+
+template<typename... Ts> using VariantWrapper = typename std::variant<Ts...>;
+
+template<typename... Ts> struct Alternatives;
+
+struct CalcDestinationLength { };
+struct CalcDestinationNumber { };
+struct CalcDestinationPercentage { };
+
+template<typename... Ds> struct calc {
+    using Destinations = brigand::list<Ds...>;
+    Ref<CSSCalcValue> value;
+};
+
+template<typename T> struct IsCalc : public std::integral_constant<bool, WTF::IsTemplate<T, calc>::value> { };
+template<typename T> struct IsConcrete : public std::integral_constant<bool, !WTF::IsTemplate<T, calc>::value> { };
+
+namespace details {
+    template<typename... Ds> using CalcWrapper = typename calc<Ds...>;
+
+    template<typename T> struct DestinationsAccessor {
+        using type = typename T::Destinations;
+    };
+
+    template<typename ListOfCalcs> struct MergeCalc {
+        using ListOfListOfDestinations = brigand::transform<ListOfCalcs, DestinationsAccessor<brigand::_1>>;
+        using ListOfDestinations = brigand::flatten<ListOfListOfDestinations>;
+
+        // FIXME: Do we need to unique or sort the destinations?
+
+        using type = brigand::wrap<ListOfDestinations, CalcWrapper>;
+    };
+}
+template<typename ListOfCalcs> using MergeCalc = details::MergeCalc<ListOfCalcs>::type;
+
+namespace Units {
+    // centimeters          1cm = 96px/2.54
+    struct cm {
+        double value;
+    };
+    // millimeters          1mm = 1/10th of 1cm
+    struct mm {
+        double value;
+    };
+
+    struct percentage {
+        double value;
+    };
+
+    struct number {
+        double value;
+    };
+
+    using Length = Alternatives<cm, mm, calc<CalcDestinationLength>>;
+    using Number = Alternatives<number, calc<CalcDestinationNumber>>;
+    using Percentage = Alternatives<percentage, calc<CalcDestinationPercentage>>;
+}
+
+template<typename... Ts> struct Alternatives {
+    using TypeList = brigand::list<Ts...>;
+
+    // Split the type list into concrete vs calc types.
+    // FIXME: Try using brigand::partition.
+    using ConcreteTypeList = brigand::filter<TypeList, IsConcrete<brigand::_1>>;
+    using ListOfCalcs = brigand::filter<TypeList, IsCalc<brigand::_1>>;
+
+    // Merge any calc types together.
+    using CalcMerged = MergeCalc<ListOfCalcs>;
+
+    // Resolve the list as the original non-calc types followed by at most a single merged calc.
+    using ResolvedTypeList = brigand::append<ConcreteTypeList, CalcMerged>;
+
+    // Store alternatives using a std::variant.
+    // FIXME: More space efficient representations are possible for
+    //        certain type lists by flattening aggregates containing
+    //        nested alternatives, though that can easily blow up into
+    //        a combinatoric explosion and code size at use sites may
+    //        become a factor, so care should be taken.
+    // FIXME: More space efficient representations are possible for
+    //        certain type lists by using nan-encoding or pointer
+    //        tagging at the expense of more decoding cost at use.
+    using Storage = brigand::wrap<ResolvedTypeList, VariantWrapper>;
+    Storage value;
+};
+
 
 } // namespace CSS
 

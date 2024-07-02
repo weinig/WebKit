@@ -345,8 +345,8 @@ static void sortChildren(Vector<Ref<CSSCalcExpressionNode>>& children)
 
         if (firstCategory == SortingCategory::Dimension && secondCategory == SortingCategory::Dimension) {
             // If nodes contains any dimensions, remove them from nodes, sort them by their units, and append them to ret.
-            auto firstUnitString = CSSPrimitiveValue::unitTypeString(first->primitiveType());
-            auto secondUnitString = CSSPrimitiveValue::unitTypeString(second->primitiveType());
+            auto firstUnitString = unitTypeString(first->primitiveType());
+            auto secondUnitString = unitTypeString(second->primitiveType());
             return codePointCompareLessThan(firstUnitString, secondUnitString);
         }
 
@@ -1207,7 +1207,7 @@ void CSSCalcOperationNode::buildCSSTextRecursive(const CSSCalcExpressionNode& no
                         builder.append(" - "_s);
                         // Serialize the negation of child.
                         auto unitType = primitiveValueNode->value().primitiveType();
-                        builder.append(0 - primitiveValueNode->doubleValue(unitType, { }), CSSPrimitiveValue::unitTypeString(unitType));
+                        builder.append(0 - primitiveValueNode->doubleValue(unitType, { }), unitTypeString(unitType));
                         continue;
                     }
                 }

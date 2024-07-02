@@ -67,7 +67,7 @@ ASCIILiteral CSSUnitValue::unit() const
 
 ASCIILiteral CSSUnitValue::unitSerialization() const
 {
-    return CSSPrimitiveValue::unitTypeString(m_unit);
+    return unitTypeString(m_unit);
 }
 
 void CSSUnitValue::serialize(StringBuilder& builder, OptionSet<SerializationArguments>) const

@@ -279,9 +279,9 @@ struct VectorTypeOperations
         VectorMover<VectorTraits<T>::canMoveWithMemcpy, T>::moveOverlapping(src, srcEnd, dst);
     }
 
-    static void uninitializedCopy(const T* src, const T* srcEnd, T* dst)
+    template<typename U> static void uninitializedCopy(const U* src, const U* srcEnd, T* dst)
     {
-        VectorCopier<VectorTraits<T>::canCopyWithMemcpy, T>::uninitializedCopy(src, srcEnd, dst);
+        VectorCopier<VectorTraits<U>::canCopyWithMemcpy, U>::uninitializedCopy(src, srcEnd, dst);
     }
 
     static void uninitializedFill(T* dst, T* dstEnd, const T& val)

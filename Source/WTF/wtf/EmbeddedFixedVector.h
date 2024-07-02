@@ -48,6 +48,12 @@ public:
         return UniqueRef { *new (NotNull, EmbeddedFixedVectorMalloc::malloc(Base::allocationSize(size))) EmbeddedFixedVector(size) };
     }
 
+    static UniqueRef<EmbeddedFixedVector> create(std::initializer_list<T> initializerList)
+    {
+        return UniqueRef { *new (NotNull, EmbeddedFixedVectorMalloc::malloc(Base::allocationSize(initializerList.size()))) EmbeddedFixedVector(initializerList) };
+    }
+
+
     template<typename InputIterator> static UniqueRef<EmbeddedFixedVector> create(InputIterator first, InputIterator last)
     {
         unsigned size = Checked<uint32_t> { std::distance(first, last) };
@@ -109,6 +115,11 @@ public:
 private:
     explicit EmbeddedFixedVector(unsigned size)
         : Base(size)
+    {
+    }
+
+    explicit EmbeddedFixedVector(std::initializer_list<T> initializerList)
+        : Base(initializerList)
     {
     }
 

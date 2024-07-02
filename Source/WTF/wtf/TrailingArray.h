@@ -62,12 +62,19 @@ protected:
         VectorTypeOperations<T>::initializeIfNonPOD(begin(), end());
     }
 
+    explicit TrailingArray(std::initializer_list<T> initializerList)
+        : m_size(initializerList.size())
+    {
+        static_assert(std::is_final_v<Derived>);
+        VectorCopier<std::is_trivial<T>::value, T>::uninitializedCopy(initializerList.begin(), initializerList.end(), begin());
+    }
+
     template<typename InputIterator> TrailingArray(unsigned size, InputIterator first, InputIterator last)
         : m_size(size)
     {
         static_assert(std::is_final_v<Derived>);
         ASSERT(static_cast<size_t>(std::distance(first, last)) == size);
-        std::uninitialized_copy(first, last, begin());
+        VectorCopier<std::is_trivial<T>::value, typename InputIterator::value_type>::uninitializedCopy(first, last, begin());
     }
 
     template<typename U, size_t Extent> TrailingArray(std::span<U, Extent> span)

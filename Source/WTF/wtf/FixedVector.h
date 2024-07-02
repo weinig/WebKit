@@ -48,17 +48,13 @@ public:
     FixedVector() = default;
     FixedVector(const FixedVector& other)
         : m_storage(other.m_storage ? other.m_storage->clone().moveToUniquePtr() : nullptr)
-    { }
-    FixedVector(FixedVector&& other) = default;
+    {
+    }
+    FixedVector(FixedVector&&) = default;
 
     FixedVector(std::initializer_list<T> initializerList)
-        : m_storage(initializerList.size() ? Storage::create(initializerList.size()).moveToUniquePtr() : nullptr)
+        : m_storage(initializerList.size() ? Storage::create(initializerList).moveToUniquePtr() : nullptr)
     {
-        size_t index = 0;
-        for (const auto& element : initializerList) {
-            m_storage->at(index) = element;
-            index++;
-        }
     }
 
     template<typename InputIterator> FixedVector(InputIterator begin, InputIterator end)
@@ -113,7 +109,8 @@ public:
     template<size_t inlineCapacity, typename OverflowHandler>
     explicit FixedVector(const Vector<T, inlineCapacity, OverflowHandler>& other)
         : m_storage(other.isEmpty() ? nullptr : Storage::createFromVector(other).moveToUniquePtr())
-    { }
+    {
+    }
 
     template<size_t inlineCapacity, typename OverflowHandler>
     FixedVector& operator=(const Vector<T, inlineCapacity, OverflowHandler>& other)
@@ -260,18 +257,18 @@ inline void swap(FixedVector<T>& a, FixedVector<T>& b)
     a.swap(b);
 }
 
+// Creates a new FixedVector from the transformed contents of any existing sized container.
+template<typename Container, typename MapFunction, typename ReturnType = typename std::invoke_result<MapFunction, const typename Container::value_type&>::type>
+FixedVector<ReturnType> mapToFixedVector(const Container& source, MapFunction&& mapFunction)
+{
+    return FixedVector<ReturnType> { source.size(), [&](size_t) { return mapFunction(item); } };
+}
+
+// Creates a new FixedVector from the transformed contents of an existing FixedVector.
 template<typename T, typename MapFunction, typename ReturnType = typename std::invoke_result<MapFunction, const T&>::type>
 FixedVector<ReturnType> map(const FixedVector<T>& source, MapFunction&& mapFunction)
 {
-    FixedVector<ReturnType> result(source.size());
-
-    size_t resultIndex = 0;
-    for (const auto& item : source) {
-        result[resultIndex] = mapFunction(item);
-        resultIndex++;
-    }
-
-    return result;
+    return mapToFixedVector(source, std::forward<MapFunction>(map));
 }
 
 } // namespace WTF

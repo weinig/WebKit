@@ -26,13 +26,13 @@
 #include "FloatSize.h"
 #include "FloatSizeHash.h"
 #include "StyleImage.h"
+#include <wtf/HashCountedSet.h>
 #include <wtf/HashMap.h>
 #include <wtf/WeakHashCountedSet.h>
 
 namespace WebCore {
 
 class CSSValue;
-class CachedImage;
 class CachedResourceLoader;
 class GeneratedImage;
 class Image;
@@ -42,41 +42,55 @@ struct ResourceLoaderOptions;
 
 class StyleGeneratedImage : public StyleImage {
 public:
-    const SingleThreadWeakHashCountedSet<RenderElement>& clients() const { return m_clients; }
+    //     const HashCountedSet<StyleImageClient*>& clients() const { return m_clients; } // const SingleThreadWeakHashCountedSet<StyleImageClient>& clients() const { return m_clients; }
 
 protected:
     explicit StyleGeneratedImage(StyleImage::Type, bool fixedSize);
     virtual ~StyleGeneratedImage();
 
+    // StyleImage overrides
+    void addStyleImageClient(StyleImageClient&) final;
+    void removeStyleImageClient(StyleImageClient&) final;
+    bool hasStyleImageClient(StyleImageClient&) const final;
     WrappedImagePtr data() const final { return this; }
-
     FloatSize imageSize(const RenderElement*, float multiplier) const final;
     void computeIntrinsicDimensions(const RenderElement*, Length& intrinsicWidth, Length& intrinsicHeight, FloatSize& intrinsicRatio) final;
     bool imageHasRelativeWidth() const final { return !m_fixedSize; }
     bool imageHasRelativeHeight() const final { return !m_fixedSize; }
     bool usesImageContainerSize() const final { return !m_fixedSize; }
-    void setContainerContextForRenderer(const RenderElement&, const FloatSize& containerSize, float) final { m_containerSize = containerSize; }
+    void setContainerContextForRenderer(const RenderElement&, const FloatSize& containerSize, float) override { m_containerSize = containerSize; }
     bool imageHasNaturalDimensions() const final { return !usesImageContainerSize(); }
-    
-    void addClient(RenderElement&) final;
-    void removeClient(RenderElement&) final;
-    bool hasClient(RenderElement&) const final;
+
+    // Additional virtual methods for subclasses of `StyleGeneratedImage`.
 
     // Allow subclasses to react to clients being added/removed.
-    virtual void didAddClient(RenderElement&) = 0;
-    virtual void didRemoveClient(RenderElement&) = 0;
+    virtual void didAddClient(StyleImageClient&) = 0;
+    virtual void didRemoveClient(StyleImageClient&) = 0;
 
     // All generated images must be able to compute their fixed size.
     virtual FloatSize fixedSize(const RenderElement&) const = 0;
 
+    // Caching
     class CachedGeneratedImage;
     GeneratedImage* cachedImageForSize(FloatSize);
     void saveCachedImageForSize(FloatSize, GeneratedImage&);
     void evictCachedGeneratedImage(FloatSize);
 
+    void notifyClientsOfChange();
+
+    // FIXME: Consider using a per-client (or perhaps per-RenderElement) cache of container sizes like CachedImage.
+    //    struct ContainerContext {
+    //        LayoutSize containerSize;
+    //        float containerZoom;
+    //        URL imageURL;
+    //    };
+    //
+    //    using ContainerContextRequests = HashMap<SingleThreadWeakRef<const CachedImageClient>, ContainerContext>;
+    //    ContainerContextRequests m_pendingContainerContextRequests;
     FloatSize m_containerSize;
+
     bool m_fixedSize;
-    SingleThreadWeakHashCountedSet<RenderElement> m_clients;
+    HashCountedSet<StyleImageClient*> m_clients; // SingleThreadWeakHashCountedSet<StyleImageClient> m_clients;
     HashMap<FloatSize, std::unique_ptr<CachedGeneratedImage>> m_images;
 };
 

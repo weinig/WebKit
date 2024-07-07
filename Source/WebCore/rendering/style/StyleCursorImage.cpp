@@ -130,14 +130,12 @@ void StyleCursorImage::cursorElementChanged(SVGCursorElement& cursorElement)
         static_cast<int>(std::round(cursorElement.y().value(lengthContext)))
     };
 
-    // FIXME: Why doesn't this funtion check for a change to the href of the cursor element? Why would we dynamically track changes to x/y but not href?
+    // FIXME: Why doesn't this function check for a change to the href of the cursor element? Why would we dynamically track changes to x/y but not href?
 }
 
 void StyleCursorImage::setContainerContextForRenderer(const RenderElement& renderer, const FloatSize& containerSize, float containerZoom)
 {
-    if (!hasCachedImage())
-        return;
-    cachedImage()->setContainerContextForClient(renderer, LayoutSize(containerSize), containerZoom, m_originalURL);
+    m_image->setContainerContextForRenderer(renderer, containerSize, containerZoom); // what about m_originalURL?
 }
 
 bool StyleCursorImage::usesDataProtocol() const

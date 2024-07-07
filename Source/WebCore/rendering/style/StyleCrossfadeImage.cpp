@@ -46,14 +46,18 @@ StyleCrossfadeImage::StyleCrossfadeImage(RefPtr<StyleImage>&& from, RefPtr<Style
     , m_isPrefixed { isPrefixed }
     , m_inputImagesAreReady { false }
 {
+    if (m_from)
+        m_from->addStyleImageClient(*this);
+    if (m_to)
+        m_to->addStyleImageClient(*this);
 }
 
 StyleCrossfadeImage::~StyleCrossfadeImage()
 {
-    if (m_cachedFromImage)
-        m_cachedFromImage->removeClient(*this);
-    if (m_cachedToImage)
-        m_cachedToImage->removeClient(*this);
+    if (m_from)
+        m_from->removeStyleImageClient(*this);
+    if (m_to)
+        m_to->removeStyleImageClient(*this);
 }
 
 bool StyleCrossfadeImage::operator==(const StyleImage& other) const
@@ -76,8 +80,8 @@ RefPtr<StyleCrossfadeImage> StyleCrossfadeImage::blend(const StyleCrossfadeImage
 {
     ASSERT(equalInputImages(from));
 
-    if (!m_cachedToImage || !m_cachedFromImage)
-        return nullptr;
+    //    if (!m_cachedToImage || !m_cachedFromImage)
+    //        return nullptr;
 
     auto newPercentage = WebCore::blend(from.m_percentage, m_percentage, context);
     return StyleCrossfadeImage::create(m_from, m_to, newPercentage, from.m_isPrefixed && m_isPrefixed);
@@ -101,38 +105,35 @@ bool StyleCrossfadeImage::isPending() const
 
 void StyleCrossfadeImage::load(CachedResourceLoader& loader, const ResourceLoaderOptions& options)
 {
-    auto oldCachedFromImage = m_cachedFromImage;
-    auto oldCachedToImage = m_cachedToImage;
-
     if (m_from) {
         if (m_from->isPending())
             m_from->load(loader, options);
-        m_cachedFromImage = m_from->cachedImage();
-    } else
-        m_cachedFromImage = nullptr;
+    }
 
     if (m_to) {
         if (m_to->isPending())
             m_to->load(loader, options);
-        m_cachedToImage = m_to->cachedImage();
-    } else
-        m_cachedToImage = nullptr;
-
-    if (m_cachedFromImage != oldCachedFromImage) {
-        if (oldCachedFromImage)
-            oldCachedFromImage->removeClient(*this);
-        if (m_cachedFromImage)
-            m_cachedFromImage->addClient(*this);
-    }
-
-    if (m_cachedToImage != oldCachedToImage) {
-        if (oldCachedToImage)
-            oldCachedToImage->removeClient(*this);
-        if (m_cachedToImage)
-            m_cachedToImage->addClient(*this);
     }
 
     m_inputImagesAreReady = true;
+}
+
+bool StyleCrossfadeImage::isLoaded(const RenderElement* renderer) const
+{
+    if (m_from && !m_from->isLoaded(renderer))
+        return false;
+    if (m_to && !m_to->isLoaded(renderer))
+        return false;
+    return true;
+}
+
+bool StyleCrossfadeImage::errorOccurred() const
+{
+    if (m_from && m_from->errorOccurred())
+        return true;
+    if (m_to && m_to->errorOccurred())
+        return true;
+    return false;
 }
 
 RefPtr<Image> StyleCrossfadeImage::image(const RenderElement* renderer, const FloatSize& size, bool isForFirstLine) const
@@ -155,6 +156,25 @@ RefPtr<Image> StyleCrossfadeImage::image(const RenderElement* renderer, const Fl
     return CrossfadeGeneratedImage::create(*fromImage, *toImage, m_percentage, fixedSize(*renderer), size);
 }
 
+bool StyleCrossfadeImage::canRender(const RenderElement* renderer, float multiplier) const
+{
+    if (m_from && !m_from->canRender(renderer, multiplier))
+        return false;
+    if (m_to && !m_to->canRender(renderer, multiplier))
+        return false;
+    return true;
+}
+
+void StyleCrossfadeImage::setContainerContextForRenderer(const RenderElement& renderer, const FloatSize& containerSize, float containerZoom)
+{
+    if (m_from)
+        m_from->setContainerContextForRenderer(renderer, containerSize, containerZoom);
+    if (m_to)
+        m_to->setContainerContextForRenderer(renderer, containerSize, containerZoom);
+
+    StyleGeneratedImage::setContainerContextForRenderer(renderer, containerSize, containerZoom);
+}
+
 bool StyleCrossfadeImage::knownToBeOpaque(const RenderElement& renderer) const
 {
     if (m_from && !m_from->knownToBeOpaque(renderer))
@@ -162,6 +182,28 @@ bool StyleCrossfadeImage::knownToBeOpaque(const RenderElement& renderer) const
     if (m_to && !m_to->knownToBeOpaque(renderer))
         return false;
     return true;
+}
+
+bool StyleCrossfadeImage::isClientWaitingForAsyncDecoding(RenderElement& renderer) const
+{
+    return (m_from && m_from->isClientWaitingForAsyncDecoding(renderer))
+        || (m_to && m_to->isClientWaitingForAsyncDecoding(renderer));
+}
+
+void StyleCrossfadeImage::addClientWaitingForAsyncDecoding(RenderElement& renderer)
+{
+    if (m_from)
+        m_from->addClientWaitingForAsyncDecoding(renderer);
+    if (m_to)
+        m_to->addClientWaitingForAsyncDecoding(renderer);
+}
+
+void StyleCrossfadeImage::removeAllClientsWaitingForAsyncDecoding()
+{
+    if (m_from)
+        m_from->removeAllClientsWaitingForAsyncDecoding();
+    if (m_to)
+        m_to->removeAllClientsWaitingForAsyncDecoding();
 }
 
 FloatSize StyleCrossfadeImage::fixedSize(const RenderElement& renderer) const
@@ -183,14 +225,12 @@ FloatSize StyleCrossfadeImage::fixedSize(const RenderElement& renderer) const
     return fromImageSize * inversePercentage + toImageSize * percentage;
 }
 
-void StyleCrossfadeImage::imageChanged(CachedImage*, const IntRect*)
+void StyleCrossfadeImage::styleImageChanged(StyleImage&, const IntRect*)
 {
     if (!m_inputImagesAreReady)
         return;
-    for (auto entry : clients()) {
-        auto& client = entry.key;
-        client.imageChanged(static_cast<WrappedImagePtr>(this));
-    }
+
+    notifyClientsOfChange();
 }
 
 } // namespace WebCore

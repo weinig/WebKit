@@ -256,19 +256,27 @@ static FloatSize boundingSize(const RenderObject& renderer, const std::optional<
     return size;
 }
 
+static bool imageIsPhoto(Image& image)
+{
+    if (!image.isBitmapImage())
+        return false;
+
+    if (image.nativeImage() && image.nativeImage()->hasAlpha())
+        return false;
+
+    return true;
+}
+
 static bool cachedImageIsPhoto(const CachedImage& cachedImage)
 {
     if (cachedImage.errorOccurred())
         return false;
 
     auto* image = cachedImage.image();
-    if (!image || !image->isBitmapImage())
+    if (!image)
         return false;
 
-    if (image->nativeImage() && image->nativeImage()->hasAlpha())
-        return false;
-
-    return true;
+    return imageIsPhoto(*image);
 }
 
 static RefPtr<Image> findIconImage(const RenderObject& renderer)
@@ -436,10 +444,9 @@ std::optional<InteractionRegion> interactionRegionForRenderedRegion(RenderObject
         } else if (regionRenderer.style().hasBackgroundImage()) {
             isPhoto = [&]() -> bool {
                 auto* backgroundImage = regionRenderer.style().backgroundLayers().image();
-                if (!backgroundImage || !backgroundImage->cachedImage())
+                if (!backgroundImage || !backgroundImage->image())
                     return false;
-
-                return cachedImageIsPhoto(*backgroundImage->cachedImage());
+                return imageIsPhoto(*backgroundImage->image());
             }();
         }
     }

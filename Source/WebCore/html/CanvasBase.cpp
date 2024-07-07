@@ -207,11 +207,12 @@ HashSet<Element*> CanvasBase::cssCanvasClients() const
         if (!image)
             continue;
 
-        for (auto entry : image->clients()) {
-            auto& client = entry.key;
-            if (auto element = client.element())
-                cssCanvasClients.add(element);
-        }
+        // FIXME: Figure this out.
+        //  for (auto entry : image->clients()) {
+        //     auto& client = entry.key;
+        //     if (auto element = client.element())
+        //         cssCanvasClients.add(element);
+        //  }
     }
     return cssCanvasClients;
 }

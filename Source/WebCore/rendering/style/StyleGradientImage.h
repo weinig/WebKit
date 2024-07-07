@@ -209,14 +209,17 @@ public:
 private:
     explicit StyleGradientImage(Data&&, CSSGradientColorInterpolationMethod);
 
+    // StyleImage overrides
     Ref<CSSValue> computedStyleValue(const RenderStyle&) const final;
     bool isPending() const final;
     void load(CachedResourceLoader&, const ResourceLoaderOptions&) final;
     RefPtr<Image> image(const RenderElement*, const FloatSize&, bool isForFirstLine) const final;
     bool knownToBeOpaque(const RenderElement&) const final;
+
+    // StyleGeneratedImage overrides
+    void didAddClient(StyleImageClient&) final { }
+    void didRemoveClient(StyleImageClient&) final { }
     FloatSize fixedSize(const RenderElement&) const final;
-    void didAddClient(RenderElement&) final { }
-    void didRemoveClient(RenderElement&) final { }
 
     Ref<Gradient> createGradient(const LinearData&, const FloatSize&, const RenderStyle&) const;
     Ref<Gradient> createGradient(const PrefixedLinearData&, const FloatSize&, const RenderStyle&) const;

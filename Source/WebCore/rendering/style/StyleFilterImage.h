@@ -33,7 +33,7 @@
 
 namespace WebCore {
 
-class StyleFilterImage final : public StyleGeneratedImage, private CachedImageClient {
+class StyleFilterImage final : public StyleGeneratedImage, private StyleImageClient {
 public:
     static Ref<StyleFilterImage> create(RefPtr<StyleImage> image, FilterOperations filterOperations)
     {
@@ -53,26 +53,35 @@ public:
 private:
     explicit StyleFilterImage(RefPtr<StyleImage>&&, FilterOperations&&);
 
+    // StyleImage overrides
     Ref<CSSValue> computedStyleValue(const RenderStyle&) const final;
     bool isPending() const final;
     void load(CachedResourceLoader&, const ResourceLoaderOptions&) final;
+    bool isLoaded(const RenderElement* renderer) const final;
+    bool errorOccurred() const final;
     RefPtr<Image> image(const RenderElement*, const FloatSize&, bool isForFirstLine) const final;
+    bool canRender(const RenderElement* renderer, float multiplier) const final;
+    void setContainerContextForRenderer(const RenderElement&, const FloatSize&, float) final;
     bool knownToBeOpaque(const RenderElement&) const final;
-    FloatSize fixedSize(const RenderElement&) const final;
-    void didAddClient(RenderElement&) final { }
-    void didRemoveClient(RenderElement&) final { }
 
-    // CachedImageClient.
-    void imageChanged(CachedImage*, const IntRect* = nullptr) final;
+    // StyleGeneratedImage overrides
+    void didAddClient(StyleImageClient&) final { }
+    void didRemoveClient(StyleImageClient&) final { }
+    FloatSize fixedSize(const RenderElement&) const final;
+    bool isClientWaitingForAsyncDecoding(RenderElement&) const final;
+    void addClientWaitingForAsyncDecoding(RenderElement&) final;
+    void removeAllClientsWaitingForAsyncDecoding() final;
+
+    // StyleImageClient overrides
+    void styleImageChanged(StyleImage&, const IntRect*) final;
+
+    // StyleFilterOperationsClient overrides
+    // FIXME: Finish or remove.
+    void styleFilterOperationsChanged(FilterOperations&); // final;
 
     RefPtr<StyleImage> m_image;
+    // FIXME: FilterOperations need some client interface to let us know if a reference filter has loaded or failed to load.
     FilterOperations m_filterOperations;
-
-    // FIXME: Rather than caching and tracking the input image via CachedImages, we should
-    // instead use a new, StyleImage specific notification, to allow correct tracking of
-    // nested images (e.g. the input image for a StyleFilterImage is a StyleCrossfadeImage
-    // where one of the inputs to the StyleCrossfadeImage is a StyleCachedImage).
-    CachedResourceHandle<CachedImage> m_cachedImage;
     bool m_inputImageIsReady;
 };
 

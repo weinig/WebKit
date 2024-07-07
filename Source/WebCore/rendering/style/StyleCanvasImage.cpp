@@ -77,7 +77,7 @@ RefPtr<Image> StyleCanvasImage::image(const RenderElement* renderer, const Float
     if (!renderer)
         return &Image::nullImage();
 
-    ASSERT(clients().contains(const_cast<RenderElement&>(*renderer)));
+    ASSERT(m_clients.contains(static_cast<StyleImageClient*>(const_cast<RenderElement*>(renderer))));
     RefPtr element = this->element(renderer->document());
     if (!element)
         return nullptr;
@@ -97,16 +97,16 @@ FloatSize StyleCanvasImage::fixedSize(const RenderElement& renderer) const
     return { };
 }
 
-void StyleCanvasImage::didAddClient(RenderElement& renderer)
+void StyleCanvasImage::didAddClient(StyleImageClient&)
 {
-    if (auto* element = this->element(renderer.document()))
-        InspectorInstrumentation::didChangeCSSCanvasClientNodes(*element);
+//    if (auto* element = this->element(renderer.document()))
+//        InspectorInstrumentation::didChangeCSSCanvasClientNodes(*element);
 }
 
-void StyleCanvasImage::didRemoveClient(RenderElement& renderer)
+void StyleCanvasImage::didRemoveClient(StyleImageClient&)
 {
-    if (auto* element = this->element(renderer.document()))
-        InspectorInstrumentation::didChangeCSSCanvasClientNodes(*element);
+//    if (auto* element = this->element(renderer.document()))
+//        InspectorInstrumentation::didChangeCSSCanvasClientNodes(*element);
 }
 
 void StyleCanvasImage::canvasChanged(CanvasBase& canvasBase, const FloatRect& changedRect)
@@ -115,9 +115,9 @@ void StyleCanvasImage::canvasChanged(CanvasBase& canvasBase, const FloatRect& ch
     ASSERT_UNUSED(canvasBase, m_element == &downcast<HTMLCanvasElement>(canvasBase));
 
     auto imageChangeRect = enclosingIntRect(changedRect);
-    for (auto entry : clients()) {
+    for (auto entry : m_clients) {
         auto& client = entry.key;
-        client.imageChanged(static_cast<WrappedImagePtr>(this), &imageChangeRect);
+        client->styleImageChanged(*this, &imageChangeRect);
     }
 }
 
@@ -126,9 +126,9 @@ void StyleCanvasImage::canvasResized(CanvasBase& canvasBase)
     ASSERT_UNUSED(canvasBase, is<HTMLCanvasElement>(canvasBase));
     ASSERT_UNUSED(canvasBase, m_element == &downcast<HTMLCanvasElement>(canvasBase));
 
-    for (auto entry : clients()) {
+    for (auto entry : m_clients) {
         auto& client = entry.key;
-        client.imageChanged(static_cast<WrappedImagePtr>(this));
+        client->styleImageChanged(*this, nullptr);
     }
 }
 

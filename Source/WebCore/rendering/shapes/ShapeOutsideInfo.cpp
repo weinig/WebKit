@@ -170,19 +170,21 @@ Ref<const Shape> makeShapeForShapeOutside(const RenderBox& renderer)
 
 static inline bool checkShapeImageOrigin(Document& document, const StyleImage& styleImage)
 {
-    if (styleImage.isGeneratedImage())
-        return true;
+    return styleImage.isOriginClean(document);
 
-    ASSERT(styleImage.cachedImage());
-    CachedImage& cachedImage = *(styleImage.cachedImage());
-    if (cachedImage.isOriginClean(&document.securityOrigin()))
-        return true;
-
-    const URL& url = cachedImage.url();
-    String urlString = url.isNull() ? "''"_s : url.stringCenterEllipsizedToLength();
-    document.addConsoleMessage(MessageSource::Security, MessageLevel::Error, makeString("Unsafe attempt to load URL "_s, urlString, '.'));
-
-    return false;
+//    if (styleImage.isGeneratedImage())
+//        return true;
+//
+//    ASSERT(styleImage.cachedImage());
+//    CachedImage& cachedImage = *(styleImage.cachedImage());
+//    if (cachedImage.isOriginClean(&document.securityOrigin()))
+//        return true;
+//
+//    const URL& url = cachedImage.url();
+//    String urlString = url.isNull() ? "''"_s : url.stringCenterEllipsizedToLength();
+//    document.addConsoleMessage(MessageSource::Security, MessageLevel::Error, makeString("Unsafe attempt to load URL "_s, urlString, '.'));
+//
+//    return false;
 }
 
 const Shape& ShapeOutsideInfo::computedShape() const

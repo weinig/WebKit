@@ -65,7 +65,7 @@ RenderListMarker::~RenderListMarker()
 void RenderListMarker::willBeDestroyed()
 {
     if (m_image)
-        m_image->removeClient(*this);
+        m_image->removeStyleImageClient(*this);
     RenderBox::willBeDestroyed();
 }
 
@@ -81,10 +81,10 @@ void RenderListMarker::styleDidChange(StyleDifference diff, const RenderStyle* o
 
     if (m_image != style().listStyleImage()) {
         if (m_image)
-            m_image->removeClient(*this);
+            m_image->removeStyleImageClient(*this);
         m_image = style().listStyleImage();
         if (m_image)
-            m_image->addClient(*this);
+            m_image->addStyleImageClient(*this);
     }
 }
 

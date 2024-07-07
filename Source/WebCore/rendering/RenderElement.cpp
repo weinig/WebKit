@@ -367,7 +367,7 @@ void RenderElement::updateFillImages(const FillLayer* oldLayers, const FillLayer
 
     auto isRegisteredWithNewFillImages = [&]() -> bool {
         for (RefPtr layer = newLayers; layer; layer = layer->next()) {
-            if (layer->image() && !layer->image()->hasClient(*this))
+            if (layer->image() && !layer->image()->hasStyleImageClient(*this))
                 return false;
         }
         return true;
@@ -381,11 +381,11 @@ void RenderElement::updateFillImages(const FillLayer* oldLayers, const FillLayer
     // Add before removing, to avoid removing all clients of an image that is in both sets.
     for (RefPtr layer = newLayers; layer; layer = layer->next()) {
         if (RefPtr image = layer->image())
-            image->addClient(*this);
+            image->addStyleImageClient(*this);
     }
     for (RefPtr layer = oldLayers; layer; layer = layer->next()) {
         if (RefPtr image = layer->image())
-            image->removeClient(*this);
+            image->removeStyleImageClient(*this);
     }
 }
 
@@ -394,9 +394,9 @@ void RenderElement::updateImage(StyleImage* oldImage, StyleImage* newImage)
     if (oldImage == newImage)
         return;
     if (oldImage)
-        oldImage->removeClient(*this);
+        oldImage->removeStyleImageClient(*this);
     if (newImage)
-        newImage->addClient(*this);
+        newImage->addStyleImageClient(*this);
 }
 
 void RenderElement::updateShapeImage(const ShapeValue* oldShapeValue, const ShapeValue* newShapeValue)
@@ -1141,7 +1141,7 @@ void RenderElement::willBeDestroyed()
 
     auto unregisterImage = [this](auto* image) {
         if (image)
-            image->removeClient(*this);
+            image->removeStyleImageClient(*this);
     };
 
     auto unregisterImages = [&](auto& style) {

@@ -51,14 +51,17 @@ public:
 private:
     explicit StyleCanvasImage(String&&);
 
+    // StyleImage overrides
     Ref<CSSValue> computedStyleValue(const RenderStyle&) const final;
     bool isPending() const final;
     void load(CachedResourceLoader&, const ResourceLoaderOptions&) final;
     RefPtr<Image> image(const RenderElement*, const FloatSize&, bool isForFirstLine) const final;
     bool knownToBeOpaque(const RenderElement&) const final;
+
+    // StyleGeneratedImage overrides
+    void didAddClient(StyleImageClient&) final;
+    void didRemoveClient(StyleImageClient&) final;
     FloatSize fixedSize(const RenderElement&) const final;
-    void didAddClient(RenderElement&) final;
-    void didRemoveClient(RenderElement&) final;
 
     // CanvasObserver.
     bool isStyleCanvasImage() const final { return true; }
@@ -70,6 +73,8 @@ private:
 
     // The name of the canvas.
     String m_name;
+
+    // FIXME: Nothing in the contract of this class specifies it will only ever be used by a single document/element/renderer. Therefore, this should be a map from RenderElement to HTMLCanvasElements, if caching is indeed necessary.
     // The document supplies the element and owns it.
     mutable HTMLCanvasElement* m_element;
 };

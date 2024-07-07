@@ -53,30 +53,34 @@ protected:
     bool equals(const StyleMultiImage& other) const;
 
     virtual ImageWithScale selectBestFitImage(const Document&) = 0;
-    CachedImage* cachedImage() const final;
+    // CachedImage* cachedImage() const;
 
 private:
+    // StyleImage overrides
+    void addStyleImageClient(StyleImageClient&) final;
+    void removeStyleImageClient(StyleImageClient&) final;
+    bool hasStyleImageClient(StyleImageClient&) const final;
     WrappedImagePtr data() const final;
-
-    bool canRender(const RenderElement*, float multiplier) const final;
     bool isPending() const final;
     void load(CachedResourceLoader&, const ResourceLoaderOptions&) final;
     bool isLoaded(const RenderElement*) const final;
     bool errorOccurred() const final;
     FloatSize imageSize(const RenderElement*, float multiplier) const final;
+    bool usesImageContainerSize() const final;
+    void computeIntrinsicDimensions(const RenderElement*, Length& intrinsicWidth, Length& intrinsicHeight, FloatSize& intrinsicRatio) final;
     bool imageHasRelativeWidth() const final;
     bool imageHasRelativeHeight() const final;
-    void computeIntrinsicDimensions(const RenderElement*, Length& intrinsicWidth, Length& intrinsicHeight, FloatSize& intrinsicRatio) final;
-    bool usesImageContainerSize() const final;
-    void setContainerContextForRenderer(const RenderElement&, const FloatSize&, float);
-    void addClient(RenderElement&) final;
-    void removeClient(RenderElement&) final;
-    bool hasClient(RenderElement&) const final;
-    RefPtr<Image> image(const RenderElement*, const FloatSize&, bool isForFirstLine) const final;
     float imageScaleFactor() const final;
-    bool knownToBeOpaque(const RenderElement&) const final;
+    RefPtr<Image> image(const RenderElement*, const FloatSize&, bool isForFirstLine) const final;
+    RefPtr<Image> image() const final;
     const StyleImage* selectedImage() const final { return m_selectedImage.get(); }
     StyleImage* selectedImage() final { return m_selectedImage.get(); }
+    bool canRender(const RenderElement*, float multiplier) const final;
+    void setContainerContextForRenderer(const RenderElement&, const FloatSize&, float) override;
+    bool knownToBeOpaque(const RenderElement&) const final;
+    bool isClientWaitingForAsyncDecoding(RenderElement&) const final;
+    void addClientWaitingForAsyncDecoding(RenderElement&) final;
+    void removeAllClientsWaitingForAsyncDecoding() final;
 
     RefPtr<StyleImage> m_selectedImage;
     bool m_isPending { true };

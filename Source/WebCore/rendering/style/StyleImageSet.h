@@ -34,14 +34,16 @@ public:
     static Ref<StyleImageSet> create(Vector<ImageWithScale>&&, Vector<size_t>&&);
     virtual ~StyleImageSet();
 
-    bool operator==(const StyleImage& other) const;
+    bool operator==(const StyleImage&) const final;
     bool equals(const StyleImageSet&) const;
 
+    // Called directly by `StyleCursorImage`.
     ImageWithScale selectBestFitImage(const Document&) final;
 
 private:
     explicit StyleImageSet(Vector<ImageWithScale>&&, Vector<size_t>&&);
 
+    // StyleImage overrides
     Ref<CSSValue> computedStyleValue(const RenderStyle&) const final;
 
     ImageWithScale bestImageForScaleFactor();

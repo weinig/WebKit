@@ -1585,24 +1585,21 @@ std::optional<Cursor> EventHandler::selectCursor(const HitTestResult& result, bo
         const CursorList* cursors = style->cursors();
         for (unsigned i = 0; i < cursors->size(); ++i) {
             StyleImage* styleImage = (*cursors)[i].image();
-            if (!styleImage)
+            if (!styleImage || styleImage->errorOccurred())
                 continue;
-            CachedImage* cachedImage = styleImage->cachedImage();
-            if (!cachedImage)
-                continue;
+
             float scale = styleImage->imageScaleFactor();
             // Get hotspot and convert from logical pixels to physical pixels.
             IntPoint hotSpot = (*cursors)[i].hotSpot();
-            FloatSize size = cachedImage->imageForRenderer(renderer)->size();
-            if (cachedImage->errorOccurred())
-                continue;
+            FloatSize size = { 0, 0 }; // styleImage->imageSize(renderer, 1.0);
+
             // Limit the size of cursors (in UI pixels) so that they cannot be
             // used to cover UI elements in chrome.
             size.scale(1 / scale);
             if (size.width() > maximumCursorSize || size.height() > maximumCursorSize)
                 continue;
 
-            Image* image = cachedImage->imageForRenderer(renderer);
+            Image* image = nullptr; // styleImage->image(renderer, size);
 #if ENABLE(MOUSE_CURSOR_SCALE)
             // Ensure no overflow possible in calculations above.
             if (scale < minimumCursorScale)

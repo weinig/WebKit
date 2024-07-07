@@ -34,7 +34,7 @@ namespace WebCore {
 
 struct BlendingContext;
 
-class StyleCrossfadeImage final : public StyleGeneratedImage, private CachedImageClient {
+class StyleCrossfadeImage final : public StyleGeneratedImage, private StyleImageClient {
 public:
     static Ref<StyleCrossfadeImage> create(RefPtr<StyleImage> from, RefPtr<StyleImage> to, double percentage, bool isPrefixed)
     {
@@ -53,29 +53,32 @@ public:
 private:
     explicit StyleCrossfadeImage(RefPtr<StyleImage>&&, RefPtr<StyleImage>&&, double, bool);
 
+    // StyleImage overrides
     Ref<CSSValue> computedStyleValue(const RenderStyle&) const final;
     bool isPending() const final;
     void load(CachedResourceLoader&, const ResourceLoaderOptions&) final;
+    bool isLoaded(const RenderElement*) const final;
+    bool errorOccurred() const final;
     RefPtr<Image> image(const RenderElement*, const FloatSize&, bool isForFirstLine) const final;
+    bool canRender(const RenderElement*, float multiplier) const final;
+    void setContainerContextForRenderer(const RenderElement&, const FloatSize&, float) final;
     bool knownToBeOpaque(const RenderElement&) const final;
-    FloatSize fixedSize(const RenderElement&) const final;
-    void didAddClient(RenderElement&) final { }
-    void didRemoveClient(RenderElement&) final { }
+    bool isClientWaitingForAsyncDecoding(RenderElement&) const final;
+    void addClientWaitingForAsyncDecoding(RenderElement&) final;
+    void removeAllClientsWaitingForAsyncDecoding() final;
 
-    // CachedImageClient.
-    void imageChanged(CachedImage*, const IntRect*) final;
+    // StyleGeneratedImage overrides
+    void didAddClient(StyleImageClient&) final { }
+    void didRemoveClient(StyleImageClient&) final { }
+    FloatSize fixedSize(const RenderElement&) const final;
+
+    // StyleImageClient
+    virtual void styleImageChanged(StyleImage&, const IntRect*) final;
 
     RefPtr<StyleImage> m_from;
     RefPtr<StyleImage> m_to;
     double m_percentage;
     bool m_isPrefixed;
-
-    // FIXME: Rather than caching and tracking the input image via CachedImages, we should
-    // instead use a new, StyleImage specific notification, to allow correct tracking of
-    // nested images (e.g. one of the input images for a StyleCrossfadeImage is a StyleFilterImage
-    // where its input image is a StyleCachedImage).
-    CachedResourceHandle<CachedImage> m_cachedFromImage;
-    CachedResourceHandle<CachedImage> m_cachedToImage;
     bool m_inputImagesAreReady;
 };
 

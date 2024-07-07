@@ -46,14 +46,14 @@ public:
     bool equals(const StyleCursorImage&) const;
     bool equalInputImages(const StyleCursorImage&) const;
 
-    bool usesDataProtocol() const final;
-
     void cursorElementRemoved(SVGCursorElement&);
     void cursorElementChanged(SVGCursorElement&);
 
 private:
     explicit StyleCursorImage(Ref<StyleImage>&&, const std::optional<IntPoint>& hotSpot, const URL&, LoadedFromOpaqueSource);
 
+    // StyleImage overrides
+    bool usesDataProtocol() const final;
     void setContainerContextForRenderer(const RenderElement& renderer, const FloatSize& containerSize, float containerZoom) final;
     Ref<CSSValue> computedStyleValue(const RenderStyle&) const final;
     ImageWithScale selectBestFitImage(const Document&) final;

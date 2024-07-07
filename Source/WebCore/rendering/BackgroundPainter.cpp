@@ -183,7 +183,7 @@ void BackgroundPainter::paintFillLayer(const Color& color, const FillLayer& bgLa
     bool shouldPaintBackgroundImage = bgImage && bgImage->canRender(&m_renderer, style.usedZoom());
 
     if (context.detectingContentfulPaint()) {
-        if (!context.contentfulPaintDetected() && shouldPaintBackgroundImage && bgImage->cachedImage()) {
+        if (!context.contentfulPaintDetected() && shouldPaintBackgroundImage /* FIXME: What is this checking && bgImage->cachedImage() */ ) {
             if (style.backgroundSizeType() != FillSizeType::Size || !style.backgroundSizeLength().isEmpty())
                 context.setContentfulPaintDetected();
             return;
@@ -191,8 +191,8 @@ void BackgroundPainter::paintFillLayer(const Color& color, const FillLayer& bgLa
     }
 
     if (context.invalidatingImagesWithAsyncDecodes()) {
-        if (shouldPaintBackgroundImage && bgImage->cachedImage()->isClientWaitingForAsyncDecoding(m_renderer))
-            bgImage->cachedImage()->removeAllClientsWaitingForAsyncDecoding();
+        if (shouldPaintBackgroundImage && bgImage->isClientWaitingForAsyncDecoding(m_renderer))
+            bgImage->removeAllClientsWaitingForAsyncDecoding();
         return;
     }
 
@@ -415,10 +415,8 @@ void BackgroundPainter::paintFillLayer(const Color& color, const FillLayer& bgLa
             };
 
             auto drawResult = context.drawTiledImage(*image, geometry.destinationRect, toLayoutPoint(geometry.relativePhase()), geometry.tileSize, geometry.spaceSize, options);
-            if (drawResult == ImageDrawResult::DidRequestDecoding) {
-                ASSERT(bgImage->hasCachedImage());
-                bgImage->cachedImage()->addClientWaitingForAsyncDecoding(m_renderer);
-            }
+            if (drawResult == ImageDrawResult::DidRequestDecoding)
+                bgImage->addClientWaitingForAsyncDecoding(m_renderer);
 
             if (m_renderer.element() && !context.paintingDisabled())
                 m_renderer.element()->setHasEverPaintedImages(true);

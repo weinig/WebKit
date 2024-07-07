@@ -86,12 +86,12 @@ void StyleMultiImage::load(CachedResourceLoader& loader, const ResourceLoaderOpt
     }
 }
 
-CachedImage* StyleMultiImage::cachedImage() const
-{
-    if (!m_selectedImage)
-        return nullptr;
-    return m_selectedImage->cachedImage();
-}
+//CachedImage* StyleMultiImage::cachedImage() const
+//{
+//    if (!m_selectedImage)
+//        return nullptr;
+//    return m_selectedImage->cachedImage();
+//}
 
 WrappedImagePtr StyleMultiImage::data() const
 {
@@ -156,25 +156,25 @@ void StyleMultiImage::setContainerContextForRenderer(const RenderElement& render
     m_selectedImage->setContainerContextForRenderer(renderer, containerSize, containerZoom);
 }
 
-void StyleMultiImage::addClient(RenderElement& renderer)
+void StyleMultiImage::addStyleImageClient(StyleImageClient& client)
 {
     if (!m_selectedImage)
         return;
-    m_selectedImage->addClient(renderer);
+    m_selectedImage->addStyleImageClient(client);
 }
 
-void StyleMultiImage::removeClient(RenderElement& renderer)
+void StyleMultiImage::removeStyleImageClient(StyleImageClient& client)
 {
     if (!m_selectedImage)
         return;
-    m_selectedImage->removeClient(renderer);
+    m_selectedImage->removeStyleImageClient(client);
 }
 
-bool StyleMultiImage::hasClient(RenderElement& renderer) const
+bool StyleMultiImage::hasStyleImageClient(StyleImageClient& client) const
 {
     if (!m_selectedImage)
         return false;
-    return m_selectedImage->hasClient(renderer);
+    return m_selectedImage->hasStyleImageClient(client);
 }
 
 RefPtr<Image> StyleMultiImage::image(const RenderElement* renderer, const FloatSize& size, bool isForFirstLine) const
@@ -182,6 +182,13 @@ RefPtr<Image> StyleMultiImage::image(const RenderElement* renderer, const FloatS
     if (!m_selectedImage)
         return nullptr;
     return m_selectedImage->image(renderer, size, isForFirstLine);
+}
+
+RefPtr<Image> StyleMultiImage::image() const
+{
+    if (!m_selectedImage)
+        return nullptr;
+    return m_selectedImage->image();
 }
 
 float StyleMultiImage::imageScaleFactor() const
@@ -194,6 +201,23 @@ float StyleMultiImage::imageScaleFactor() const
 bool StyleMultiImage::knownToBeOpaque(const RenderElement& renderer) const
 {
     return m_selectedImage && m_selectedImage->knownToBeOpaque(renderer);
+}
+
+bool StyleMultiImage::isClientWaitingForAsyncDecoding(RenderElement& renderer) const
+{
+    return m_selectedImage && m_selectedImage->isClientWaitingForAsyncDecoding(renderer);
+}
+
+void StyleMultiImage::addClientWaitingForAsyncDecoding(RenderElement& renderer)
+{
+    if (m_selectedImage)
+        m_selectedImage->addClientWaitingForAsyncDecoding(renderer);
+}
+
+void StyleMultiImage::removeAllClientsWaitingForAsyncDecoding()
+{
+    if (m_selectedImage)
+        m_selectedImage->removeAllClientsWaitingForAsyncDecoding();
 }
 
 } // namespace WebCore

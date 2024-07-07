@@ -101,7 +101,7 @@ enum class RepaintOutlineBounds : bool { No, Yes };
 enum class RequiresFullRepaint : bool { No, Yes };
 
 // Base class for all rendering tree objects.
-class RenderObject : public CachedImageClient, public CanMakeCheckedPtr<RenderObject> {
+class RenderObject : public CachedImageClient, public StyleImageClient, public CanMakeCheckedPtr<RenderObject> {
     WTF_MAKE_COMPACT_ISO_ALLOCATED(RenderObject);
     WTF_OVERRIDE_DELETE_FOR_CHECKED_PTR(RenderObject);
     friend class RenderBlock;
@@ -1100,7 +1100,14 @@ public:
     virtual int previousOffsetForBackwardDeletion(int current) const;
     virtual int nextOffset(int current) const;
 
+    // CachedImageClient
     void imageChanged(CachedImage*, const IntRect* = nullptr) override;
+
+    // StyleImageClient
+    void styleImageChanged(StyleImage&, const IntRect* = nullptr) override;
+
+    // Types inheriting from RenderObject can override this method to be notified
+    // about image changes.
     virtual void imageChanged(WrappedImagePtr, const IntRect* = nullptr) { }
 
     // Map points and quads through elements, potentially via 3d transforms. You should never need to call these directly; use

@@ -34,30 +34,28 @@ class CSSInvalidImageValue;
 class StyleInvalidImage final : public StyleGeneratedImage {
 public:
     static Ref<StyleInvalidImage> create();
-
     virtual ~StyleInvalidImage();
 
-    bool operator==(const StyleImage&) const final { return false; }
     bool equals(const StyleInvalidImage&) const { return false; }
-    bool canRender(const RenderElement*, float) const final { return false; }
 
     static constexpr bool isFixedSize = true;
 
-protected:
-    void didAddClient(RenderElement&) final { }
-    void didRemoveClient(RenderElement&) final { }
-
-    FloatSize fixedSize(const RenderElement&) const final { return { }; }
-
 private:
     StyleInvalidImage();
-    
+
+    // StyleImage overrides
+    bool operator==(const StyleImage&) const final { return false; }
+    Ref<CSSValue> computedStyleValue(const RenderStyle&) const final;
     bool isPending() const final { return false; }
     void load(CachedResourceLoader&, const ResourceLoaderOptions&) final;
+    RefPtr<Image> image(const RenderElement*, const FloatSize&, bool isForFirstLine) const final;
+    bool canRender(const RenderElement*, float) const final { return false; }
     bool knownToBeOpaque(const RenderElement&) const { return false; }
 
-    RefPtr<Image> image(const RenderElement*, const FloatSize&, bool isForFirstLine) const final;
-    Ref<CSSValue> computedStyleValue(const RenderStyle&) const;
+    // StyleGeneratedImage overrides
+    void didAddClient(StyleImageClient&) final { }
+    void didRemoveClient(StyleImageClient&) final { }
+    FloatSize fixedSize(const RenderElement&) const final { return { }; }
 };
 
 } // namespace WebCore

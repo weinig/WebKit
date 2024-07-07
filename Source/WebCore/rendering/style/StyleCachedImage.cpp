@@ -56,11 +56,17 @@ StyleCachedImage::StyleCachedImage(Ref<CSSImageValue>&& cssValue, float scaleFac
     , m_scaleFactor { scaleFactor }
 {
     m_cachedImage = m_cssValue->cachedImage();
-    if (m_cachedImage)
+    if (m_cachedImage) {
         m_isPending = false;
+        m_cachedImage->addClient(*this);
+    }
 }
 
-StyleCachedImage::~StyleCachedImage() = default;
+StyleCachedImage::~StyleCachedImage()
+{
+    if (m_cachedImage)
+        m_cachedImage->removeClient(*this);
+}
 
 bool StyleCachedImage::operator==(const StyleImage& other) const
 {
@@ -183,6 +189,8 @@ void StyleCachedImage::load(CachedResourceLoader& loader, const ResourceLoaderOp
     ASSERT(m_isPending);
     m_isPending = false;
     m_cachedImage = m_cssValue->loadImage(loader, options);
+    if (m_cachedImage)
+        m_cachedImage->addClient(*this);
 }
 
 CachedImage* StyleCachedImage::cachedImage() const
@@ -280,28 +288,19 @@ void StyleCachedImage::setContainerContextForRenderer(const RenderElement& rende
     m_cachedImage->setContainerContextForClient(renderer, LayoutSize(containerSize), containerZoom, imageURL());
 }
 
-void StyleCachedImage::addClient(RenderElement& renderer)
+void StyleCachedImage::addStyleImageClient(StyleImageClient& client)
 {
-    ASSERT(!m_isPending);
-    if (!m_cachedImage)
-        return;
-    m_cachedImage->addClient(renderer);
+    m_clients.add(&client);
 }
 
-void StyleCachedImage::removeClient(RenderElement& renderer)
+void StyleCachedImage::removeStyleImageClient(StyleImageClient& client)
 {
-    ASSERT(!m_isPending);
-    if (!m_cachedImage)
-        return;
-    m_cachedImage->removeClient(renderer);
+    m_clients.remove(&client);
 }
 
-bool StyleCachedImage::hasClient(RenderElement& renderer) const
+bool StyleCachedImage::hasStyleImageClient(StyleImageClient& client) const
 {
-    ASSERT(!m_isPending);
-    if (!m_cachedImage)
-        return false;
-    return m_cachedImage->hasClient(renderer);
+    return m_clients.contains(&client);
 }
 
 bool StyleCachedImage::hasImage() const
@@ -327,6 +326,11 @@ RefPtr<Image> StyleCachedImage::image(const RenderElement* renderer, const Float
     return m_cachedImage->imageForRenderer(renderer);
 }
 
+RefPtr<Image> StyleCachedImage::image() const
+{
+    return m_cachedImage ? m_cachedImage->image() : nullptr;
+}
+
 float StyleCachedImage::imageScaleFactor() const
 {
     return m_scaleFactor;
@@ -340,6 +344,33 @@ bool StyleCachedImage::knownToBeOpaque(const RenderElement& renderer) const
 bool StyleCachedImage::usesDataProtocol() const
 {
     return m_cssValue->imageURL().protocolIsData();
+}
+
+bool StyleCachedImage::isClientWaitingForAsyncDecoding(RenderElement& renderer) const
+{
+    return m_cachedImage && m_cachedImage->isClientWaitingForAsyncDecoding(renderer);
+}
+
+void StyleCachedImage::addClientWaitingForAsyncDecoding(RenderElement& renderer)
+{
+    if (m_cachedImage)
+        m_cachedImage->addClientWaitingForAsyncDecoding(renderer);
+}
+
+void StyleCachedImage::removeAllClientsWaitingForAsyncDecoding()
+{
+    if (m_cachedImage)
+        m_cachedImage->removeAllClientsWaitingForAsyncDecoding();
+}
+
+void StyleCachedImage::imageChanged(CachedImage* cachedImage, const IntRect* rect)
+{
+    ASSERT_UNUSED(cachedImage, cachedImage == m_cachedImage);
+
+    for (auto entry : m_clients) {
+        auto& client = entry.key;
+        client->styleImageChanged(*this, rect);
+    }
 }
 
 } // namespace WebCore

@@ -33,22 +33,36 @@
 
 namespace WebCore {
 
+class CSSValue;
 class CachedImage;
 class CachedResourceLoader;
-class CSSValue;
 class Document;
+class IntRect;
 class RenderElement;
 class RenderObject;
 class RenderStyle;
+class StyleImage;
 struct ResourceLoaderOptions;
 
 typedef const void* WrappedImagePtr;
+
+class StyleImageClient { // FIXME: This really needs to be a WeakPtr } : public CanMakeWeakPtr<StyleImageClient> {
+public:
+    virtual ~StyleImageClient() = default;
+
+    virtual void styleImageChanged(StyleImage&, const IntRect*) = 0;
+};
 
 class StyleImage : public RefCounted<StyleImage>, public CanMakeWeakPtr<StyleImage> {
 public:
     virtual ~StyleImage() = default;
 
     virtual bool operator==(const StyleImage& other) const = 0;
+
+    // Clients.
+    virtual void addStyleImageClient(StyleImageClient&) = 0;
+    virtual void removeStyleImageClient(StyleImageClient&) = 0;
+    virtual bool hasStyleImageClient(StyleImageClient&) const = 0;
 
     // Computed Style representation.
     virtual Ref<CSSValue> computedStyleValue(const RenderStyle&) const = 0;
@@ -64,11 +78,7 @@ public:
     virtual bool usesDataProtocol() const { return false; }
     virtual bool hasImage() const { return false; }
     virtual URL reresolvedURL(const Document&) const { return { }; }
-
-    // Clients.
-    virtual void addClient(RenderElement&) = 0;
-    virtual void removeClient(RenderElement&) = 0;
-    virtual bool hasClient(RenderElement&) const = 0;
+    virtual bool isOriginClean(Document&) const { return true; } // FIXME: Implement.
 
     // Size / scale.
     virtual FloatSize imageSize(const RenderElement*, float multiplier) const = 0;
@@ -83,7 +93,33 @@ public:
     virtual RefPtr<Image> image(const RenderElement*, const FloatSize&, bool isForFirstLine = false) const = 0;
     virtual StyleImage* selectedImage() { return this; }
     virtual const StyleImage* selectedImage() const { return this; }
-    virtual CachedImage* cachedImage() const { return nullptr; }
+
+    // CachedImage forwarding
+    // virtual CachedImage* cachedImage() const { return nullptr; }
+    // bool hasCachedImage() const { return m_type == Type::CachedImage || selectedImage()->isCachedImage(); }
+    virtual RefPtr<Image> image() const { return nullptr; }
+    virtual bool isClientWaitingForAsyncDecoding(RenderElement&) const { return false; }
+    virtual void addClientWaitingForAsyncDecoding(RenderElement&) { }
+    virtual void removeAllClientsWaitingForAsyncDecoding() { }
+    virtual bool hasValidImage() const { return true; }
+        // True if generated, True if cachedImage() && cachedImage()->hasImage()
+        //
+        //    if (m_image->hasCachedImage()) {
+        //        auto* cachedImage = m_image->cachedImage();
+        //        return cachedImage && cachedImage->hasImage();
+        //    }
+        //    return m_image->isGeneratedImage();
+
+    virtual bool canDirectlyCompositeBackgroundBackgroundImage() const { return false; }
+        // False if generated, True if selected image `isBitmapImage`.
+        //
+        //    if (!styleImage->hasCachedImage())
+        //        return false;
+        //
+        //    auto* image = styleImage->cachedImage()->image();
+        //    if (!image->isBitmapImage())
+        //        return false;
+
 
     // Rendering.
     virtual bool canRender(const RenderElement*, float /*multiplier*/) const { return true; }
@@ -102,8 +138,6 @@ public:
     ALWAYS_INLINE bool isNamedImage() const { return m_type == Type::NamedImage; }
     ALWAYS_INLINE bool isPaintImage() const { return m_type == Type::PaintImage; }
     ALWAYS_INLINE bool isInvalidImage() const { return m_type == Type::InvalidImage; }
-
-    bool hasCachedImage() const { return m_type == Type::CachedImage || selectedImage()->isCachedImage(); }
 
 protected:
     enum class Type : uint8_t {

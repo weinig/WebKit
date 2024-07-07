@@ -36,11 +36,7 @@ bool ShapeValue::isImageValid() const
 {
     if (!m_image)
         return false;
-    if (m_image->hasCachedImage()) {
-        auto* cachedImage = m_image->cachedImage();
-        return cachedImage && cachedImage->hasImage();
-    }
-    return m_image->isGeneratedImage();
+    return m_image->hasValidImage();
 }
 
 bool ShapeValue::operator==(const ShapeValue& other) const

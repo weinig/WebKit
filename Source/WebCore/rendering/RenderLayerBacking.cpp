@@ -2753,11 +2753,7 @@ static bool canDirectlyCompositeBackgroundBackgroundImage(const RenderElement& r
 
     // FIXME: support gradients with isGeneratedImage.
     auto* styleImage = fillLayer.image();
-    if (!styleImage->hasCachedImage())
-        return false;
-
-    auto* image = styleImage->cachedImage()->image();
-    if (!image->isBitmapImage())
+    if (!styleImage->canDirectlyCompositeBackgroundBackgroundImage())
         return false;
 
     return true;
@@ -2845,7 +2841,7 @@ void RenderLayerBacking::updateDirectlyCompositedBackgroundImage(PaintedContents
     m_graphicsLayer->setContentsTilePhase(geometry.phase);
     m_graphicsLayer->setContentsRect(geometry.destinationRect);
     m_graphicsLayer->setContentsClippingRect(FloatRoundedRect(geometry.destinationRect));
-    m_graphicsLayer->setContentsToImage(style.backgroundLayers().image()->cachedImage()->image());
+    m_graphicsLayer->setContentsToImage(style.backgroundLayers().image()->image().get());
 
     didUpdateContentsRect = true;
 }

@@ -50,12 +50,14 @@ StyleFilterImage::StyleFilterImage(RefPtr<StyleImage>&& image, FilterOperations&
     , m_filterOperations { WTFMove(filterOperations) }
     , m_inputImageIsReady { false }
 {
+    if (m_image)
+        m_image->addStyleImageClient(*this);
 }
 
 StyleFilterImage::~StyleFilterImage()
 {
-    if (m_cachedImage)
-        m_cachedImage->removeClient(*this);
+    if (m_image)
+        m_image->removeStyleImageClient(*this);
 }
 
 bool StyleFilterImage::operator==(const StyleImage& other) const
@@ -81,32 +83,31 @@ Ref<CSSValue> StyleFilterImage::computedStyleValue(const RenderStyle& style) con
 
 bool StyleFilterImage::isPending() const
 {
-    return m_image ? m_image->isPending() : false;
+    return m_image && m_image->isPending();
 }
 
 void StyleFilterImage::load(CachedResourceLoader& cachedResourceLoader, const ResourceLoaderOptions& options)
 {
-    CachedResourceHandle<CachedImage> oldCachedImage = m_cachedImage;
-
-    if (m_image) {
+    if (m_image)
         m_image->load(cachedResourceLoader, options);
-        m_cachedImage = m_image->cachedImage();
-    } else
-        m_cachedImage = nullptr;
 
-    if (m_cachedImage != oldCachedImage) {
-        if (oldCachedImage)
-            oldCachedImage->removeClient(*this);
-        if (m_cachedImage)
-            m_cachedImage->addClient(*this);
-    }
-
+    // FIXME: Need a way to track when these reference filter loads finish or fail.
     for (auto& filterOperation : m_filterOperations) {
         if (RefPtr referenceFilterOperation = dynamicDowncast<ReferenceFilterOperation>(filterOperation))
             referenceFilterOperation->loadExternalDocumentIfNeeded(cachedResourceLoader, options);
     }
 
     m_inputImageIsReady = true;
+}
+
+bool StyleFilterImage::isLoaded(const RenderElement* renderer) const
+{
+    return m_image && m_image->isLoaded(renderer);
+}
+
+bool StyleFilterImage::errorOccurred() const
+{
+    return m_image && m_image->errorOccurred();
 }
 
 RefPtr<Image> StyleFilterImage::image(const RenderElement* renderer, const FloatSize& size, bool isForFirstLine) const
@@ -145,9 +146,39 @@ RefPtr<Image> StyleFilterImage::image(const RenderElement* renderer, const Float
     return BitmapImage::create(WTFMove(filteredImage));
 }
 
+bool StyleFilterImage::canRender(const RenderElement* renderer, float multiplier) const
+{
+    return m_image && m_image->canRender(renderer, multiplier);
+}
+
 bool StyleFilterImage::knownToBeOpaque(const RenderElement&) const
 {
     return false;
+}
+
+void StyleFilterImage::setContainerContextForRenderer(const RenderElement& renderer, const FloatSize& containerSize, float containerZoom)
+{
+    if (m_image)
+        m_image->setContainerContextForRenderer(renderer, containerSize, containerZoom);
+
+    StyleGeneratedImage::setContainerContextForRenderer(renderer, containerSize, containerZoom);
+}
+
+bool StyleFilterImage::isClientWaitingForAsyncDecoding(RenderElement& renderer) const
+{
+    return m_image && m_image->isClientWaitingForAsyncDecoding(renderer);
+}
+
+void StyleFilterImage::addClientWaitingForAsyncDecoding(RenderElement& renderer)
+{
+    if (m_image)
+        m_image->addClientWaitingForAsyncDecoding(renderer);
+}
+
+void StyleFilterImage::removeAllClientsWaitingForAsyncDecoding()
+{
+    if (m_image)
+        m_image->removeAllClientsWaitingForAsyncDecoding();
 }
 
 FloatSize StyleFilterImage::fixedSize(const RenderElement& renderer) const
@@ -158,15 +189,18 @@ FloatSize StyleFilterImage::fixedSize(const RenderElement& renderer) const
     return m_image->imageSize(&renderer, 1);
 }
 
-void StyleFilterImage::imageChanged(CachedImage*, const IntRect*)
+void StyleFilterImage::styleImageChanged(StyleImage&, const IntRect*)
 {
     if (!m_inputImageIsReady)
         return;
 
-    for (auto entry : clients()) {
-        auto& client = entry.key;
-        client.imageChanged(static_cast<WrappedImagePtr>(this));
-    }
+    notifyClientsOfChange();
+}
+
+void StyleFilterImage::styleFilterOperationsChanged(FilterOperations&)
+{
+    // FIXME: Finish or remove.
+    notifyClientsOfChange();
 }
 
 } // namespace WebCore

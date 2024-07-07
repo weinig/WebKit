@@ -136,31 +136,43 @@ void StyleGeneratedImage::computeIntrinsicDimensions(const RenderElement* render
 
 // MARK: Client support.
 
-void StyleGeneratedImage::addClient(RenderElement& renderer)
+void StyleGeneratedImage::addStyleImageClient(StyleImageClient& client)
 {
-    if (m_clients.isEmptyIgnoringNullReferences())
+    // if (m_clients.isEmptyIgnoringNullReferences())
+    //     ref();
+    if (m_clients.isEmpty())
         ref();
 
-    m_clients.add(renderer);
+    m_clients.add(&client);
 
-    this->didAddClient(renderer);
+    this->didAddClient(client);
 }
 
-void StyleGeneratedImage::removeClient(RenderElement& renderer)
+void StyleGeneratedImage::removeStyleImageClient(StyleImageClient& client)
 {
-    ASSERT(m_clients.contains(renderer));
-    if (!m_clients.remove(renderer))
+    ASSERT(m_clients.contains(&client));
+    if (!m_clients.remove(&client))
         return;
 
-    this->didRemoveClient(renderer);
+    this->didRemoveClient(client);
 
-    if (m_clients.isEmptyIgnoringNullReferences())
+    if (m_clients.isEmpty())
         deref();
+    // if (m_clients.isEmptyIgnoringNullReferences())
+    //     deref();
 }
 
-bool StyleGeneratedImage::hasClient(RenderElement& renderer) const
+bool StyleGeneratedImage::hasStyleImageClient(StyleImageClient& client) const
 {
-    return m_clients.contains(renderer);
+    return m_clients.contains(&client);
+}
+
+void StyleGeneratedImage::notifyClientsOfChange()
+{
+    for (auto entry : m_clients) {
+        auto& client = entry.key;
+        client->styleImageChanged(*this, nullptr);
+    }
 }
 
 } // namespace WebCore

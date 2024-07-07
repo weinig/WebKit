@@ -45,15 +45,17 @@ RenderImageResourceStyleImage::RenderImageResourceStyleImage(StyleImage& styleIm
 
 void RenderImageResourceStyleImage::initialize(RenderElement& renderer)
 {
-    RenderImageResource::initialize(renderer, m_styleImage->hasCachedImage() ? m_styleImage.get().cachedImage() : nullptr);
-    m_styleImage->addClient(renderer);
+    // FIXME: What value is there in RenderImageResource knowing about a cached image here? For a cross-fade/filter, would it want to know about all the cache images?
+    // RenderImageResource::initialize(renderer, m_styleImage->hasCachedImage() ? m_styleImage.get().cachedImage() : nullptr);
+    RenderImageResource::initialize(renderer, nullptr);
+    m_styleImage->addStyleImageClient(renderer);
 }
 
 void RenderImageResourceStyleImage::shutdown()
 {
     RenderImageResource::shutdown();
     if (auto renderer = this->renderer())
-        m_styleImage->removeClient(*renderer);
+        m_styleImage->removeStyleImageClient(*renderer);
 }
 
 RefPtr<Image> RenderImageResourceStyleImage::image(const IntSize& size) const

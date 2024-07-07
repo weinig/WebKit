@@ -23,8 +23,11 @@
 
 #pragma once
 
+#include "CachedImageClient.h"
 #include "CachedResourceHandle.h"
 #include "StyleImage.h"
+#include <wtf/HashCountedSet.h>
+#include <wtf/WeakHashCountedSet.h>
 
 namespace WebCore {
 
@@ -37,7 +40,7 @@ class RenderElement;
 class RenderSVGResourceContainer;
 class TreeScope;
 
-class StyleCachedImage final : public StyleImage {
+class StyleCachedImage final : public StyleImage, public CachedImageClient {
     WTF_MAKE_FAST_ALLOCATED;
 public:
     static Ref<StyleCachedImage> create(Ref<CSSImageValue>, float scaleFactor = 1);
@@ -47,38 +50,43 @@ public:
     bool operator==(const StyleImage&) const final;
     bool equals(const StyleCachedImage&) const;
 
-    CachedImage* cachedImage() const final;
+    URL imageURL() const;
+    float imageScaleFactor() const final;
+    CachedImage* cachedImage() const;
 
+private:
+    StyleCachedImage(Ref<CSSImageValue>&&, float);
+
+    // StyleImage overrides
+    void addStyleImageClient(StyleImageClient&) final;
+    void removeStyleImageClient(StyleImageClient&) final;
+    bool hasStyleImageClient(StyleImageClient&) const final;
     WrappedImagePtr data() const final { return m_cachedImage.get(); }
-
     Ref<CSSValue> computedStyleValue(const RenderStyle&) const final;
-    
-    bool canRender(const RenderElement*, float multiplier) const final;
     bool isPending() const final;
     void load(CachedResourceLoader&, const ResourceLoaderOptions&) final;
     bool isLoaded(const RenderElement*) const final;
     bool errorOccurred() const final;
+    bool usesDataProtocol() const final;
+    bool hasImage() const final;
+    URL reresolvedURL(const Document&) const final;
     FloatSize imageSize(const RenderElement*, float multiplier) const final;
+    bool usesImageContainerSize() const final;
+    void computeIntrinsicDimensions(const RenderElement*, Length& intrinsicWidth, Length& intrinsicHeight, FloatSize& intrinsicRatio) final;
     bool imageHasRelativeWidth() const final;
     bool imageHasRelativeHeight() const final;
-    void computeIntrinsicDimensions(const RenderElement*, Length& intrinsicWidth, Length& intrinsicHeight, FloatSize& intrinsicRatio) final;
-    bool usesImageContainerSize() const final;
-    void setContainerContextForRenderer(const RenderElement&, const FloatSize&, float) final;
-    void addClient(RenderElement&) final;
-    void removeClient(RenderElement&) final;
-    bool hasClient(RenderElement&) const final;
-    bool hasImage() const final;
     RefPtr<Image> image(const RenderElement*, const FloatSize&, bool isForFirstLine) const final;
-    float imageScaleFactor() const final;
+    RefPtr<Image> image() const final;
+    bool canRender(const RenderElement*, float multiplier) const final;
+    void setContainerContextForRenderer(const RenderElement&, const FloatSize&, float) final;
     bool knownToBeOpaque(const RenderElement&) const final;
-    bool usesDataProtocol() const final;
 
-    URL reresolvedURL(const Document&) const;
+    bool isClientWaitingForAsyncDecoding(RenderElement&) const final;
+    void addClientWaitingForAsyncDecoding(RenderElement&) final;
+    void removeAllClientsWaitingForAsyncDecoding() final;
 
-    URL imageURL() const;
-
-private:
-    StyleCachedImage(Ref<CSSImageValue>&&, float);
+    // CachedImageClient overrides
+    void imageChanged(CachedImage*, const IntRect* = nullptr) final;
 
     LegacyRenderSVGResourceContainer* uncheckedRenderSVGResource(TreeScope&, const AtomString& fragment) const;
     LegacyRenderSVGResourceContainer* uncheckedRenderSVGResource(const RenderElement*) const;
@@ -92,6 +100,8 @@ private:
     mutable CachedResourceHandle<CachedImage> m_cachedImage;
     mutable std::optional<bool> m_isRenderSVGResource;
     FloatSize m_containerSize;
+
+    HashCountedSet<StyleImageClient*> m_clients; // FIXME: This should be a SingleThreadWeakHashCountedSet<StyleImageClient> m_clients;
 };
 
 } // namespace WebCore

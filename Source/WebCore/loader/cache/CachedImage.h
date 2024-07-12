@@ -67,19 +67,18 @@ public:
 
     WEBCORE_EXPORT Image* image() const; // Returns the nullImage() if the image is not available yet.
     WEBCORE_EXPORT RefPtr<Image> protectedImage() const;
-    WEBCORE_EXPORT Image* imageForRenderer(const RenderObject*); // Returns the nullImage() if the image is not available yet.
     bool hasImage() const { return m_image.get(); }
-    bool currentFrameKnownToBeOpaque(const RenderElement*);
+    Image* rawImage() const { return m_image.get(); }
+
+    SVGImageCache* svgImageCache() const { return m_svgImageCache.get(); }
 
     std::pair<WeakPtr<Image>, float> brokenImage(float deviceScaleFactor) const; // Returns an image and the image's resolution scale factor.
     bool willPaintBrokenImage() const;
 
-    bool canRender(const RenderElement* renderer, float multiplier) { return !errorOccurred() && !imageSizeForRenderer(renderer, multiplier).isEmpty(); }
 
     void setAllowsOrientationOverride(bool b) { m_allowsOrientationOverride = b; }
     bool allowsOrientationOverride() const { return m_allowsOrientationOverride; }
 
-    void setContainerContextForClient(const CachedImageClient&, const LayoutSize&, float, const URL&);
     bool usesImageContainerSize() const { return m_image && m_image->usesContainerSize(); }
     bool imageHasRelativeWidth() const { return m_image && m_image->hasRelativeWidth(); }
     bool imageHasRelativeHeight() const { return m_image && m_image->hasRelativeHeight(); }
@@ -87,14 +86,6 @@ public:
     void updateBuffer(const FragmentedSharedBuffer&) override;
     void finishLoading(const FragmentedSharedBuffer*, const NetworkLoadMetrics&) override;
 
-    enum SizeType {
-        UsedSize,
-        IntrinsicSize
-    };
-    WEBCORE_EXPORT FloatSize imageSizeForRenderer(const RenderElement* renderer, SizeType = UsedSize) const;
-    // This method takes a zoom multiplier that can be used to increase the natural size of the image by the zoom.
-    LayoutSize imageSizeForRenderer(const RenderElement*, float multiplier, SizeType = UsedSize) const; // returns the size of the complete image.
-    LayoutSize unclampedImageSizeForRenderer(const RenderElement* renderer, float multiplier, SizeType = UsedSize) const;
     void computeIntrinsicDimensions(Length& intrinsicWidth, Length& intrinsicHeight, FloatSize& intrinsicRatio);
 
     bool isManuallyCached() const { return m_isManuallyCached; }
@@ -106,8 +97,9 @@ public:
     bool isClientWaitingForAsyncDecoding(const CachedImageClient&) const;
     void addClientWaitingForAsyncDecoding(CachedImageClient&);
     void removeAllClientsWaitingForAsyncDecoding();
+    void setForceAllClientsWaitingForAsyncDecoding(bool enabled) { m_forceAllClientsWaitingForAsyncDecoding = enabled; }
 
-    void setForceUpdateImageDataEnabledForTesting(bool enabled) { m_forceUpdateImageDataEnabledForTesting =  enabled; }
+    void setForceUpdateImageDataEnabledForTesting(bool enabled) { m_forceUpdateImageDataEnabledForTesting = enabled; }
 
     bool stillNeedsLoad() const override { return !errorOccurred() && status() == Unknown && !isLoading(); }
     bool canSkipRevalidation(const CachedResourceLoader&, const CachedResourceRequest&) const;
@@ -132,7 +124,6 @@ private:
     void notifyObservers(const IntRect* changeRect = nullptr);
     void checkShouldPaintBrokenImage();
 
-    void switchClientsToRevalidatedResource() final;
     bool mayTryReplaceEncodedData() const final { return true; }
 
     void didAddClient(CachedResourceClient&) final;
@@ -194,15 +185,6 @@ private:
 
     void didReplaceSharedBufferContents() override;
 
-    struct ContainerContext {
-        LayoutSize containerSize;
-        float containerZoom;
-        URL imageURL;
-    };
-
-    using ContainerContextRequests = HashMap<SingleThreadWeakRef<const CachedImageClient>, ContainerContext>;
-    ContainerContextRequests m_pendingContainerContextRequests;
-
     SingleThreadWeakHashSet<CachedImageClient> m_clientsWaitingForAsyncDecoding;
 
     RefPtr<CachedImageObserver> m_imageObserver;
@@ -220,6 +202,7 @@ private:
     bool m_forceUpdateImageDataEnabledForTesting : 1;
     bool m_layerBasedSVGEngineEnabled : 1 { false };
     bool m_allowsOrientationOverride : 1;
+    bool m_forceAllClientsWaitingForAsyncDecoding : 1 { false };
 };
 
 } // namespace WebCore

@@ -87,42 +87,8 @@
 
 - (void)addTextAnimationForAnimationID:(NSUUID *)uuid withData:(const WebKit::TextAnimationData&)data
 {
-    RetainPtr<id<_WTTextEffect>> effect;
-    RetainPtr chunk = adoptNS([PAL::alloc_WTTextChunkInstance() initChunkWithIdentifier:uuid.UUIDString]);
-    switch (data.style) {
-    case WebKit::TextAnimationType::Initial:
-        effect = adoptNS([PAL::alloc_WTSweepTextEffectInstance() initWithChunk:chunk.get() effectView:_effectView.get()]);
-        break;
-    case WebKit::TextAnimationType::Source:
-        effect = adoptNS([PAL::alloc_WTReplaceSourceTextEffectInstance() initWithChunk:chunk.get() effectView:_effectView.get()]);
-        effect.get().preCompletion = makeBlockPtr([weakWebView = WeakPtr<WebKit::WebViewImpl>(_webView), uuid = RetainPtr(uuid)] {
-            auto strongWebView = weakWebView.get();
-            auto animationID = WTF::UUID::fromNSUUID(uuid.get());
-            if (strongWebView && animationID)
-                strongWebView->page().callCompletionHandlerForAnimationID(*animationID);
-        }).get();
-        break;
-    case WebKit::TextAnimationType::Final:
-        effect = adoptNS([PAL::alloc_WTReplaceDestinationTextEffectInstance() initWithChunk:chunk.get() effectView:_effectView.get()]);
-        static_cast<_WTReplaceDestinationTextEffect *>(effect.get()).preCompletion = makeBlockPtr([weakWebView = WeakPtr<WebKit::WebViewImpl>(_webView), remainingID = data.unanimatedRangeUUID] {
-            auto strongWebView = weakWebView.get();
-            if (strongWebView)
-                strongWebView->page().updateUnderlyingTextVisibilityForTextAnimationID(remainingID, false);
-        }).get();
-        effect.get().completion = makeBlockPtr([weakWebView = WeakPtr<WebKit::WebViewImpl>(_webView), remainingID = data.unanimatedRangeUUID, uuid = RetainPtr(uuid)] {
-            auto strongWebView = weakWebView.get();
-            if (strongWebView)
-                strongWebView->page().updateUnderlyingTextVisibilityForTextAnimationID(remainingID, true);
-            auto animationID = WTF::UUID::fromNSUUID(uuid.get());
-            if (animationID)
-                strongWebView->page().callCompletionHandlerForAnimationID(*animationID);
-        }).get();
-        break;
-    }
-
-    RetainPtr effectID = [_effectView addEffect:effect.get()];
-    RetainPtr effectData = adoptNS([[WKTextAnimationTypeEffectData alloc] initWithEffectID:effectID.get() type:data.style]);
-    [_chunkToEffect setObject:effectData.get() forKey:uuid];
+    UNUSED_PARAM(uuid);
+    UNUSED_PARAM(data);
 }
 
 - (void)removeTextAnimationForAnimationID:(NSUUID *)uuid

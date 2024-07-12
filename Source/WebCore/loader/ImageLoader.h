@@ -131,7 +131,7 @@ private:
     
     void timerFired();
 
-    VisibleInViewportState imageVisibleInViewport(const Document&) const override;
+    VisibleInViewportState imageVisibleInViewport(CachedImage&, const Document&) const override;
 
     WeakRef<Element, WeakPtrImplWithEventTargetData> m_element;
     CachedResourceHandle<CachedImage> m_image;

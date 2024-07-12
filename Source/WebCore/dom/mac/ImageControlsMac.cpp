@@ -128,7 +128,7 @@ static Image* imageFromImageElementNode(Node& node)
     CheckedPtr renderer = dynamicDowncast<RenderImage>(node.renderer());
     if (!renderer)
         return nullptr;
-    CachedResourceHandle image = renderer->cachedImage();
+    auto image = renderer->styleImage();
     if (!image || image->errorOccurred())
         return nullptr;
     return image->imageForRenderer(renderer.get());

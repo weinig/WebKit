@@ -185,9 +185,9 @@ public:
 #if ENABLE(ACCESSIBILITY_ANIMATION_CONTROL)
     void updatePlayStateForAllAnimations(const IntRect& visibleRect);
 #endif
-    void addRendererWithPausedImageAnimations(RenderElement&, CachedImage&);
+    void addRendererWithPausedImageAnimations(RenderElement&, StyleImage&);
     void removeRendererWithPausedImageAnimations(RenderElement&);
-    void removeRendererWithPausedImageAnimations(RenderElement&, CachedImage&);
+    void removeRendererWithPausedImageAnimations(RenderElement&, StyleImage&);
 
     class RepaintRegionAccumulator {
         WTF_MAKE_NONCOPYABLE(RepaintRegionAccumulator);

@@ -225,7 +225,7 @@ SOFT_LINK_OPTIONAL(libAccessibility, _AXSReduceMotionAutoplayAnimatedImagesEnabl
     [NSException raise:NSInternalInconsistencyException format:@"The WKWebView is suspended"]
 
 #if USE(APPLE_INTERNAL_SDK)
-#import <WebKitAdditions/WKWebViewAdditionsBefore.mm>
+//#import <WebKitAdditions/WKWebViewAdditionsBefore.mm>
 #endif
 
 RetainPtr<NSError> nsErrorFromExceptionDetails(const WebCore::ExceptionDetails& details)
@@ -2067,223 +2067,223 @@ static _WKSelectionAttributes selectionAttributes(const WebKit::EditorState& edi
 
 - (BOOL)isWritingToolsActive
 {
-#if ENABLE(WRITING_TOOLS)
-    return _page->isWritingToolsActive();
-#else
+// #if ENABLE(WRITING_TOOLS)
+//     return _page->isWritingToolsActive();
+// #else
     return NO;
-#endif
+// #endif
 }
-
-#pragma mark - WTWritingToolsDelegate conformance
-
-- (PlatformWritingToolsAllowedInputOptions)writingToolsAllowedInputOptions {
-    auto& editorState = _page->editorState();
-    if (editorState.isContentEditable && !editorState.isContentRichlyEditable)
-        return PlatformWritingToolsAllowedInputOptionsPlainText;
-
-    PlatformWritingToolsAllowedInputOptions listOption = (PlatformWritingToolsAllowedInputOptions)(1 << 2);
-
-    return PlatformWritingToolsAllowedInputOptionsPlainText | PlatformWritingToolsAllowedInputOptionsRichText | listOption | PlatformWritingToolsAllowedInputOptionsTable;
-}
-
-- (PlatformWritingToolsBehavior)writingToolsBehavior
-{
-    return WebKit::convertToPlatformWritingToolsBehavior(_page->writingToolsBehavior());
-}
-
-- (void)willBeginWritingToolsSession:(WTSession *)session requestContexts:(void (^)(NSArray<WTContext *> *))completion
-{
-    auto webSession = WebKit::convertToWebSession(session);
-
-    if (session) {
-        [_writingToolsSessions setObject:session forKey:session.uuid];
-        _page->setWritingToolsActive(true);
-    }
-
-    _page->willBeginWritingToolsSession(webSession, [completion = makeBlockPtr(completion)](const auto& contextData) {
-        auto contexts = [NSMutableArray arrayWithCapacity:contextData.size()];
-        for (auto& context : contextData) {
-            auto platformContext = WebKit::convertToPlatformContext(context);
-            [contexts addObject:platformContext.get()];
-        }
-        completion(contexts);
-    });
-}
-
-- (void)didBeginWritingToolsSession:(WTSession *)session contexts:(NSArray<WTContext *> *)contexts
-{
-    auto webSession = WebKit::convertToWebSession(session);
-    if (!webSession) {
-        ASSERT_NOT_REACHED();
-        return;
-    }
-
-    Vector<WebCore::WritingTools::Context> contextData;
-    for (WTContext *context in contexts) {
-        auto webContext = WebKit::convertToWebContext(context);
-        if (!webContext) {
-            ASSERT_NOT_REACHED();
-            return;
-        }
-
-        contextData.append(*webContext);
-    }
-
-    _page->didBeginWritingToolsSession(*webSession, contextData);
-}
-
-- (void)proofreadingSession:(WTSession *)session didReceiveSuggestions:(NSArray<WTTextSuggestion *> *)suggestions processedRange:(NSRange)range inContext:(WTContext *)context finished:(BOOL)finished
-{
-    auto webSession = WebKit::convertToWebSession(session);
-    if (!webSession) {
-        ASSERT_NOT_REACHED();
-        return;
-    }
-
-    auto webContext = WebKit::convertToWebContext(context);
-    if (!webContext) {
-        ASSERT_NOT_REACHED();
-        return;
-    }
-
-    Vector<WebCore::WritingTools::TextSuggestion> replacementData;
-    for (WTTextSuggestion *suggestion in suggestions) {
-        auto replacementDataItem = WebKit::convertToWebTextSuggestion(suggestion);
-        if (!replacementDataItem) {
-            ASSERT_NOT_REACHED();
-            continue;
-        }
-
-        replacementData.append(*replacementDataItem);
-
-        [_writingToolsTextSuggestions setObject:suggestion forKey:suggestion.uuid];
-    }
-
-    _page->proofreadingSessionDidReceiveSuggestions(*webSession, replacementData, *webContext, finished);
-}
-
-- (void)proofreadingSession:(WTSession *)session didUpdateState:(WTTextSuggestionState)state forSuggestionWithUUID:(NSUUID *)suggestionUUID inContext:(WTContext *)context
-{
-    auto webSession = WebKit::convertToWebSession(session);
-    if (!webSession) {
-        ASSERT_NOT_REACHED();
-        return;
-    }
-
-    auto webContext = WebKit::convertToWebContext(context);
-    if (!webContext) {
-        ASSERT_NOT_REACHED();
-        return;
-    }
-
-    auto webTextSuggestionState = WebKit::convertToWebTextSuggestionState(state);
-
-    WTTextSuggestion *suggestion = [_writingToolsTextSuggestions objectForKey:suggestionUUID];
-    if (!suggestion) {
-        ASSERT_NOT_REACHED();
-        return;
-    }
-
-    auto webTextSuggestion = WebKit::convertToWebTextSuggestion(suggestion);
-    if (!webTextSuggestion) {
-        ASSERT_NOT_REACHED();
-        return;
-    }
-
-    _page->proofreadingSessionDidUpdateStateForSuggestion(*webSession, webTextSuggestionState, *webTextSuggestion, *webContext);
-}
-
-- (void)didEndWritingToolsSession:(WTSession *)session accepted:(BOOL)accepted
-{
-    auto webSession = WebKit::convertToWebSession(session);
-    if (!webSession) {
-        ASSERT_NOT_REACHED();
-        return;
-    }
-
-    [_writingToolsSessions removeObjectForKey:session.uuid];
-    [_writingToolsTextSuggestions removeAllObjects];
-
-    _page->setWritingToolsActive(false);
-
-    _page->didEndWritingToolsSession(*webSession, accepted);
-}
-
-- (void)compositionSession:(WTSession *)session didReceiveText:(NSAttributedString *)attributedText replacementRange:(NSRange)range inContext:(WTContext *)context finished:(BOOL)finished
-{
-    auto webSession = WebKit::convertToWebSession(session);
-    if (!webSession) {
-        ASSERT_NOT_REACHED();
-        return;
-    }
-
-    auto webContext = WebKit::convertToWebContext(context);
-    if (!webContext) {
-        ASSERT_NOT_REACHED();
-        return;
-    }
-
-    _page->compositionSessionDidReceiveTextWithReplacementRange(*webSession, WebCore::AttributedString::fromNSAttributedString(attributedText), { range }, *webContext, finished);
-}
-
-- (void)writingToolsSession:(WTSession *)session didReceiveAction:(WTAction)action
-{
-    auto webSession = WebKit::convertToWebSession(session);
-    if (!webSession) {
-        ASSERT_NOT_REACHED();
-        return;
-    }
-
-    _page->writingToolsSessionDidReceiveAction(*webSession, WebKit::convertToWebAction(action));
-}
+//
+// #pragma mark - WTWritingToolsDelegate conformance
+//
+// - (PlatformWritingToolsAllowedInputOptions)writingToolsAllowedInputOptions {
+//     auto& editorState = _page->editorState();
+//     if (editorState.isContentEditable && !editorState.isContentRichlyEditable)
+//         return PlatformWritingToolsAllowedInputOptionsPlainText;
+//
+//     PlatformWritingToolsAllowedInputOptions listOption = (PlatformWritingToolsAllowedInputOptions)(1 << 2);
+//
+//     return PlatformWritingToolsAllowedInputOptionsPlainText | PlatformWritingToolsAllowedInputOptionsRichText | listOption | PlatformWritingToolsAllowedInputOptionsTable;
+// }
+//
+// - (BOOL)wantsWritingToolsInlineEditing
+// {
+//     return [self _isEditable] || [_configuration writingToolsBehavior] == PlatformWritingToolsBehaviorComplete;
+// }
+//
+// - (void)willBeginWritingToolsSession:(WTSession *)session requestContexts:(void (^)(NSArray<WTContext *> *))completion
+// {
+//     auto webSession = WebKit::convertToWebSession(session);
+//
+//     if (session) {
+//         [_writingToolsSessions setObject:session forKey:session.uuid];
+//         _page->setWritingToolsActive(true);
+//     }
+//
+//     _page->willBeginWritingToolsSession(webSession, [completion = makeBlockPtr(completion)](const auto& contextData) {
+//         auto contexts = [NSMutableArray arrayWithCapacity:contextData.size()];
+//         for (auto& context : contextData) {
+//             auto platformContext = WebKit::convertToPlatformContext(context);
+//             [contexts addObject:platformContext.get()];
+//         }
+//         completion(contexts);
+//     });
+// }
+//
+// - (void)didBeginWritingToolsSession:(WTSession *)session contexts:(NSArray<WTContext *> *)contexts
+// {
+//     auto webSession = WebKit::convertToWebSession(session);
+//     if (!webSession) {
+//         ASSERT_NOT_REACHED();
+//         return;
+//     }
+//
+//     Vector<WebCore::WritingTools::Context> contextData;
+//     for (WTContext *context in contexts) {
+//         auto webContext = WebKit::convertToWebContext(context);
+//         if (!webContext) {
+//             ASSERT_NOT_REACHED();
+//             return;
+//         }
+//
+//         contextData.append(*webContext);
+//     }
+//
+//     _page->didBeginWritingToolsSession(*webSession, contextData);
+// }
+//
+// - (void)proofreadingSession:(WTSession *)session didReceiveSuggestions:(NSArray<WTTextSuggestion *> *)suggestions processedRange:(NSRange)range inContext:(WTContext *)context finished:(BOOL)finished
+// {
+//     auto webSession = WebKit::convertToWebSession(session);
+//     if (!webSession) {
+//         ASSERT_NOT_REACHED();
+//         return;
+//     }
+//
+//     auto webContext = WebKit::convertToWebContext(context);
+//     if (!webContext) {
+//         ASSERT_NOT_REACHED();
+//         return;
+//     }
+//
+//     Vector<WebCore::WritingTools::TextSuggestion> replacementData;
+//     for (WTTextSuggestion *suggestion in suggestions) {
+//         auto replacementDataItem = WebKit::convertToWebTextSuggestion(suggestion);
+//         if (!replacementDataItem) {
+//             ASSERT_NOT_REACHED();
+//             continue;
+//         }
+//
+//         replacementData.append(*replacementDataItem);
+//
+//         [_writingToolsTextSuggestions setObject:suggestion forKey:suggestion.uuid];
+//     }
+//
+//     _page->proofreadingSessionDidReceiveSuggestions(*webSession, replacementData, *webContext, finished);
+// }
+//
+// - (void)proofreadingSession:(WTSession *)session didUpdateState:(WTTextSuggestionState)state forSuggestionWithUUID:(NSUUID *)suggestionUUID inContext:(WTContext *)context
+// {
+//     auto webSession = WebKit::convertToWebSession(session);
+//     if (!webSession) {
+//         ASSERT_NOT_REACHED();
+//         return;
+//     }
+//
+//     auto webContext = WebKit::convertToWebContext(context);
+//     if (!webContext) {
+//         ASSERT_NOT_REACHED();
+//         return;
+//     }
+//
+//     auto webTextSuggestionState = WebKit::convertToWebTextSuggestionState(state);
+//
+//     WTTextSuggestion *suggestion = [_writingToolsTextSuggestions objectForKey:suggestionUUID];
+//     if (!suggestion) {
+//         ASSERT_NOT_REACHED();
+//         return;
+//     }
+//
+//     auto webTextSuggestion = WebKit::convertToWebTextSuggestion(suggestion);
+//     if (!webTextSuggestion) {
+//         ASSERT_NOT_REACHED();
+//         return;
+//     }
+//
+//     _page->proofreadingSessionDidUpdateStateForSuggestion(*webSession, webTextSuggestionState, *webTextSuggestion, *webContext);
+// }
+//
+// - (void)didEndWritingToolsSession:(WTSession *)session accepted:(BOOL)accepted
+// {
+//     auto webSession = WebKit::convertToWebSession(session);
+//     if (!webSession) {
+//         ASSERT_NOT_REACHED();
+//         return;
+//     }
+//
+//     [_writingToolsSessions removeObjectForKey:session.uuid];
+//     [_writingToolsTextSuggestions removeAllObjects];
+//
+//     _page->setWritingToolsActive(false);
+//
+//     _page->didEndWritingToolsSession(*webSession, accepted);
+// }
+//
+// - (void)compositionSession:(WTSession *)session didReceiveText:(NSAttributedString *)attributedText replacementRange:(NSRange)range inContext:(WTContext *)context finished:(BOOL)finished
+// {
+//     auto webSession = WebKit::convertToWebSession(session);
+//     if (!webSession) {
+//         ASSERT_NOT_REACHED();
+//         return;
+//     }
+//
+//     auto webContext = WebKit::convertToWebContext(context);
+//     if (!webContext) {
+//         ASSERT_NOT_REACHED();
+//         return;
+//     }
+//
+//     _page->compositionSessionDidReceiveTextWithReplacementRange(*webSession, WebCore::AttributedString::fromNSAttributedString(attributedText), { range }, *webContext, finished);
+// }
+//
+// - (void)writingToolsSession:(WTSession *)session didReceiveAction:(WTAction)action
+// {
+//     auto webSession = WebKit::convertToWebSession(session);
+//     if (!webSession) {
+//         ASSERT_NOT_REACHED();
+//         return;
+//     }
+//
+//     _page->writingToolsSessionDidReceiveAction(*webSession, WebKit::convertToWebAction(action));
+// }
 
 
 #pragma mark - WTTextViewDelegate invoking methods
 
-- (void)_proofreadingSessionWithUUID:(NSUUID *)sessionUUID showDetailsForSuggestionWithUUID:(NSUUID *)replacementUUID relativeToRect:(CGRect)rect
-{
-    WTSession *session = [_writingToolsSessions objectForKey:sessionUUID];
-    if (!session)
-        return;
-
-    auto textViewDelegate = (NSObject<WTTextViewDelegate> *)session.textViewDelegate;
-
-    if (![textViewDelegate respondsToSelector:@selector(proofreadingSessionWithUUID:showDetailsForSuggestionWithUUID:relativeToRect:inView:)])
-        return;
-
-#if PLATFORM(MAC)
-    RetainPtr view = self;
-#else
-    RetainPtr view = _contentView;
-#endif
-
-    [textViewDelegate proofreadingSessionWithUUID:session.uuid showDetailsForSuggestionWithUUID:replacementUUID relativeToRect:rect inView:view.get()];
-}
-
-- (void)_proofreadingSessionWithUUID:(NSUUID *)sessionUUID updateState:(WebCore::WritingTools::TextSuggestion::State)state forSuggestionWithUUID:(NSUUID *)replacementUUID
-{
-    WTSession *session = [_writingToolsSessions objectForKey:sessionUUID];
-    if (!session)
-        return;
-
-    auto textViewDelegate = (NSObject<WTTextViewDelegate> *)session.textViewDelegate;
-
-    if (![textViewDelegate respondsToSelector:@selector(proofreadingSessionWithUUID:updateState:forSuggestionWithUUID:)])
-        return;
-
-    [textViewDelegate proofreadingSessionWithUUID:session.uuid updateState:WebKit::convertToPlatformTextSuggestionState(state) forSuggestionWithUUID:replacementUUID];
-}
+//- (void)_proofreadingSessionWithUUID:(NSUUID *)sessionUUID showDetailsForSuggestionWithUUID:(NSUUID *)replacementUUID relativeToRect:(CGRect)rect
+//{
+//    WTSession *session = [_writingToolsSessions objectForKey:sessionUUID];
+//    if (!session)
+//        return;
+//
+//    auto textViewDelegate = (NSObject<WTTextViewDelegate> *)session.textViewDelegate;
+//
+//    if (![textViewDelegate respondsToSelector:@selector(proofreadingSessionWithUUID:showDetailsForSuggestionWithUUID:relativeToRect:inView:)])
+//        return;
+//
+//#if PLATFORM(MAC)
+//    RetainPtr view = self;
+//#else
+//    RetainPtr view = _contentView;
+//#endif
+//
+//    [textViewDelegate proofreadingSessionWithUUID:session.uuid showDetailsForSuggestionWithUUID:replacementUUID relativeToRect:rect inView:view.get()];
+//}
+//
+//- (void)_proofreadingSessionWithUUID:(NSUUID *)sessionUUID updateState:(WebCore::WritingTools::TextSuggestion::State)state forSuggestionWithUUID:(NSUUID *)replacementUUID
+//{
+//    WTSession *session = [_writingToolsSessions objectForKey:sessionUUID];
+//    if (!session)
+//        return;
+//
+//    auto textViewDelegate = (NSObject<WTTextViewDelegate> *)session.textViewDelegate;
+//
+//    if (![textViewDelegate respondsToSelector:@selector(proofreadingSessionWithUUID:updateState:forSuggestionWithUUID:)])
+//        return;
+//
+//    [textViewDelegate proofreadingSessionWithUUID:session.uuid updateState:WebKit::convertToPlatformTextSuggestionState(state) forSuggestionWithUUID:replacementUUID];
+//}
 
 #endif
 
 #if USE(APPLE_INTERNAL_SDK)
-#import <WebKitAdditions/WKWebViewAdditionsAfter.mm>
+//#import <WebKitAdditions/WKWebViewAdditionsAfter.mm>
 #endif
 
 #if ENABLE(GAMEPAD) && !__has_include(<WebKitAdditions/WKWebViewAdditionsAfter+Gamepad.mm>)
-- (void)_setGamepadsRecentlyAccessed:(BOOL)gamepadsRecentlyAccessed
-{
-}
+//- (void)_setGamepadsRecentlyAccessed:(BOOL)gamepadsRecentlyAccessed
+//{
+//}
 #endif
 
 @end

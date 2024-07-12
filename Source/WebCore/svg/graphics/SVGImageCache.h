@@ -19,42 +19,34 @@
 
 #pragma once
 
-#include "FloatSize.h"
 #include "Image.h"
-#include <wtf/HashMap.h>
-#include <wtf/RefPtr.h>
+#include <wtf/WeakHashMap.h>
+#include <wtf/Ref.h>
 
 namespace WebCore {
 
-class CachedImage;
-class CachedImageClient;
-class ImageBuffer;
 class LayoutSize;
 class SVGImage;
 class SVGImageForContainer;
 class RenderObject;
+class StyleImageClient;
 
 class SVGImageCache {
     WTF_MAKE_FAST_ALLOCATED;
 public:
-    explicit SVGImageCache(SVGImage*);
+    explicit SVGImageCache(SVGImage&);
     ~SVGImageCache();
 
-    void removeClientFromCache(const CachedImageClient*);
-
-    void setContainerContextForClient(const CachedImageClient&, const LayoutSize&, float, const URL&);
-    FloatSize imageSizeForRenderer(const RenderObject*) const;
-
+    void setContainerContextForRenderer(const RenderObject&, const LayoutSize&, float, const URL&);
+    LayoutSize imageSizeForRenderer(const RenderObject*) const;
     Image* imageForRenderer(const RenderObject*) const;
 
 private:
     Image* findImageForRenderer(const RenderObject*) const;
     RefPtr<SVGImage> protectedSVGImage() const;
 
-    typedef HashMap<const CachedImageClient*, RefPtr<SVGImageForContainer>> ImageForContainerMap;
-
     WeakPtr<SVGImage> m_svgImage;
-    ImageForContainerMap m_imageForContainerMap;
+    SingleThreadWeakHashMap<const RenderObject, Ref<SVGImageForContainer>> m_imageForContainerMap;
 };
 
 } // namespace WebCore

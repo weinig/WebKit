@@ -274,10 +274,15 @@ static bool cachedImageIsPhoto(const CachedImage& cachedImage)
 static RefPtr<Image> findIconImage(const RenderObject& renderer)
 {
     if (const auto& renderImage = dynamicDowncast<RenderImage>(renderer)) {
-        if (!renderImage->cachedImage() || renderImage->cachedImage()->errorOccurred())
+        auto styleImage = renderImage->styleImage();
+        if (!styleImage)
             return nullptr;
 
-        auto* image = renderImage->cachedImage()->imageForRenderer(renderImage);
+        auto cachedImage = styleImage->cachedImage();
+        if (!cachedImage || cachedImage->errorOccurred())
+            return nullptr;
+
+        auto* image = styleImage->imageForRenderer(renderImage);
         if (!image)
             return nullptr;
 

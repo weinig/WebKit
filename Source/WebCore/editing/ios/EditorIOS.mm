@@ -160,11 +160,15 @@ static void getImage(Element& imageElement, RefPtr<Image>& image, CachedImage*& 
     if (!renderImage)
         return;
 
-    CachedResourceHandle tentativeCachedImage = renderImage->cachedImage();
+    auto styleImage = renderImage->styleImage();
+    if (!styleImage)
+        return;
+
+    CachedResourceHandle tentativeCachedImage = styleImage->cachedImage();
     if (!tentativeCachedImage || tentativeCachedImage->errorOccurred())
         return;
 
-    image = tentativeCachedImage->imageForRenderer(renderImage.get());
+    image = styleImage->imageForRenderer(renderImage.get());
     if (!image)
         return;
 

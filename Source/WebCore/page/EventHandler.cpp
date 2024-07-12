@@ -1593,7 +1593,7 @@ std::optional<Cursor> EventHandler::selectCursor(const HitTestResult& result, bo
             float scale = styleImage->imageScaleFactor();
             // Get hotspot and convert from logical pixels to physical pixels.
             IntPoint hotSpot = (*cursors)[i].hotSpot();
-            FloatSize size = cachedImage->imageForRenderer(renderer)->size();
+            FloatSize size = styleImage->imageForRenderer(renderer)->size();
             if (cachedImage->errorOccurred())
                 continue;
             // Limit the size of cursors (in UI pixels) so that they cannot be
@@ -1602,7 +1602,7 @@ std::optional<Cursor> EventHandler::selectCursor(const HitTestResult& result, bo
             if (size.width() > maximumCursorSize || size.height() > maximumCursorSize)
                 continue;
 
-            Image* image = cachedImage->imageForRenderer(renderer);
+            Image* image = styleImage->imageForRenderer(renderer);
 #if ENABLE(MOUSE_CURSOR_SCALE)
             // Ensure no overflow possible in calculations above.
             if (scale < minimumCursorScale)

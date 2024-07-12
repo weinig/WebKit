@@ -28,28 +28,18 @@
 #include "LocalFrameView.h"
 #include "SVGImage.h"
 #include "SVGImageForContainer.h"
+#include "StyleImage.h"
 
 namespace WebCore {
 
-SVGImageCache::SVGImageCache(SVGImage* svgImage)
-    : m_svgImage(svgImage)
+SVGImageCache::SVGImageCache(SVGImage& svgImage)
+    : m_svgImage(&svgImage)
 {
-    ASSERT(m_svgImage);
 }
 
-SVGImageCache::~SVGImageCache()
-{
-    m_imageForContainerMap.clear();
-}
+SVGImageCache::~SVGImageCache() = default;
 
-void SVGImageCache::removeClientFromCache(const CachedImageClient* client)
-{
-    ASSERT(client);
-
-    m_imageForContainerMap.remove(client);
-}
-
-void SVGImageCache::setContainerContextForClient(const CachedImageClient& client, const LayoutSize& containerSize, float containerZoom, const URL& imageURL)
+void SVGImageCache::setContainerContextForRenderer(const RenderObject& renderer, const LayoutSize& containerSize, float containerZoom, const URL& imageURL)
 {
     ASSERT(!containerSize.isEmpty());
     ASSERT(containerZoom);
@@ -61,12 +51,12 @@ void SVGImageCache::setContainerContextForClient(const CachedImageClient& client
     FloatSize containerSizeWithoutZoom(containerSize);
     containerSizeWithoutZoom.scale(1 / containerZoom);
 
-    m_imageForContainerMap.set(&client, SVGImageForContainer::create(protectedSVGImage().get(), containerSizeWithoutZoom, containerZoom, imageURL));
+    m_imageForContainerMap.set(renderer, SVGImageForContainer::create(protectedSVGImage().get(), containerSizeWithoutZoom, containerZoom, imageURL));
 }
 
 Image* SVGImageCache::findImageForRenderer(const RenderObject* renderer) const
 {
-    return renderer ? m_imageForContainerMap.get(renderer) : nullptr;
+    return renderer ? m_imageForContainerMap.get(*renderer) : nullptr;
 }
 
 RefPtr<SVGImage> SVGImageCache::protectedSVGImage() const
@@ -74,10 +64,10 @@ RefPtr<SVGImage> SVGImageCache::protectedSVGImage() const
     return m_svgImage.get();
 }
 
-FloatSize SVGImageCache::imageSizeForRenderer(const RenderObject* renderer) const
+LayoutSize SVGImageCache::imageSizeForRenderer(const RenderObject* renderer) const
 {
     SUPPRESS_UNCOUNTED_LOCAL auto* image = findImageForRenderer(renderer);
-    return image ? image->size() : m_svgImage->size();
+    return image ? LayoutSize(image->size()) : LayoutSize(m_svgImage->size());
 }
 
 // FIXME: This doesn't take into account the animation timeline so animations will not

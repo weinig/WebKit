@@ -32,7 +32,6 @@
 #include "Image.h"
 #include "RenderElement.h"
 #include "RenderImage.h"
-#include "RenderImageResourceStyleImage.h"
 #include "RenderStyleInlines.h"
 #include <wtf/IsoMallocInlines.h>
 
@@ -41,77 +40,90 @@ namespace WebCore {
 WTF_MAKE_ISO_ALLOCATED_IMPL(RenderImageResource);
 
 RenderImageResource::RenderImageResource() = default;
+RenderImageResource::RenderImageResource(RefPtr<StyleImage> styleImage)
+    : m_styleImage { WTFMove(styleImage) }
+{
+}
 
 RenderImageResource::~RenderImageResource() = default;
 
-void RenderImageResource::initialize(RenderElement& renderer, CachedImage* styleCachedImage)
+void RenderImageResource::initialize(RenderElement& renderer)
 {
     ASSERT(!m_renderer);
-    ASSERT(!m_cachedImage);
     m_renderer = renderer;
-    m_cachedImage = styleCachedImage;
-    m_cachedImageRemoveClientIsNeeded = !styleCachedImage;
+
+    if (m_styleImage)
+        m_styleImage->addClient(renderer);
 }
 
 void RenderImageResource::shutdown()
 {
-    image()->stopAnimation();
-    setCachedImage(nullptr);
+    if (!m_styleImage)
+        return;
+
+    m_styleImage->stopAnimation();
+
+    if (m_renderer)
+        m_styleImage->removeClient(*m_renderer);
 }
 
-void RenderImageResource::setCachedImage(CachedResourceHandle<CachedImage>&& newImage)
+void RenderImageResource::setCachedImage(CachedResourceHandle<CachedImage>&& cachedImage)
 {
-    if (m_cachedImage == newImage)
+    if (!m_renderer)
         return;
 
-    if (m_cachedImage && m_renderer && m_cachedImageRemoveClientIsNeeded)
-        m_cachedImage->removeClient(*m_renderer);
-    if (!m_renderer) {
-        // removeClient may have destroyed the renderer.
-        return;
+    if (m_styleImage) {
+        if (m_styleImage->equals(cachedImage))
+            return;
+
+        m_styleImage->removeClient(*m_renderer);
     }
-    m_cachedImage = WTFMove(newImage);
-    m_cachedImageRemoveClientIsNeeded = true;
-    if (!m_cachedImage)
+
+    if (!cachedImage)
         return;
 
-    m_cachedImage->addClient(*renderer());
-    if (m_cachedImage->errorOccurred())
-        renderer()->imageChanged(m_cachedImage.get());
+    m_styleImage = StyleCachedImaged::create(WTFMove(cachedImage));
+    m_styleImage->addClient(renderer);
+
+    if (m_styleImage->errorOccurred())
+        m_renderer->imageChanged(m_styleImage.get());
 }
 
 void RenderImageResource::resetAnimation()
 {
-    if (!m_cachedImage)
+    if (!m_styleImage)
         return;
 
-    image()->resetAnimation();
+    m_styleImage->resetAnimation();
 
     if (m_renderer && !m_renderer->needsLayout())
         m_renderer->repaint();
 }
 
-RefPtr<Image> RenderImageResource::image(const IntSize&) const
+RefPtr<Image> RenderImageResource::image(const IntSize& size) const
 {
-    if (!m_cachedImage)
+    if (!m_styleImage || m_styleImage->isPending())
         return &Image::nullImage();
-    if (auto image = m_cachedImage->imageForRenderer(m_renderer.get()))
+    if (auto image = m_styleImage->image(renderer(), size))
         return image;
     return &Image::nullImage();
 }
 
-void RenderImageResource::setContainerContext(const IntSize& imageContainerSize, const URL& imageURL)
+void RenderImageResource::setContainerContext(const IntSize& imageContainerSize, const URL& url)
 {
-    if (!m_cachedImage || !m_renderer)
+    // FIXME: Forward URL parameter or remove it.
+
+    if (!m_styleImage || !m_renderer)
         return;
-    m_cachedImage->setContainerContextForClient(*m_renderer, imageContainerSize, m_renderer->style().usedZoom(), imageURL);
+
+    m_styleImage->setContainerContextForRenderer(*m_renderer, imageContainerSize, m_renderer->style().usedZoom(), url);
 }
 
 LayoutSize RenderImageResource::imageSize(float multiplier, CachedImage::SizeType type) const
 {
-    if (!m_cachedImage)
-        return LayoutSize();
-    LayoutSize size = m_cachedImage->imageSizeForRenderer(m_renderer.get(), multiplier, type);
+    if (!m_styleImage)
+        return { };
+    auto size = LayoutSize(m_styleImage->imageSizeForRenderer(m_renderer.get(), multiplier, type));
     if (auto* renderImage = dynamicDowncast<RenderImage>(m_renderer.get()))
         size.scale(renderImage->imageDevicePixelRatio());
     return size;

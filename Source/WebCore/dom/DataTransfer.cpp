@@ -65,7 +65,7 @@ public:
     void moveToDataTransfer(DataTransfer&);
 
 private:
-    void imageChanged(CachedImage*, const IntRect*) override;
+    void imageChanged(CachedImage&, const IntRect*) override;
     WeakRef<DataTransfer> m_dataTransfer;
 };
 
@@ -622,7 +622,7 @@ void DragImageLoader::stopLoading(CachedResourceHandle<WebCore::CachedImage>& im
     image->removeClient(*this);
 }
 
-void DragImageLoader::imageChanged(CachedImage*, const IntRect*)
+void DragImageLoader::imageChanged(CachedImage&, const IntRect*)
 {
     m_dataTransfer->updateDragImage();
 }

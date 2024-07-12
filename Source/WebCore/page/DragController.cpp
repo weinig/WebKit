@@ -778,8 +778,12 @@ static bool imageElementIsDraggable(const HTMLImageElement& image, const LocalFr
     if (!renderImage)
         return false;
 
-    CachedResourceHandle cachedImage = renderImage->cachedImage();
-    return cachedImage && !cachedImage->errorOccurred() && cachedImage->imageForRenderer(renderImage.get());
+    auto styleImage = renderImage->styleImage();
+    if (!styleImage)
+        return false;
+
+    CachedResourceHandle cachedImage = styleImage->cachedImage();
+    return cachedImage && !cachedImage->errorOccurred() && styleImage->imageForRenderer(renderImage.get());
 }
 
 #if ENABLE(MODEL_ELEMENT)

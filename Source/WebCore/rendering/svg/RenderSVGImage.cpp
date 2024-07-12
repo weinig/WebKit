@@ -186,7 +186,7 @@ ImageDrawResult RenderSVGImage::paintIntoRect(PaintInfo& paintInfo, const FloatR
 
     auto drawResult = paintInfo.context().drawImage(*image, rect, sourceRect, options);
     if (drawResult == ImageDrawResult::DidRequestDecoding)
-        imageResource().cachedImage()->addClientWaitingForAsyncDecoding(*this);
+        imageResource().addClientWaitingForAsyncDecoding(*this);
 
     return drawResult;
 }
@@ -195,8 +195,8 @@ void RenderSVGImage::paintForeground(PaintInfo& paintInfo, const LayoutPoint& pa
 {
     GraphicsContext& context = paintInfo.context();
     if (context.invalidatingImagesWithAsyncDecodes()) {
-        if (cachedImage() && cachedImage()->isClientWaitingForAsyncDecoding(*this))
-            cachedImage()->removeAllClientsWaitingForAsyncDecoding();
+        if (imageResource().isClientWaitingForAsyncDecoding(*this))
+            imageResource().removeAllClientsWaitingForAsyncDecoding();
         return;
     }
 
@@ -327,7 +327,7 @@ void RenderSVGImage::repaintOrMarkForLayout(const IntRect* rect)
         layer()->contentChanged(ImageChanged);
 }
 
-void RenderSVGImage::notifyFinished(CachedResource& newImage, const NetworkLoadMetrics& metrics, LoadWillContinueInAnotherProcess loadWillContinueInAnotherProcess)
+void RenderSVGImage::styleImageLoadFinished(StyleImage& styleImage, CachedResource& newImage)
 {
     if (renderTreeBeingDestroyed())
         return;
@@ -341,7 +341,7 @@ void RenderSVGImage::notifyFinished(CachedResource& newImage, const NetworkLoadM
             layer()->contentChanged(ImageChanged);
     }
 
-    RenderSVGModelObject::notifyFinished(newImage, metrics, loadWillContinueInAnotherProcess);
+    RenderSVGModelObject::styleImageLoadFinished(styleImage, newImage);
 }
 
 void RenderSVGImage::imageChanged(WrappedImagePtr newImage, const IntRect* rect)

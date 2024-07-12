@@ -30,7 +30,6 @@
 #include "CSSCanvasValue.h"
 #include "HTMLCanvasElement.h"
 #include "InspectorInstrumentation.h"
-#include "RenderElement.h"
 
 namespace WebCore {
 
@@ -72,40 +71,40 @@ void StyleCanvasImage::load(CachedResourceLoader&, const ResourceLoaderOptions&)
 {
 }
 
-RefPtr<Image> StyleCanvasImage::image(const RenderElement* renderer, const FloatSize&, bool) const
+RefPtr<Image> StyleCanvasImage::imageForRenderer(const RenderElement* client, const FloatSize&, bool) const
 {
-    if (!renderer)
+    if (!client)
         return &Image::nullImage();
 
-    ASSERT(clients().contains(const_cast<RenderElement&>(*renderer)));
-    RefPtr element = this->element(renderer->document());
+    ASSERT(clients().contains(const_cast<RenderElement&>(*client)));
+    RefPtr element = this->element(client->document());
     if (!element)
         return nullptr;
     return element->copiedImage();
 }
 
-bool StyleCanvasImage::knownToBeOpaque(const RenderElement&) const
+bool StyleCanvasImage::knownToBeOpaqueForRenderer(const RenderElement&) const
 {
     // FIXME: When CanvasRenderingContext2DSettings.alpha is implemented, this can be improved to check for it.
     return false;
 }
 
-FloatSize StyleCanvasImage::fixedSize(const RenderElement& renderer) const
+LayoutSize StyleCanvasImage::fixedSizeForRenderer(const RenderElement& client) const
 {
-    if (auto* element = this->element(renderer.document()))
-        return FloatSize { element->size() };
+    if (auto* element = this->element(client.document()))
+        return LayoutSize { element->size() };
     return { };
 }
 
-void StyleCanvasImage::didAddClient(RenderElement& renderer)
+void StyleCanvasImage::didAddClient(StyleImageClient&)
 {
-    if (auto* element = this->element(renderer.document()))
+    if (auto* element = this->element(client.document()))
         InspectorInstrumentation::didChangeCSSCanvasClientNodes(*element);
 }
 
-void StyleCanvasImage::didRemoveClient(RenderElement& renderer)
+void StyleCanvasImage::didRemoveClient(StyleImageClient&)
 {
-    if (auto* element = this->element(renderer.document()))
+    if (auto* element = this->element(client.document()))
         InspectorInstrumentation::didChangeCSSCanvasClientNodes(*element);
 }
 
@@ -115,10 +114,8 @@ void StyleCanvasImage::canvasChanged(CanvasBase& canvasBase, const FloatRect& ch
     ASSERT_UNUSED(canvasBase, m_element == &downcast<HTMLCanvasElement>(canvasBase));
 
     auto imageChangeRect = enclosingIntRect(changedRect);
-    for (auto entry : clients()) {
-        auto& client = entry.key;
-        client.imageChanged(static_cast<WrappedImagePtr>(this), &imageChangeRect);
-    }
+    for (auto entry : clients())
+        entry.key.styleImageChanged(*this, &imageChangeRect);
 }
 
 void StyleCanvasImage::canvasResized(CanvasBase& canvasBase)
@@ -126,10 +123,8 @@ void StyleCanvasImage::canvasResized(CanvasBase& canvasBase)
     ASSERT_UNUSED(canvasBase, is<HTMLCanvasElement>(canvasBase));
     ASSERT_UNUSED(canvasBase, m_element == &downcast<HTMLCanvasElement>(canvasBase));
 
-    for (auto entry : clients()) {
-        auto& client = entry.key;
-        client.imageChanged(static_cast<WrappedImagePtr>(this));
-    }
+    for (auto entry : clients())
+        entry.key.styleImageChanged(*this);
 }
 
 void StyleCanvasImage::canvasDestroyed(CanvasBase& canvasBase)

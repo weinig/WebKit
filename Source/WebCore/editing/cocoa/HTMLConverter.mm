@@ -2384,7 +2384,7 @@ static RetainPtr<NSFileWrapper> fileWrapperForElement(const HTMLImageElement& el
 
     auto* renderer = element.renderer();
     if (auto* renderImage = dynamicDowncast<RenderImage>(renderer)) {
-        CachedResourceHandle image = renderImage->cachedImage();
+        auto image = renderImage->styleImage();
         if (image && !image->errorOccurred()) {
             RetainPtr<NSFileWrapper> wrapper = adoptNS([[NSFileWrapper alloc] initRegularFileWithContents:(__bridge NSData *)image->imageForRenderer(renderer)->adapter().tiffRepresentation()]);
             [wrapper setPreferredFilename:@"image.tiff"];

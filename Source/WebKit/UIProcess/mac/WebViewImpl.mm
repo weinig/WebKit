@@ -132,8 +132,8 @@
 #import <pal/spi/cocoa/NSAccessibilitySPI.h>
 #import <pal/spi/cocoa/NSTouchBarSPI.h>
 #import <pal/spi/cocoa/VisionKitCoreSPI.h>
-#import <pal/spi/cocoa/WritingToolsSPI.h>
-#import <pal/spi/cocoa/WritingToolsUISPI.h>
+//#import <pal/spi/cocoa/WritingToolsSPI.h>
+//#import <pal/spi/cocoa/WritingToolsUISPI.h>
 #import <pal/spi/mac/LookupSPI.h>
 #import <pal/spi/mac/NSAppearanceSPI.h>
 #import <pal/spi/mac/NSApplicationSPI.h>
@@ -2813,7 +2813,7 @@ void WebViewImpl::showShareSheet(const WebCore::ShareDataWithParsedURL& data, WT
 
     ASSERT([view respondsToSelector:@selector(shareSheetDidDismiss:)]);
     _shareSheet = adoptNS([[WKShareSheet alloc] initWithView:view]);
-    [_shareSheet setDelegate:view];
+//    [_shareSheet setDelegate:view];
 
     [_shareSheet presentWithParameters:data inRect:std::nullopt completionHandler:WTFMove(completionHandler)];
 }

@@ -5761,16 +5761,19 @@ bool RenderLayer::isBitmapOnly() const
     if (is<RenderHTMLCanvas>(renderer()))
         return true;
 
-    if (CheckedPtr imageRenderer = dynamicDowncast<RenderImage>(renderer())) {
-        if (auto* cachedImage = imageRenderer->cachedImage()) {
-            if (!cachedImage->hasImage())
-                return false;
-            return is<BitmapImage>(cachedImage->imageForRenderer(imageRenderer.get()));
-        }
+    CheckedPtr imageRenderer = dynamicDowncast<RenderImage>(renderer());
+    if (!imageRenderer)
         return false;
-    }
 
-    return false;
+    auto styleImage = imageRenderer->styleImage();
+    if (!styleImage)
+        return false;
+
+    auto* cachedImage = styleImage->cachedImage();
+    if (!cachedImage || !cachedImage->hasImage())
+        return false;
+
+    return is<BitmapImage>(styleImage->imageForRenderer(imageRenderer.get()));
 }
 
 void RenderLayer::simulateFrequentPaint()

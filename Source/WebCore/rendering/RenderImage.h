@@ -49,8 +49,9 @@ public:
     const RenderImageResource& imageResource() const { return *m_imageResource; }
     CheckedRef<RenderImageResource> checkedImageResource() const;
     CachedImage* cachedImage() const { return imageResource().cachedImage(); }
+    StyleImage* styleImage() const { return imageResource().styleImage(); }
 
-    ImageSizeChangeType setImageSizeForAltText(CachedImage* newImage = nullptr);
+    ImageSizeChangeType setImageSizeForAltText(StyleImage* newImage = nullptr);
 
     void updateAltText();
 
@@ -126,10 +127,9 @@ private:
 
     LayoutUnit minimumReplacedHeight() const override;
 
-    void notifyFinished(CachedResource&, const NetworkLoadMetrics&, LoadWillContinueInAnotherProcess) final;
     bool nodeAtPoint(const HitTestRequest&, HitTestResult&, const HitTestLocation& locationInContainer, const LayoutPoint& accumulatedOffset, HitTestAction) final;
 
-    IntSize imageSizeForError(CachedImage*) const;
+    IntSize imageSizeForError(StyleImage&) const;
     void repaintOrMarkForLayout(ImageSizeChangeType, const IntRect* = nullptr);
     void updateIntrinsicSizeIfNeeded(const LayoutSize&);
     // Update the size of the image to be rendered. Object-fit may cause this to be different from the CSS box's content rect.
@@ -147,6 +147,10 @@ private:
     LayoutUnit baselinePosition(FontBaseline, bool firstLine, LineDirectionMode, LinePositionMode = PositionOnContainingLine) const override;
 
     bool shouldCollapseToEmpty() const;
+
+    // StyleImageClient overrides
+    void styleImageLoadFinished(StyleImage&, CachedResource&) final;
+    std::optional<LayoutSize> styleImageOverrideImageSize(StyleImage&) final;
 
     // Text to display as long as the image isn't available.
     String m_altText;

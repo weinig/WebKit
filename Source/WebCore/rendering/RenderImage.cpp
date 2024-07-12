@@ -57,7 +57,6 @@
 #include "RenderChildIterator.h"
 #include "RenderElementInlines.h"
 #include "RenderFragmentedFlow.h"
-#include "RenderImageResourceStyleImage.h"
 #include "RenderLayoutState.h"
 #include "RenderStyleSetters.h"
 #include "RenderTheme.h"
@@ -151,7 +150,7 @@ using namespace HTMLNames;
 
 RenderImage::RenderImage(Type type, Element& element, RenderStyle&& style, OptionSet<ReplacedFlag> flags, StyleImage* styleImage, const float imageDevicePixelRatio)
     : RenderReplaced(type, element, WTFMove(style), IntSize(), flags | ReplacedFlag::IsImage)
-    , m_imageResource(styleImage ? makeUnique<RenderImageResourceStyleImage>(*styleImage) : makeUnique<RenderImageResource>())
+    , m_imageResource(makeUnique<RenderImageResource>(styleImage))
     , m_hasImageOverlay([&] {
         auto* htmlElement = dynamicDowncast<HTMLElement>(element);
         return htmlElement && ImageOverlay::hasOverlay(*htmlElement);
@@ -172,7 +171,7 @@ RenderImage::RenderImage(Type type, Element& element, RenderStyle&& style, Style
 
 RenderImage::RenderImage(Type type, Document& document, RenderStyle&& style, StyleImage* styleImage)
     : RenderReplaced(type, document, WTFMove(style), IntSize(), ReplacedFlag::IsImage)
-    , m_imageResource(styleImage ? makeUnique<RenderImageResourceStyleImage>(*styleImage) : makeUnique<RenderImageResource>())
+    , m_imageResource(makeUnique<RenderImageResource>(styleImage))
 {
 }
 
@@ -196,14 +195,14 @@ static const unsigned short paddingHeight = 4;
 static const float maxAltTextWidth = 1024;
 static const int maxAltTextHeight = 256;
 
-IntSize RenderImage::imageSizeForError(CachedImage* newImage) const
+IntSize RenderImage::imageSizeForError(StyleImage& newImage) const
 {
-    ASSERT_ARG(newImage, newImage);
     ASSERT_ARG(newImage, newImage->imageForRenderer(this));
 
+    auto cachedImage = newImage->cachedImage();
     FloatSize imageSize;
-    if (newImage->willPaintBrokenImage()) {
-        auto brokenImageAndImageScaleFactor = newImage->brokenImage(document().deviceScaleFactor());
+    if (cachedImage && cachedImage->willPaintBrokenImage()) {
+        auto brokenImageAndImageScaleFactor = cachedImage->brokenImage(document().deviceScaleFactor());
         imageSize = brokenImageAndImageScaleFactor.first->size();
         imageSize.scale(1 / brokenImageAndImageScaleFactor.second);
     } else
@@ -216,11 +215,11 @@ IntSize RenderImage::imageSizeForError(CachedImage* newImage) const
 
 // Sets the image height and width to fit the alt text.  Returns true if the
 // image size changed.
-ImageSizeChangeType RenderImage::setImageSizeForAltText(CachedImage* newImage /* = 0 */)
+ImageSizeChangeType RenderImage::setImageSizeForAltText(StyleImage* newImage)
 {
     IntSize imageSize;
     if (newImage && newImage->imageForRenderer(this))
-        imageSize = imageSizeForError(newImage);
+        imageSize = imageSizeForError(*newImage);
     else if (!m_altText.isEmpty() || newImage) {
         // If we'll be displaying either text or an image, add a little padding.
         imageSize = IntSize(paddingWidth, paddingHeight);
@@ -251,7 +250,7 @@ void RenderImage::styleDidChange(StyleDifference diff, const RenderStyle* oldSty
 {
     RenderReplaced::styleDidChange(diff, oldStyle);
     if (m_needsToSetSizeForAltText) {
-        if (!m_altText.isEmpty() && setImageSizeForAltText(cachedImage()))
+        if (!m_altText.isEmpty() && setImageSizeForAltText(styleImage()))
             repaintOrMarkForLayout(ImageSizeChangeForAltText);
         m_needsToSetSizeForAltText = false;
     }
@@ -342,7 +341,7 @@ void RenderImage::imageChanged(WrappedImagePtr newImage, const IntRect* rect)
             }
             return;
         }
-        imageSizeChange = setImageSizeForAltText(cachedImage());
+        imageSizeChange = setImageSizeForAltText(styleImage());
     }
     repaintOrMarkForLayout(imageSizeChange, rect);
     if (AXObjectCache* cache = document().existingAXObjectCache())
@@ -412,7 +411,7 @@ void RenderImage::repaintOrMarkForLayout(ImageSizeChangeType imageSizeChange, co
     contentChanged(ImageChanged);
 }
 
-void RenderImage::notifyFinished(CachedResource& newImage, const NetworkLoadMetrics& metrics, LoadWillContinueInAnotherProcess loadWillContinueInAnotherProcess)
+void RenderImage::styleImageLoadFinished(StyleImage& styleImage, CachedResource& newImage)
 {
     if (renderTreeBeingDestroyed())
         return;
@@ -428,7 +427,18 @@ void RenderImage::notifyFinished(CachedResource& newImage, const NetworkLoadMetr
     if (RefPtr image = dynamicDowncast<HTMLImageElement>(element()))
         page().didFinishLoadingImageForElement(*image);
 
-    RenderReplaced::notifyFinished(newImage, metrics, loadWillContinueInAnotherProcess);
+    RenderReplaced::styleImageLoadFinished(styleImage, newImage);
+}
+
+std::optional<LayoutSize> RenderImage::styleImageOverrideImageSize(StyleImage& styleImage)
+{
+#if ENABLE(MULTI_REPRESENTATION_HEIC)
+    if (!isMultiRepresentationHEIC())
+        return RenderReplaced::styleImageOverrideImageSize(styleImage);
+    return style().fontCascade().primaryFont().metricsForMultiRepresentationHEIC().size();
+#else
+    return RenderReplaced::styleImageOverrideImageSize(styleImage);
+#endif
 }
 
 void RenderImage::setImageDevicePixelRatio(float factor)
@@ -457,10 +467,10 @@ bool RenderImage::shouldDisplayBrokenImageIcon() const
 
 bool RenderImage::hasNonBitmapImage() const
 {
-    if (!imageResource().cachedImage())
+    if (!styleImage())
         return false;
 
-    Image* image = cachedImage()->imageForRenderer(this);
+    Image* image = styleImage()->imageForRenderer(this);
     return image && !is<BitmapImage>(image);
 }
 
@@ -511,8 +521,8 @@ void RenderImage::paintReplaced(PaintInfo& paintInfo, const LayoutPoint& paintOf
 {
     GraphicsContext& context = paintInfo.context();
     if (context.invalidatingImagesWithAsyncDecodes()) {
-        if (cachedImage() && cachedImage()->isClientWaitingForAsyncDecoding(*this))
-            cachedImage()->removeAllClientsWaitingForAsyncDecoding();
+        if (imageResource().isClientWaitingForAsyncDecoding(*this))
+            imageResource().removeAllClientsWaitingForAsyncDecoding();
         return;
     }
 
@@ -524,7 +534,7 @@ void RenderImage::paintReplaced(PaintInfo& paintInfo, const LayoutPoint& paintOf
         return;
 
     if (context.detectingContentfulPaint()) {
-        if (!context.contentfulPaintDetected() && cachedImage() && cachedImage()->canRender(this, deviceScaleFactor) && !contentSize.isEmpty())
+        if (!context.contentfulPaintDetected() && styleImage() && styleImage()->canRenderForRenderer(this, deviceScaleFactor) && !contentSize.isEmpty())
             context.setContentfulPaintDetected();
 
         return;
@@ -759,7 +769,7 @@ ImageDrawResult RenderImage::paintIntoRect(PaintInfo& paintInfo, const FloatRect
         drawResult = paintInfo.context().drawImage(*img, rect, options);
 
     if (drawResult == ImageDrawResult::DidRequestDecoding)
-        imageResource().cachedImage()->addClientWaitingForAsyncDecoding(*this);
+        imageResource().addClientWaitingForAsyncDecoding(*this);
 
 #if USE(SYSTEM_PREVIEW)
     if (imageElement && imageElement->isSystemPreviewImage() && drawResult == ImageDrawResult::DidDraw && imageElement->document().settings().systemPreviewEnabled())

@@ -43,8 +43,9 @@ class BuilderState;
 class CSSImageValue final : public CSSValue {
 public:
     static Ref<CSSImageValue> create();
-    static Ref<CSSImageValue> create(ResolvedURL, LoadedFromOpaqueSource, AtomString = { });
-    static Ref<CSSImageValue> create(URL, LoadedFromOpaqueSource, AtomString = { });
+    static Ref<CSSImageValue> create(ResolvedURL, LoadedFromOpaqueSource, AtomString initiatorType = { });
+    static Ref<CSSImageValue> create(URL, LoadedFromOpaqueSource, AtomString initiatorType = { });
+    static Ref<CSSImageValue> create(CachedResourceHandle<CachedImage>);
     ~CSSImageValue();
 
     bool isPending() const;
@@ -67,7 +68,7 @@ public:
 
     bool equals(const CSSImageValue&) const;
 
-    bool knownToBeOpaque(const RenderElement&) const;
+    // bool knownToBeOpaque(const RenderElement&) const;
 
     RefPtr<StyleImage> createStyleImage(Style::BuilderState&) const;
 
@@ -84,7 +85,8 @@ public:
 
 private:
     CSSImageValue();
-    CSSImageValue(ResolvedURL&&, LoadedFromOpaqueSource, AtomString&&);
+    CSSImageValue(ResolvedURL&&, LoadedFromOpaqueSource, AtomString&& initiatorType);
+    CSSImageValue(CachedResourceHandle<CachedImage>&&);
 
     ResolvedURL m_location;
     std::optional<CachedResourceHandle<CachedImage>> m_cachedImage;

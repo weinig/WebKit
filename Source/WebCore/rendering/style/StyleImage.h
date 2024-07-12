@@ -24,8 +24,11 @@
 #pragma once
 
 #include "CSSValue.h"
+#include "CachedImage.h"
 #include "FloatSize.h"
 #include "Image.h"
+#include "ImageOrientation.h"
+#include <optional>
 #include <wtf/RefCounted.h>
 #include <wtf/RefPtr.h>
 #include <wtf/TypeCasts.h>
@@ -33,16 +36,65 @@
 
 namespace WebCore {
 
-class CachedImage;
 class CachedResourceLoader;
 class CSSValue;
 class Document;
-class RenderElement;
-class RenderObject;
 class RenderStyle;
+class StyleImage;
 struct ResourceLoaderOptions;
 
+enum class ImageAnimatingState : bool;
+
 typedef const void* WrappedImagePtr;
+
+
+class WEBCORE_EXPORT StyleImageClient : public CanMakeSingleThreadWeakPtr<StyleImageClient> {
+    WTF_MAKE_NONCOPYABLE(StyleImageClient);
+public:
+    explicit StyleImageClient() = default;
+    virtual ~StyleImageClient() = default;
+
+    // Called for all StyleImages when a call to StyleImage::removeClient() fully removes a client.
+    virtual void styleImageClientRemoved(StyleImage&) { }
+
+    // Called for all StyleImages when a style image changes.
+    virtual void styleImageChanged(StyleImage&, const IntRect* = nullptr) = 0;
+
+    // Called for all StyleCachedImage & StyleMultiImages backed by a StyleCachedImage when the underlying
+    // CachedResource load completes.
+    virtual void styleImageLoadFinished(StyleImage&, CachedResource&) = 0;
+
+    // Called for all StyleCachedImage & StyleMultiImages backed by a StyleCachedImage when the underlying
+    // CachedResource requests a rendering updated.
+    virtual void styleImageNeedsScheduledRenderingUpdate(StyleImage&) = 0;
+
+    // Called for all StyleCachedImage & StyleMultiImages backed by a StyleCachedImage when the underlying
+    // CachedResource needs to know if can destroy decoded data.
+    virtual bool styleImageCanDestroyDecodedData(StyleImage&) const = 0;
+
+    // Called for all StyleCachedImage & StyleMultiImages backed by a StyleCachedImage when the underlying
+    // CachedResource needs to know if can allow image animations.
+    virtual bool styleImageAnimationAllowed(StyleImage&) const = 0;
+
+    // Called for all StyleCachedImage & StyleMultiImages backed by a StyleCachedImage when the underlying
+    // CachedResource has a new frame available.
+    virtual VisibleInViewportState styleImageFrameAvailable(StyleImage&, ImageAnimatingState, const IntRect*) = 0;
+
+    // Called for all StyleCachedImage & StyleMultiImages backed by a StyleCachedImage when the underlying
+    // CachedResource needs to know if the image is visible in the viewport.
+    virtual VisibleInViewportState styleImageVisibleInViewport(StyleImage&, const Document&) const = 0;
+
+    // Called for all StyleImages to determine what orientation to draw the image in.
+    virtual ImageOrientation styleImageOrientation(StyleImage&) const { return ImageOrientation::Orientation::FromImage; }
+
+    // Called for all StyleImages to determine the override size from the client.
+    virtual std::optional<LayoutSize> styleImageOverrideImageSize(StyleImage&) { return std::nullopt; }
+};
+
+enum class StyleImageSizeType : bool {
+    Used,
+    Intrinsic
+};
 
 class StyleImage : public RefCounted<StyleImage>, public CanMakeWeakPtr<StyleImage> {
 public:
@@ -50,45 +102,61 @@ public:
 
     virtual bool operator==(const StyleImage& other) const = 0;
 
+    // Clients
+    virtual void addClient(StyleImageClient&) = 0;
+    virtual void removeClient(StyleImageClient&) = 0;
+    virtual bool hasClient(StyleImageClient&) const = 0;
+
     // Computed Style representation.
     virtual Ref<CSSValue> computedStyleValue(const RenderStyle&) const = 0;
 
     // Opaque representation.
     virtual WrappedImagePtr data() const = 0;
 
-    // Loading.
+    // Underlying representation
+    //
+    // `cachedImage()` and `hasImage()` are only valid for non-composite images (e.g. a StyleCrossfadeImage
+    // will always return nullptr / false, even if `to` or `from` are StyleCachedImages).
+    virtual CachedImage* cachedImage() const { return nullptr; }
+    virtual bool hasImage() const { return false; }
+
+    // Loading
     virtual bool isPending() const = 0;
     virtual void load(CachedResourceLoader&, const ResourceLoaderOptions&) = 0;
-    virtual bool isLoaded(const RenderElement*) const { return true; }
+    virtual bool isLoadedForRenderer(const RenderElement*) const { return true; }
     virtual bool errorOccurred() const { return false; }
     virtual bool usesDataProtocol() const { return false; }
-    virtual bool hasImage() const { return false; }
     virtual URL reresolvedURL(const Document&) const { return { }; }
 
-    // Clients.
-    virtual void addClient(RenderElement&) = 0;
-    virtual void removeClient(RenderElement&) = 0;
-    virtual bool hasClient(RenderElement&) const = 0;
-
-    // Size / scale.
-    virtual FloatSize imageSize(const RenderElement*, float multiplier) const = 0;
-    virtual bool usesImageContainerSize() const = 0;
-    virtual void computeIntrinsicDimensions(const RenderElement*, Length& intrinsicWidth, Length& intrinsicHeight, FloatSize& intrinsicRatio) = 0;
-    virtual bool imageHasRelativeWidth() const = 0;
-    virtual bool imageHasRelativeHeight() const = 0;
-    virtual float imageScaleFactor() const { return 1; }
-    virtual bool imageHasNaturalDimensions() const { return true; }
-
-    // Image.
-    virtual RefPtr<Image> image(const RenderElement*, const FloatSize&, bool isForFirstLine = false) const = 0;
+    // MultiImage
     virtual StyleImage* selectedImage() { return this; }
     virtual const StyleImage* selectedImage() const { return this; }
-    virtual CachedImage* cachedImage() const { return nullptr; }
 
-    // Rendering.
-    virtual bool canRender(const RenderElement*, float /*multiplier*/) const { return true; }
-    virtual void setContainerContextForRenderer(const RenderElement&, const FloatSize&, float) = 0;
-    virtual bool knownToBeOpaque(const RenderElement&) const = 0;
+    // Size
+    virtual bool usesImageContainerSize() const = 0;
+    virtual bool imageHasRelativeWidth() const = 0;
+    virtual bool imageHasRelativeHeight() const = 0;
+    virtual bool imageHasNaturalDimensions() const { return true; }
+
+    // Scale
+    virtual float imageScaleFactor() const { return 1; }
+
+    // Rendering
+    virtual LayoutSize imageSizeForRenderer(const RenderElement*, float multiplier, StyleImageSizeType = StyleImageSizeType::Used) const = 0;
+    virtual RefPtr<Image> imageForRenderer(const RenderElement*, const FloatSize& = { }, bool isForFirstLine = false) const = 0;
+    virtual void computeIntrinsicDimensionsForRenderer(const RenderElement*, Length& intrinsicWidth, Length& intrinsicHeight, FloatSize& intrinsicRatio) = 0;
+    virtual bool canRenderForRenderer(const RenderElement*, float) const { return true; }
+    virtual void setContainerContextForRenderer(const RenderElement&, const FloatSize&, float, const URL& = { }) = 0;
+    virtual bool knownToBeOpaqueForRenderer(const RenderElement&) const = 0;
+
+    // Animation
+    virtual void stopAnimation() { }
+    virtual void resetAnimation() { }
+
+    // Support for optimizing `styleImageFrameAvailable` client callbacks.
+    virtual bool isClientWaitingForAsyncDecoding(const StyleImageClient&) const { return false; }
+    virtual void addClientWaitingForAsyncDecoding(StyleImageClient&) { }
+    virtual void removeAllClientsWaitingForAsyncDecoding() { }
 
     // Derived type.
     ALWAYS_INLINE bool isCachedImage() const { return m_type == Type::CachedImage; }

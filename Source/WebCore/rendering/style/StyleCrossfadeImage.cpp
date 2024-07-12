@@ -46,14 +46,18 @@ StyleCrossfadeImage::StyleCrossfadeImage(RefPtr<StyleImage>&& from, RefPtr<Style
     , m_isPrefixed { isPrefixed }
     , m_inputImagesAreReady { false }
 {
+    if (m_from)
+        m_from->addClient(*this);
+    if (m_to)
+        m_to->addClient(*this);
 }
 
 StyleCrossfadeImage::~StyleCrossfadeImage()
 {
-    if (m_cachedFromImage)
-        m_cachedFromImage->removeClient(*this);
-    if (m_cachedToImage)
-        m_cachedToImage->removeClient(*this);
+    if (m_from)
+        m_from->removeClient(*this);
+    if (m_to)
+        m_to->removeClient(*this);
 }
 
 bool StyleCrossfadeImage::operator==(const StyleImage& other) const
@@ -76,8 +80,9 @@ RefPtr<StyleCrossfadeImage> StyleCrossfadeImage::blend(const StyleCrossfadeImage
 {
     ASSERT(equalInputImages(from));
 
-    if (!m_cachedToImage || !m_cachedFromImage)
-        return nullptr;
+    // FIXME: Do equivalent check here.
+    //    if (!m_cachedToImage || !m_cachedFromImage)
+    //        return nullptr;
 
     auto newPercentage = WebCore::blend(from.m_percentage, m_percentage, context);
     return StyleCrossfadeImage::create(m_from, m_to, newPercentage, from.m_isPrefixed && m_isPrefixed);
@@ -101,43 +106,21 @@ bool StyleCrossfadeImage::isPending() const
 
 void StyleCrossfadeImage::load(CachedResourceLoader& loader, const ResourceLoaderOptions& options)
 {
-    auto oldCachedFromImage = m_cachedFromImage;
-    auto oldCachedToImage = m_cachedToImage;
-
     if (m_from) {
         if (m_from->isPending())
             m_from->load(loader, options);
-        m_cachedFromImage = m_from->cachedImage();
-    } else
-        m_cachedFromImage = nullptr;
-
+    }
     if (m_to) {
         if (m_to->isPending())
             m_to->load(loader, options);
-        m_cachedToImage = m_to->cachedImage();
-    } else
-        m_cachedToImage = nullptr;
-
-    if (m_cachedFromImage != oldCachedFromImage) {
-        if (oldCachedFromImage)
-            oldCachedFromImage->removeClient(*this);
-        if (m_cachedFromImage)
-            m_cachedFromImage->addClient(*this);
-    }
-
-    if (m_cachedToImage != oldCachedToImage) {
-        if (oldCachedToImage)
-            oldCachedToImage->removeClient(*this);
-        if (m_cachedToImage)
-            m_cachedToImage->addClient(*this);
     }
 
     m_inputImagesAreReady = true;
 }
 
-RefPtr<Image> StyleCrossfadeImage::image(const RenderElement* renderer, const FloatSize& size, bool isForFirstLine) const
+RefPtr<Image> StyleCrossfadeImage::imageForRenderer(const RenderElement* client, const FloatSize& size, bool isForFirstLine) const
 {
-    if (!renderer)
+    if (!client)
         return &Image::nullImage();
 
     if (size.isEmpty())
@@ -146,31 +129,31 @@ RefPtr<Image> StyleCrossfadeImage::image(const RenderElement* renderer, const Fl
     if (!m_from || !m_to)
         return &Image::nullImage();
 
-    auto fromImage = m_from->image(renderer, size, isForFirstLine);
-    auto toImage = m_to->image(renderer, size, isForFirstLine);
+    auto fromImage = m_from->imageForRenderer(client, size, isForFirstLine);
+    auto toImage = m_to->imageForRenderer(client, size, isForFirstLine);
 
     if (!fromImage || !toImage)
         return &Image::nullImage();
 
-    return CrossfadeGeneratedImage::create(*fromImage, *toImage, m_percentage, fixedSize(*renderer), size);
+    return CrossfadeGeneratedImage::create(*fromImage, *toImage, m_percentage, fixedSizeForRenderer(*client), size);
 }
 
-bool StyleCrossfadeImage::knownToBeOpaque(const RenderElement& renderer) const
+bool StyleCrossfadeImage::knownToBeOpaqueForRenderer(const RenderElement& client) const
 {
-    if (m_from && !m_from->knownToBeOpaque(renderer))
+    if (m_from && !m_from->knownToBeOpaqueForRenderer(client))
         return false;
-    if (m_to && !m_to->knownToBeOpaque(renderer))
+    if (m_to && !m_to->knownToBeOpaqueForRenderer(client))
         return false;
     return true;
 }
 
-FloatSize StyleCrossfadeImage::fixedSize(const RenderElement& renderer) const
+LayoutSize StyleCrossfadeImage::fixedSizeForRenderer(const RenderElement& client) const
 {
     if (!m_from || !m_to)
         return { };
 
-    auto fromImageSize = m_from->imageSize(&renderer, 1);
-    auto toImageSize = m_to->imageSize(&renderer, 1);
+    auto fromImageSize = m_from->imageSizeForRenderer(&client, 1);
+    auto toImageSize = m_to->imageSizeForRenderer(&client, 1);
 
     // Rounding issues can cause transitions between images of equal size to return
     // a different fixed size; avoid performing the interpolation if the images are the same size.
@@ -183,14 +166,15 @@ FloatSize StyleCrossfadeImage::fixedSize(const RenderElement& renderer) const
     return fromImageSize * inversePercentage + toImageSize * percentage;
 }
 
-void StyleCrossfadeImage::imageChanged(CachedImage*, const IntRect*)
+void StyleCrossfadeImage::styleImageChanged(StyleImage& image, const IntRect*)
 {
+    ASSERT(&image == m_from.get() || &image == m_to.get());
+
     if (!m_inputImagesAreReady)
         return;
-    for (auto entry : clients()) {
-        auto& client = entry.key;
-        client.imageChanged(static_cast<WrappedImagePtr>(this));
-    }
+
+    for (auto entry : clients())
+        entry.key.styleImageChanged(*this);
 }
 
 } // namespace WebCore

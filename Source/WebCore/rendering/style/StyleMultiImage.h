@@ -32,7 +32,7 @@ namespace WebCore {
 class Document;
 
 struct ImageWithScale {
-    RefPtr<StyleImage> image { StyleInvalidImage::create() };
+    Ref<StyleImage> image { StyleInvalidImage::create() };
     float scaleFactor { 1 };
     String mimeType { String() };
 };
@@ -56,30 +56,52 @@ protected:
     CachedImage* cachedImage() const final;
 
 private:
+    void setSelectedImage(Ref<StyleImage>&&);
+
     WrappedImagePtr data() const final;
 
-    bool canRender(const RenderElement*, float multiplier) const final;
+    const StyleImage* selectedImage() const final;
+    StyleImage* selectedImage() final;
+    float imageScaleFactor() const final;
+
     bool isPending() const final;
     void load(CachedResourceLoader&, const ResourceLoaderOptions&) final;
-    bool isLoaded(const RenderElement*) const final;
+    bool isLoadedForRenderer(const RenderElement*) const final;
     bool errorOccurred() const final;
-    FloatSize imageSize(const RenderElement*, float multiplier) const final;
     bool imageHasRelativeWidth() const final;
     bool imageHasRelativeHeight() const final;
-    void computeIntrinsicDimensions(const RenderElement*, Length& intrinsicWidth, Length& intrinsicHeight, FloatSize& intrinsicRatio) final;
+    void computeIntrinsicDimensionsForRenderer(const RenderElement*, Length& intrinsicWidth, Length& intrinsicHeight, FloatSize& intrinsicRatio) final;
     bool usesImageContainerSize() const final;
-    void setContainerContextForRenderer(const RenderElement&, const FloatSize&, float);
-    void addClient(RenderElement&) final;
-    void removeClient(RenderElement&) final;
-    bool hasClient(RenderElement&) const final;
-    RefPtr<Image> image(const RenderElement*, const FloatSize&, bool isForFirstLine) const final;
-    float imageScaleFactor() const final;
-    bool knownToBeOpaque(const RenderElement&) const final;
-    const StyleImage* selectedImage() const final { return m_selectedImage.get(); }
-    StyleImage* selectedImage() final { return m_selectedImage.get(); }
+    bool hasImage() const final;
 
-    RefPtr<StyleImage> m_selectedImage;
-    bool m_isPending { true };
+    bool canRenderForRenderer(const RenderElement*, float multiplier) const final;
+    LayoutSize imageSizeForRenderer(const RenderElement*, float multiplier, StyleImageSizeType) const final;
+    RefPtr<Image> imageForRenderer(const RenderElement*, const FloatSize&, bool isForFirstLine) const final;
+    void setContainerContextForRenderer(const RenderElement&, const FloatSize&, float, const URL&);
+    bool knownToBeOpaqueForRenderer(const RenderElement&) const final;
+
+    void addClient(StyleImageClient&) final;
+    void removeClient(StyleImageClient&) final;
+    bool hasClient(StyleImageClient&) const final;
+
+    bool isClientWaitingForAsyncDecoding(const StyleImageClient&) final;
+    void addClientWaitingForAsyncDecoding(StyleImageClient&) final;
+    void removeAllClientsWaitingForAsyncDecoding() final;
+
+    struct Pending {
+        struct ContainerContext {
+            LayoutSize containerSize;
+            float containerZoom;
+            URL imageURL;
+        };
+        SingleThreadWeakHashMap<StyleImageClient, ContainerContext> containerContextRequests;
+        SingleThreadWeakHashCountedSet<StyleImageClient> clients;
+        SingleThreadWeakHashSet<StyleImageClient> clientsWaitingForAsyncDecoding;
+        bool forceAllClientsWaitingForAsyncDecoding { false };
+    };
+
+    std::variant<Pending, Ref<StyleImage>> m_state;
+    bool m_loadCalled { false };
 };
 
 } // namespace WebCore

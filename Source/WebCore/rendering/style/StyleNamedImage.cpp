@@ -65,9 +65,9 @@ void StyleNamedImage::load(CachedResourceLoader&, const ResourceLoaderOptions&)
 {
 }
 
-RefPtr<Image> StyleNamedImage::image(const RenderElement* renderer, const FloatSize& size, bool) const
+RefPtr<Image> StyleNamedImage::imageForRenderer(const RenderElement* client, const FloatSize& size, bool) const
 {
-    if (!renderer)
+    if (!client)
         return &Image::nullImage();
 
     if (size.isEmpty())
@@ -76,12 +76,12 @@ RefPtr<Image> StyleNamedImage::image(const RenderElement* renderer, const FloatS
     return NamedImageGeneratedImage::create(m_name, size);
 }
 
-bool StyleNamedImage::knownToBeOpaque(const RenderElement&) const
+bool StyleNamedImage::knownToBeOpaqueForRenderer(const RenderElement&) const
 {
     return false;
 }
 
-FloatSize StyleNamedImage::fixedSize(const RenderElement&) const
+LayoutSize StyleNamedImage::fixedSizeForRenderer(const RenderElement&) const
 {
     return { };
 }

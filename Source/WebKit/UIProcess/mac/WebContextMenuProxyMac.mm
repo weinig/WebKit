@@ -172,12 +172,12 @@
 #if ENABLE(WRITING_TOOLS)
 - (void)showWritingTools:(id)sender
 {
-    if (!_menuProxy)
-        return;
-
-    WTRequestedTool tool = (WTRequestedTool)[sender tag];
-
-    _menuProxy->handleContextMenuWritingTools(WebKit::convertToWebRequestedTool(tool));
+    // if (!_menuProxy)
+    //     return;
+    //
+    // WTRequestedTool tool = (WTRequestedTool)[sender tag];
+    //
+    // _menuProxy->handleContextMenuWritingTools(WebKit::convertToWebRequestedTool(tool));
 }
 #endif
 

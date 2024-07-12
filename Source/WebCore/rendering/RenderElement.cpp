@@ -63,7 +63,6 @@
 #include "RenderFragmentedFlow.h"
 #include "RenderGrid.h"
 #include "RenderImage.h"
-#include "RenderImageResourceStyleImage.h"
 #include "RenderInline.h"
 #include "RenderIterator.h"
 #include "RenderLayer.h"
@@ -1598,54 +1597,11 @@ bool RenderElement::isVisibleInViewport() const
     return isVisibleInDocumentRect(visibleRect);
 }
 
-VisibleInViewportState RenderElement::imageFrameAvailable(CachedImage& image, ImageAnimatingState animatingState, const IntRect* changeRect)
-{
-    bool isVisible = isVisibleInViewport();
-
-    if (!isVisible && animatingState == ImageAnimatingState::Yes)
-        checkedView()->addRendererWithPausedImageAnimations(*this, image);
-
-    // Static images should repaint even if they are outside the viewport rectangle
-    // because they should be inside the TileCoverageRect.
-    if (isVisible || animatingState == ImageAnimatingState::No)
-        imageChanged(&image, changeRect);
-
-    if (element() && image.image()->isBitmapImage())
-        protectedElement()->dispatchWebKitImageReadyEventForTesting();
-
-    return isVisible ? VisibleInViewportState::Yes : VisibleInViewportState::No;
-}
-
-VisibleInViewportState RenderElement::imageVisibleInViewport(const Document& document) const
-{
-    if (&this->document() != &document)
-        return VisibleInViewportState::No;
-
-    return isVisibleInViewport() ? VisibleInViewportState::Yes : VisibleInViewportState::No;
-}
-
-void RenderElement::notifyFinished(CachedResource& resource, const NetworkLoadMetrics&, LoadWillContinueInAnotherProcess)
-{
-    document().protectedCachedResourceLoader()->notifyFinished(resource);
-}
-
 bool RenderElement::allowsAnimation() const
 {
     if (auto* imageElement = dynamicDowncast<HTMLImageElement>(element()))
         return imageElement->allowsAnimation();
     return page().imageAnimationEnabled();
-}
-
-void RenderElement::didRemoveCachedImageClient(CachedImage& cachedImage)
-{
-    if (hasPausedImageAnimations())
-        checkedView()->removeRendererWithPausedImageAnimations(*this, cachedImage);
-}
-
-void RenderElement::scheduleRenderingUpdateForImage(CachedImage&)
-{
-    if (RefPtr page = document().page())
-        page->scheduleRenderingUpdate(RenderingUpdateStep::Images);
 }
 
 bool RenderElement::repaintForPausedImageAnimationsIfNeeded(const IntRect& visibleRect, CachedImage& cachedImage)
@@ -2535,6 +2491,61 @@ void RenderElement::layoutIfNeeded()
         return;
     }
     layout();
+}
+
+// MARK: - StyleImageClient
+
+void RenderElement::styleImageClientRemoved(StyleImage& styleImage)
+{
+    if (hasPausedImageAnimations())
+        checkedView()->removeRendererWithPausedImageAnimations(*this, styleImage);
+}
+
+void RenderElement::styleImageLoadFinished(StyleImage&, CachedResource& resource)
+{
+    document().protectedCachedResourceLoader()->notifyFinished(resource);
+}
+
+void RenderElement::styleImageNeedsScheduledRenderingUpdate(StyleImage&)
+{
+    if (RefPtr page = document().page())
+        page->scheduleRenderingUpdate(RenderingUpdateStep::Images);
+}
+
+void RenderElement::styleImageAnimationAllowed(StyleImage&) const
+{
+    return animationAllowed();
+}
+
+VisibleInViewportState RenderElement::styleImageFrameAvailable(StyleImage& image, ImageAnimatingState animatingState, const IntRect* changeRect)
+{
+    bool isVisible = isVisibleInViewport();
+
+    if (!isVisible && animatingState == ImageAnimatingState::Yes)
+        checkedView()->addRendererWithPausedImageAnimations(*this, image);
+
+    // Static images should repaint even if they are outside the viewport rectangle
+    // because they should be inside the TileCoverageRect.
+    if (isVisible || animatingState == ImageAnimatingState::No)
+        imageChanged(&image, changeRect);
+
+    if (element() && image.image()->isBitmapImage())
+        protectedElement()->dispatchWebKitImageReadyEventForTesting();
+
+    return isVisible ? VisibleInViewportState::Yes : VisibleInViewportState::No;
+}
+
+VisibleInViewportState RenderElement::styleImageVisibleInViewport(StyleImage&, const Document& document) const
+{
+    if (&this->document() != &document)
+        return VisibleInViewportState::No;
+
+    return isVisibleInViewport() ? VisibleInViewportState::Yes : VisibleInViewportState::No;
+}
+
+ImageOrientation RenderElement::styleImageOrientation(StyleImage&) const
+{
+    return imageOrientation();
 }
 
 }

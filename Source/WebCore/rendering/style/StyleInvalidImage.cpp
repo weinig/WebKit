@@ -46,7 +46,7 @@ void StyleInvalidImage::load(CachedResourceLoader&, const ResourceLoaderOptions&
 {
 }
 
-RefPtr<Image> StyleInvalidImage::image(const RenderElement*, const FloatSize&, bool) const
+RefPtr<Image> StyleInvalidImage::imageForRenderer(const RenderElement*, const FloatSize&, bool) const
 {
     return &Image::nullImage();
 }

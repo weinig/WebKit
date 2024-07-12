@@ -38,6 +38,7 @@ namespace WebCore {
 
 class CachedImage;
 class Document;
+class Image;
 class IntRect;
 
 enum class VisibleInViewportState { Unknown, Yes, No };
@@ -48,21 +49,24 @@ public:
     static CachedResourceClientType expectedType() { return ImageType; }
     CachedResourceClientType resourceClientType() const override { return expectedType(); }
 
+    // Called when the WebCore::Image object has been created.
+    virtual void imageCreated(CachedImage&, const Image&) { }
+
     // Called whenever a frame of an image changes because we got more data from the network.
     // If not null, the IntRect is the changed rect of the image.
-    virtual void imageChanged(CachedImage*, const IntRect* = nullptr) { }
+    virtual void imageChanged(CachedImage&, const IntRect* = nullptr) { }
 
-    virtual bool canDestroyDecodedData() const { return true; }
+    virtual bool canDestroyDecodedData(CachedImage&) const { return true; }
 
     // Called when a new decoded frame for a large image is available or when an animated image is ready to advance to the next frame.
-    virtual VisibleInViewportState imageFrameAvailable(CachedImage& image, ImageAnimatingState, const IntRect* changeRect) { imageChanged(&image, changeRect); return VisibleInViewportState::No; }
-    virtual VisibleInViewportState imageVisibleInViewport(const Document&) const { return VisibleInViewportState::No; }
+    virtual VisibleInViewportState imageFrameAvailable(CachedImage& image, ImageAnimatingState, const IntRect* changeRect, DecodingStatus) { imageChanged(image, changeRect); return VisibleInViewportState::No; }
+    virtual VisibleInViewportState imageVisibleInViewport(CachedImage&, const Document&) const { return VisibleInViewportState::No; }
 
     virtual void didRemoveCachedImageClient(CachedImage&) { }
 
     virtual void scheduleRenderingUpdateForImage(CachedImage&) { }
 
-    virtual bool allowsAnimation() const { return true; }
+    virtual bool allowsAnimation(CachedImage&) const { return true; }
 };
 
 } // namespace WebCore

@@ -864,7 +864,7 @@ void RenderView::updateVisibleViewportRect(const IntRect& visibleRect)
     }
 }
 
-void RenderView::addRendererWithPausedImageAnimations(RenderElement& renderer, CachedImage& image)
+void RenderView::addRendererWithPausedImageAnimations(RenderElement& renderer, StyleImage& image)
 {
     ASSERT(!renderer.hasPausedImageAnimations() || m_renderersWithPausedImageAnimation.contains(renderer));
 
@@ -885,7 +885,7 @@ void RenderView::removeRendererWithPausedImageAnimations(RenderElement& renderer
     m_renderersWithPausedImageAnimation.remove(renderer);
 }
 
-void RenderView::removeRendererWithPausedImageAnimations(RenderElement& renderer, CachedImage& image)
+void RenderView::removeRendererWithPausedImageAnimations(RenderElement& renderer, StyleImage& image)
 {
     ASSERT(renderer.hasPausedImageAnimations());
 

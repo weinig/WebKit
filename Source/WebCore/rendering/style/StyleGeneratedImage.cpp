@@ -100,7 +100,7 @@ void StyleGeneratedImage::evictCachedGeneratedImage(FloatSize size)
     m_images.remove(size);
 }
 
-FloatSize StyleGeneratedImage::imageSize(const RenderElement* renderer, float multiplier) const
+LayoutSize StyleGeneratedImage::imageSizeForRenderer(const RenderElement* renderer, float multiplier, StyleImageSizeType) const
 {
     if (!m_fixedSize)
         return m_containerSize;
@@ -108,7 +108,7 @@ FloatSize StyleGeneratedImage::imageSize(const RenderElement* renderer, float mu
     if (!renderer)
         return { };
 
-    FloatSize fixedSize = this->fixedSize(*renderer);
+    LayoutSize fixedSize = this->fixedSizeForRenderer(*renderer);
     if (multiplier == 1.0f)
         return fixedSize;
 
@@ -125,42 +125,43 @@ FloatSize StyleGeneratedImage::imageSize(const RenderElement* renderer, float mu
     return { width, height };
 }
 
-void StyleGeneratedImage::computeIntrinsicDimensions(const RenderElement* renderer, Length& intrinsicWidth, Length& intrinsicHeight, FloatSize& intrinsicRatio)
+void StyleGeneratedImage::computeIntrinsicDimensionsForRenderer(const RenderElement* renderer, Length& intrinsicWidth, Length& intrinsicHeight, FloatSize& intrinsicRatio)
 {
     // At a zoom level of 1 the image is guaranteed to have a device pixel size.
-    FloatSize size = floorSizeToDevicePixels(LayoutSize(this->imageSize(renderer, 1)), renderer ? renderer->document().deviceScaleFactor() : 1);
+    FloatSize size = floorSizeToDevicePixels(this->imageSizeForRenderer(renderer, 1), renderer ? renderer->document().deviceScaleFactor() : 1);
     intrinsicWidth = Length(size.width(), LengthType::Fixed);
     intrinsicHeight = Length(size.height(), LengthType::Fixed);
     intrinsicRatio = size;
 }
 
-// MARK: Client support.
-
-void StyleGeneratedImage::addClient(RenderElement& renderer)
+void StyleGeneratedImage::addClient(StyleImageClient& client)
 {
     if (m_clients.isEmptyIgnoringNullReferences())
         ref();
 
-    m_clients.add(renderer);
+    m_clients.add(client);
 
-    this->didAddClient(renderer);
+    this->didAddClient(client);
 }
 
-void StyleGeneratedImage::removeClient(RenderElement& renderer)
+void StyleGeneratedImage::removeClient(StyleImageClient& client)
 {
-    ASSERT(m_clients.contains(renderer));
-    if (!m_clients.remove(renderer))
+    ASSERT(m_clients.contains(client));
+    if (!m_clients.remove(client))
         return;
 
-    this->didRemoveClient(renderer);
+    this->didRemoveClient(client);
+
+    for (auto entry : m_clients)
+        entry.key.styleImageClientRemoved(*this);
 
     if (m_clients.isEmptyIgnoringNullReferences())
         deref();
 }
 
-bool StyleGeneratedImage::hasClient(RenderElement& renderer) const
+bool StyleGeneratedImage::hasClient(StyleImageClient& client) const
 {
-    return m_clients.contains(renderer);
+    return m_clients.contains(client);
 }
 
 } // namespace WebCore

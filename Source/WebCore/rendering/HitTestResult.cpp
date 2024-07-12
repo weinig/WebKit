@@ -360,12 +360,19 @@ Image* HitTestResult::image() const
     if (!imageNode)
         return nullptr;
 
-    if (auto* image = dynamicDowncast<RenderImage>(imageNode->renderer())) {
-        if (image->cachedImage() && !image->cachedImage()->errorOccurred())
-            return image->cachedImage()->imageForRenderer(image);
-    }
+    auto* image = dynamicDowncast<RenderImage>(imageNode->renderer());
+    if (!image)
+        return nullptr;
 
-    return nullptr;
+    auto styleImage = image->styleImage();
+    if (!styleImage)
+        return nullptr;
+
+    auto cachedImage = styleImage->cachedImage();
+    if (!cachedImage || cachedImage->errorOccurred())
+        return nullptr;
+
+    return styleImage->imageForRenderer(image);
 }
 
 IntRect HitTestResult::imageRect() const

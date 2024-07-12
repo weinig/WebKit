@@ -421,7 +421,7 @@ void StyleGradientImage::load(CachedResourceLoader&, const ResourceLoaderOptions
 {
 }
 
-RefPtr<Image> StyleGradientImage::image(const RenderElement* renderer, const FloatSize& size, bool isForFirstLine) const
+RefPtr<Image> StyleGradientImage::imageForRenderer(const RenderElement* renderer, const FloatSize& size, bool isForFirstLine) const
 {
     if (!renderer)
         return &Image::nullImage();
@@ -429,11 +429,12 @@ RefPtr<Image> StyleGradientImage::image(const RenderElement* renderer, const Flo
     if (size.isEmpty())
         return nullptr;
 
+    // FIXME: How to get style.
     auto& style = isForFirstLine ? renderer->firstLineStyle() : renderer->style();
 
     bool cacheable = m_knownCacheableBarringFilter && !style.hasAppleColorFilter();
     if (cacheable) {
-        if (!clients().contains(const_cast<RenderElement&>(*renderer)))
+        if (!clients().contains(const_cast<StyleImageClient&>(*client)))
             return nullptr;
         if (auto* result = const_cast<StyleGradientImage&>(*this).cachedImageForSize(size))
             return result;
@@ -451,7 +452,7 @@ RefPtr<Image> StyleGradientImage::image(const RenderElement* renderer, const Flo
     return newImage;
 }
 
-template<typename Stops> static bool knownToBeOpaque(const RenderElement& renderer, const Stops& stops)
+template<typename Stops> static bool knownToBeOpaqueForRenderer(const RenderElement& renderer, const Stops& stops)
 {
     auto& style = renderer.style();
     bool hasColorFilter = style.hasAppleColorFilter();
@@ -462,12 +463,12 @@ template<typename Stops> static bool knownToBeOpaque(const RenderElement& render
     return true;
 }
 
-bool StyleGradientImage::knownToBeOpaque(const RenderElement& renderer) const
+bool StyleGradientImage::knownToBeOpaqueForRenderer(const RenderElement& renderer) const
 {
-    return WTF::switchOn(m_data, [&](auto& data) { return WebCore::knownToBeOpaque(renderer, data.stops); } );
+    return WTF::switchOn(m_data, [&](auto& data) { return WebCore::knownToBeOpaqueForRenderer(renderer, data.stops); } );
 }
 
-FloatSize StyleGradientImage::fixedSize(const RenderElement&) const
+LayoutSize StyleGradientImage::fixedSizeForRenderer(const RenderElement&) const
 {
     return { };
 }

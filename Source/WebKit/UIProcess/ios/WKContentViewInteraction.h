@@ -69,7 +69,7 @@
 #import <WebCore/FloatQuad.h>
 #import <WebCore/MediaControlsContextMenuItem.h>
 #import <WebCore/PointerID.h>
-#import <pal/spi/cocoa/WritingToolsSPI.h>
+//#import <pal/spi/cocoa/WritingToolsSPI.h>
 #import <pal/spi/ios/BrowserEngineKitSPI.h>
 #import <wtf/BlockPtr.h>
 #import <wtf/CompletionHandler.h>

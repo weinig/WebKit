@@ -225,7 +225,7 @@ public:
     bool didContibuteToVisuallyNonEmptyPixelCount() const { return m_didContributeToVisuallyNonEmptyPixelCount; }
     void setDidContibuteToVisuallyNonEmptyPixelCount() { m_didContributeToVisuallyNonEmptyPixelCount = true; }
 
-    bool allowsAnimation() const final;
+    bool allowsAnimation() const;
     bool repaintForPausedImageAnimationsIfNeeded(const IntRect& visibleRect, CachedImage&);
     bool hasPausedImageAnimations() const { return m_hasPausedImageAnimations; }
     void setHasPausedImageAnimations(bool b) { m_hasPausedImageAnimations = b; }
@@ -308,6 +308,16 @@ public:
     LayoutIdentifier layoutIdentifier() const { return m_layoutIdentifier; }
     bool didVisitDuringLastLayout() const;
 
+    // StyleImageClient
+    void styleImageClientRemoved(StyleImage&) final;
+    void styleImageLoadFinished(StyleImage&, CachedResource&) override;
+    void styleImageNeedsScheduledRenderingUpdate(StyleImage&) final;
+    bool styleImageCanDestroyDecodedData(StyleImage&) const final { return !isVisibleInViewport(); }
+    bool styleImageAnimationAllowed(StyleImage&) const final;
+    VisibleInViewportState styleImageFrameAvailable(StyleImage&, ImageAnimatingState, const IntRect* changeRect) final;
+    VisibleInViewportState styleImageVisibleInViewport(StyleImage&, const Document&) const final;
+    ImageOrientation styleImageOrientation(StyleImage&) const final;
+
 protected:
     RenderElement(Type, Element&, RenderStyle&&, OptionSet<TypeFlag>, TypeSpecificFlags);
     RenderElement(Type, Document&, RenderStyle&&, OptionSet<TypeFlag>, TypeSpecificFlags);
@@ -328,7 +338,6 @@ protected:
     void insertedIntoTree() override;
     void willBeRemovedFromTree() override;
     void willBeDestroyed() override;
-    void notifyFinished(CachedResource&, const NetworkLoadMetrics&, LoadWillContinueInAnotherProcess) override;
 
     void setHasContinuationChainNode(bool b) { m_hasContinuationChainNode = b; }
 
@@ -380,12 +389,6 @@ private:
     void updateShapeImage(const ShapeValue*, const ShapeValue*);
 
     StyleDifference adjustStyleDifference(StyleDifference, OptionSet<StyleDifferenceContextSensitiveProperty>) const;
-
-    bool canDestroyDecodedData() const final { return !isVisibleInViewport(); }
-    VisibleInViewportState imageFrameAvailable(CachedImage&, ImageAnimatingState, const IntRect* changeRect) final;
-    VisibleInViewportState imageVisibleInViewport(const Document&) const final;
-    void didRemoveCachedImageClient(CachedImage&) final;
-    void scheduleRenderingUpdateForImage(CachedImage&) final;
 
     bool getLeadingCorner(FloatPoint& output, bool& insideFixed) const;
     bool getTrailingCorner(FloatPoint& output, bool& insideFixed) const;

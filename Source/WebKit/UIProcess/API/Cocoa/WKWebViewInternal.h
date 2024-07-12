@@ -30,7 +30,7 @@
 #import <WebKit/WKWebViewPrivate.h>
 #import "_WKAttachmentInternal.h"
 #import "_WKWebViewPrintFormatterInternal.h"
-#import <pal/spi/cocoa/WritingToolsSPI.h>
+//#import <pal/spi/cocoa/WritingToolsSPI.h>
 #import <variant>
 #import <wtf/BlockPtr.h>
 #import <wtf/CompletionHandler.h>
@@ -66,11 +66,11 @@
 
 #if PLATFORM(MAC)
 
-#if ENABLE(WRITING_TOOLS)
-#define WK_WEB_VIEW_PROTOCOLS <WKShareSheetDelegate, WTWritingToolsDelegate, NSTextInputTraits>
-#else
-#define WK_WEB_VIEW_PROTOCOLS <WKShareSheetDelegate>
-#endif
+//#if ENABLE(WRITING_TOOLS)
+//#define WK_WEB_VIEW_PROTOCOLS <WKShareSheetDelegate, WTWritingToolsDelegate>
+//#else
+//#define WK_WEB_VIEW_PROTOCOLS <WKShareSheetDelegate>
+//#endif
 
 #endif
 
@@ -221,7 +221,7 @@ struct PerWebProcessState {
 
 #endif // PLATFORM(IOS_FAMILY)
 
-@interface WKWebView () WK_WEB_VIEW_PROTOCOLS {
+@interface WKWebView () {
 
 @package
     RetainPtr<WKWebViewConfiguration> _configuration;
@@ -402,12 +402,12 @@ struct PerWebProcessState {
 #endif
 
 #if ENABLE(WRITING_TOOLS)
-- (void)_proofreadingSessionWithUUID:(NSUUID *)sessionUUID showDetailsForSuggestionWithUUID:(NSUUID *)replacementUUID relativeToRect:(CGRect)rect;
-
-- (void)_proofreadingSessionWithUUID:(NSUUID *)sessionUUID updateState:(WebCore::WritingTools::TextSuggestionState)state forSuggestionWithUUID:(NSUUID *)replacementUUID;
+//- (void)_proofreadingSessionWithUUID:(NSUUID *)sessionUUID showDetailsForSuggestionWithUUID:(NSUUID *)replacementUUID relativeToRect:(CGRect)rect;
+//
+//- (void)_proofreadingSessionWithUUID:(NSUUID *)sessionUUID updateState:(WebCore::WritingTools::TextSuggestionState)state forSuggestionWithUUID:(NSUUID *)replacementUUID;
 
 #if PLATFORM(MAC)
-- (NSWritingToolsAllowedInputOptions)writingToolsAllowedInputOptions;
+//- (NSWritingToolsAllowedInputOptions)writingToolsAllowedInputOptions;
 #else
 - (UIWritingToolsAllowedInputOptions)writingToolsAllowedInputOptions;
 #endif
@@ -434,7 +434,7 @@ struct PerWebProcessState {
 - (void)_didAccessBackForwardList NS_DIRECT;
 
 #if ENABLE(GAMEPAD)
-- (void)_setGamepadsRecentlyAccessed:(BOOL)gamepadsRecentlyAccessed;
+// - (void)_setGamepadsRecentlyAccessed:(BOOL)gamepadsRecentlyAccessed;
 #endif
 
 - (WKPageRef)_pageForTesting;

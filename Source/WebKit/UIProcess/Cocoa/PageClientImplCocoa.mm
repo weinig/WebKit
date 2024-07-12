@@ -289,12 +289,12 @@ WindowKind PageClientImplCocoa::windowKind()
 #if ENABLE(WRITING_TOOLS)
 void PageClientImplCocoa::proofreadingSessionShowDetailsForSuggestionWithIDRelativeToRect(const WebCore::WritingTools::Session::ID& sessionID, const WebCore::WritingTools::TextSuggestion::ID& replacementID, WebCore::IntRect selectionBoundsInRootView)
 {
-    [m_webView _proofreadingSessionWithUUID:sessionID showDetailsForSuggestionWithUUID:replacementID relativeToRect:selectionBoundsInRootView];
+//    [m_webView _proofreadingSessionWithUUID:sessionID showDetailsForSuggestionWithUUID:replacementID relativeToRect:selectionBoundsInRootView];
 }
 
 void PageClientImplCocoa::proofreadingSessionUpdateStateForSuggestionWithID(const WebCore::WritingTools::Session::ID& sessionID, WebCore::WritingTools::TextSuggestion::State state, const WebCore::WritingTools::TextSuggestion::ID& replacementID)
 {
-    [m_webView _proofreadingSessionWithUUID:sessionID updateState:state forSuggestionWithUUID:replacementID];
+//    [m_webView _proofreadingSessionWithUUID:sessionID updateState:state forSuggestionWithUUID:replacementID];
 }
 
 static NSString *writingToolsActiveKey = @"writingToolsActive";
@@ -313,7 +313,7 @@ void PageClientImplCocoa::writingToolsActiveDidChange()
 #if ENABLE(GAMEPAD)
 void PageClientImplCocoa::setGamepadsRecentlyAccessed(GamepadsRecentlyAccessed gamepadsRecentlyAccessed)
 {
-    [m_webView _setGamepadsRecentlyAccessed:(gamepadsRecentlyAccessed == GamepadsRecentlyAccessed::No) ? NO : YES];
+    // [m_webView _setGamepadsRecentlyAccessed:(gamepadsRecentlyAccessed == GamepadsRecentlyAccessed::No) ? NO : YES];
 }
 #endif
 

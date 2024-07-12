@@ -72,7 +72,6 @@ private:
     bool nodeAtPoint(const HitTestRequest&, HitTestResult&, const HitTestLocation& locationInContainer, const LayoutPoint& accumulatedOffset, HitTestAction) final;
 
     void repaintOrMarkForLayout(const IntRect* = nullptr);
-    void notifyFinished(CachedResource&, const NetworkLoadMetrics&, LoadWillContinueInAnotherProcess) final;
     bool bufferForeground(PaintInfo&, const LayoutPoint&);
 
     bool needsHasSVGTransformFlags() const final;
@@ -80,6 +79,9 @@ private:
     void applyTransform(TransformationMatrix&, const RenderStyle&, const FloatRect& boundingBox, OptionSet<RenderStyle::TransformOperationOption>) const final;
 
     CachedImage* cachedImage() const { return imageResource().cachedImage(); }
+
+    // StyleImageClient overrides
+    void styleImageLoadFinished(StyleImage&, CachedResource&) final;
 
     FloatRect m_objectBoundingBox;
     std::unique_ptr<RenderImageResource> m_imageResource;

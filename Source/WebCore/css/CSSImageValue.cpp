@@ -50,6 +50,15 @@ CSSImageValue::CSSImageValue(ResolvedURL&& location, LoadedFromOpaqueSource load
 {
 }
 
+CSSImageValue::CSSImageValue(CachedResourceHandle<CachedImage>&& cachedImage)
+    : CSSValue(ImageClass)
+    , m_location(makeResolvedURL(cachedImage.url()))
+    , m_cachedImage(WTFMove(cachedImage))
+    , m_initiatorType()
+    , m_loadedFromOpaqueSource(LoadedFromOpaqueSource::No)
+{
+}
+
 Ref<CSSImageValue> CSSImageValue::create()
 {
     return adoptRef(*new CSSImageValue);
@@ -61,6 +70,11 @@ Ref<CSSImageValue> CSSImageValue::create(ResolvedURL location, LoadedFromOpaqueS
 }
 
 Ref<CSSImageValue> CSSImageValue::create(URL imageURL, LoadedFromOpaqueSource loadedFromOpaqueSource, AtomString initiatorType)
+{
+    return create(makeResolvedURL(WTFMove(imageURL)), loadedFromOpaqueSource, WTFMove(initiatorType));
+}
+
+Ref<CSSImageValue> CSSImageValue::create(CachedResourceHandle<CachedImage>&& cachedImage)
 {
     return create(makeResolvedURL(WTFMove(imageURL)), loadedFromOpaqueSource, WTFMove(initiatorType));
 }

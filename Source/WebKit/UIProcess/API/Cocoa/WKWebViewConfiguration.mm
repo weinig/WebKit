@@ -551,25 +551,25 @@ static NSString *defaultApplicationNameForUserAgent()
 
 #if ENABLE(WRITING_TOOLS)
 
-- (void)setSupportsAdaptiveImageGlyph:(BOOL)supportsAdaptiveImageGlyph
-{
-    [self _setMultiRepresentationHEICInsertionEnabled:supportsAdaptiveImageGlyph];
-}
-
-- (BOOL)supportsAdaptiveImageGlyph
-{
-    return [self _multiRepresentationHEICInsertionEnabled];
-}
-
-- (void)setWritingToolsBehavior:(PlatformWritingToolsBehavior)writingToolsBehavior
-{
-    _pageConfiguration->setWritingToolsBehavior(WebKit::convertToWebWritingToolsBehavior(writingToolsBehavior));
-}
-
-- (PlatformWritingToolsBehavior)writingToolsBehavior
-{
-    return WebKit::convertToPlatformWritingToolsBehavior(_pageConfiguration->writingToolsBehavior());
-}
+// - (void)setSupportsAdaptiveImageGlyph:(BOOL)supportsAdaptiveImageGlyph
+// {
+//     [self _setMultiRepresentationHEICInsertionEnabled:supportsAdaptiveImageGlyph];
+// }
+//
+// - (BOOL)supportsAdaptiveImageGlyph
+// {
+//     return [self _multiRepresentationHEICInsertionEnabled];
+// }
+//
+// - (void)setWritingToolsBehavior:(PlatformWritingToolsBehavior)writingToolsBehavior
+// {
+//     _pageConfiguration->setWritingToolsBehavior(WebKit::convertToWebWritingToolsBehavior(writingToolsBehavior));
+// }
+//
+// - (PlatformWritingToolsBehavior)writingToolsBehavior
+// {
+//     return WebKit::convertToPlatformWritingToolsBehavior(_pageConfiguration->writingToolsBehavior());
+// }
 
 #endif // ENABLE(WRITING_TOOLS)
 

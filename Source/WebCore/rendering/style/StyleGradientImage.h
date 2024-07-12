@@ -212,11 +212,9 @@ private:
     Ref<CSSValue> computedStyleValue(const RenderStyle&) const final;
     bool isPending() const final;
     void load(CachedResourceLoader&, const ResourceLoaderOptions&) final;
-    RefPtr<Image> image(const RenderElement*, const FloatSize&, bool isForFirstLine) const final;
-    bool knownToBeOpaque(const RenderElement&) const final;
-    FloatSize fixedSize(const RenderElement&) const final;
-    void didAddClient(RenderElement&) final { }
-    void didRemoveClient(RenderElement&) final { }
+    RefPtr<Image> imageForRenderer(const RenderElement*, const FloatSize&, bool isForFirstLine) const final;
+    bool knownToBeOpaqueForRenderer(const RenderElement&) const final;
+    LayoutSize fixedSizeForRenderer(const RenderElement&) const final;
 
     Ref<Gradient> createGradient(const LinearData&, const FloatSize&, const RenderStyle&) const;
     Ref<Gradient> createGradient(const PrefixedLinearData&, const FloatSize&, const RenderStyle&) const;

@@ -3136,29 +3136,30 @@ bool RenderLayerBacking::isDirectlyCompositedImage() const
         return false;
 #endif
 
-    if (auto* cachedImage = imageRenderer->cachedImage()) {
-        if (!cachedImage->hasImage())
-            return false;
+    auto styleImage = imageRenderer->styleImage();
+    if (!styleImage)
+        return false;
 
-        auto* image = dynamicDowncast<BitmapImage>(cachedImage->imageForRenderer(imageRenderer.get()));
-        if (!image)
-            return false;
+    auto* cachedImage = styleImage->cachedImage();
+    if (!cachedImage || !cachedImage->hasImage())
+        return false;
 
-        if (image->currentFrameOrientation() != ImageOrientation::Orientation::None)
-            return false;
+    auto* image = dynamicDowncast<BitmapImage>(style->imageForRenderer(imageRenderer.get()));
+    if (!image)
+        return false;
+
+    if (image->currentFrameOrientation() != ImageOrientation::Orientation::None)
+        return false;
 
 #if (PLATFORM(GTK) || PLATFORM(WPE))
-        // GTK and WPE ports don't support rounded rect clipping at TextureMapper level, so they cannot
-        // directly composite images that have border-radius propery. Draw them as non directly composited
-        // content instead. See https://bugs.webkit.org/show_bug.cgi?id=174157.
-        if (imageRenderer->style().hasBorderRadius())
-            return false;
+    // GTK and WPE ports don't support rounded rect clipping at TextureMapper level, so they cannot
+    // directly composite images that have border-radius propery. Draw them as non directly composited
+    // content instead. See https://bugs.webkit.org/show_bug.cgi?id=174157.
+    if (imageRenderer->style().hasBorderRadius())
+        return false;
 #endif
 
-        return m_graphicsLayer->shouldDirectlyCompositeImage(image);
-    }
-
-    return false;
+    return m_graphicsLayer->shouldDirectlyCompositeImage(image);
 }
 
 bool RenderLayerBacking::isBitmapOnly() const
@@ -3183,20 +3184,22 @@ bool RenderLayerBacking::isUnscaledBitmapOnly() const
         return false;
 
     if (CheckedPtr imageRenderer = dynamicDowncast<RenderImage>(renderer())) {
-        if (auto* cachedImage = imageRenderer->cachedImage()) {
-            if (!cachedImage->hasImage())
-                return false;
+        auto styleImage = imageRenderer->styleImage();
+        if (!styleImage)
+            return false;
 
-            auto* image = dynamicDowncast<BitmapImage>(cachedImage->imageForRenderer(imageRenderer.get()));
-            if (!image)
-                return false;
+        auto* cachedImage = styleImage->cachedImage();
+        if (!cachedImage || !cachedImage->hasImage())
+            return false;
 
-            if (image->currentFrameOrientation() != ImageOrientation::Orientation::None)
-                return false;
+        auto* image = dynamicDowncast<BitmapImage>(style->imageForRenderer(imageRenderer.get()));
+        if (!image)
+            return false;
 
-            return contents.size() == image->size();
-        }
-        return false;
+        if (image->currentFrameOrientation() != ImageOrientation::Orientation::None)
+            return false;
+
+        return contents.size() == image->size();
     }
 
     if (renderer().style().imageRendering() == ImageRendering::CrispEdges || renderer().style().imageRendering() == ImageRendering::Pixelated)
@@ -3255,11 +3258,16 @@ void RenderLayerBacking::updateImageContents(PaintedContentsInfo& contentsInfo)
 {
     auto& imageRenderer = downcast<RenderImage>(renderer());
 
-    auto* cachedImage = imageRenderer.cachedImage();
+    auto styleImage = imageRenderer->styleImage();
+    if (!styleImage)
+        return false;
+
+
+    auto* cachedImage = styleImage->cachedImage();
     if (!cachedImage)
         return;
 
-    auto* image = cachedImage->imageForRenderer(&imageRenderer);
+    auto* image = styleImage->imageForRenderer(&imageRenderer);
     if (!image)
         return;
 

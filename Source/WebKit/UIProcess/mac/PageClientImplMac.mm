@@ -1112,10 +1112,10 @@ void PageClientImpl::handleContextMenuWritingToolsDeprecated(IntRect selectionBo
     m_impl->handleContextMenuWritingToolsDeprecated(selectionBoundsInRootView);
 }
 
-void PageClientImpl::handleContextMenuWritingTools(WebCore::WritingTools::RequestedTool tool, WebCore::IntRect selectionRect)
+void PageClientImpl::handleContextMenuWritingTools(WebCore::WritingTools::RequestedTool, WebCore::IntRect)
 {
-    RetainPtr webView = this->webView();
-    [[PAL::getWTWritingToolsClass() sharedInstance] showTool:WebKit::convertToPlatformRequestedTool(tool) forSelectionRect:selectionRect ofView:m_view forDelegate:webView.get() smartReplyConfiguration:nil];
+    // RetainPtr webView = this->webView();
+    // [[PAL::getWTWritingToolsClass() sharedInstance] showTool:WebKit::convertToPlatformRequestedTool(tool) forSelectionRect:selectionRect ofView:m_view forDelegate:webView.get() smartReplyConfiguration:nil];
 }
 
 #endif

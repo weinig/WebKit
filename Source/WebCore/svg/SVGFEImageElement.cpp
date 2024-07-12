@@ -35,6 +35,7 @@
 #include "SVGNames.h"
 #include "SVGPreserveAspectRatioValue.h"
 #include "SVGRenderingContext.h"
+#include "StyleCachedImage.h"
 #include <wtf/IsoMallocInlines.h>
 
 namespace WebCore {
@@ -217,7 +218,10 @@ std::tuple<RefPtr<ImageBuffer>, FloatRect> SVGFEImageElement::imageBufferForEffe
 RefPtr<FilterEffect> SVGFEImageElement::createFilterEffect(const FilterEffectVector&, const GraphicsContext& destinationContext) const
 {
     if (CachedResourceHandle cachedImage = m_cachedImage) {
-        RefPtr image = cachedImage->imageForRenderer(renderer());
+        // FIXME: This sucks.
+        auto styleImage = StyleCachedImage::create(cachedImage);
+
+        RefPtr image = styleImage->imageForRenderer(renderer());
         if (!image || image->isNull())
             return nullptr;
 

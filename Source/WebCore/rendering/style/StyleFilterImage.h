@@ -26,26 +26,24 @@
 
 #pragma once
 
-#include "CachedImageClient.h"
-#include "CachedResourceHandle.h"
 #include "FilterOperations.h"
 #include "StyleGeneratedImage.h"
 
 namespace WebCore {
 
-class StyleFilterImage final : public StyleGeneratedImage, private CachedImageClient {
+class StyleFilterImage final : public StyleGeneratedImage, private StyleImageClient {
 public:
-    static Ref<StyleFilterImage> create(RefPtr<StyleImage> image, FilterOperations filterOperations)
+    static Ref<StyleFilterImage> create(RefPtr<StyleImage> inputImage, FilterOperations filterOperations)
     {
-        return adoptRef(*new StyleFilterImage(WTFMove(image), WTFMove(filterOperations)));
+        return adoptRef(*new StyleFilterImage(WTFMove(inputImage), WTFMove(filterOperations)));
     }
     virtual ~StyleFilterImage();
 
-    bool operator==(const StyleImage& other) const final;
+    bool operator==(const StyleImage&) const final;
     bool equals(const StyleFilterImage&) const;
     bool equalInputImages(const StyleFilterImage&) const;
 
-    RefPtr<StyleImage> inputImage() const { return m_image; }
+    RefPtr<StyleImage> inputImage() const { return m_inputImage; }
     const FilterOperations& filterOperations() const { return m_filterOperations; }
 
     static constexpr bool isFixedSize = true;
@@ -56,23 +54,15 @@ private:
     Ref<CSSValue> computedStyleValue(const RenderStyle&) const final;
     bool isPending() const final;
     void load(CachedResourceLoader&, const ResourceLoaderOptions&) final;
-    RefPtr<Image> image(const RenderElement*, const FloatSize&, bool isForFirstLine) const final;
-    bool knownToBeOpaque(const RenderElement&) const final;
-    FloatSize fixedSize(const RenderElement&) const final;
-    void didAddClient(RenderElement&) final { }
-    void didRemoveClient(RenderElement&) final { }
+    RefPtr<Image> imageForRenderer(const RenderElement*, const FloatSize&, bool isForFirstLine) const final;
+    bool knownToBeOpaqueForRenderer(const RenderElement&) const final;
+    LayoutSize fixedSizeForRenderer(const RenderElement&) const final;
 
-    // CachedImageClient.
-    void imageChanged(CachedImage*, const IntRect* = nullptr) final;
+    // StyleImageClient.
+    void styleImageChanged(StyleImage&, const IntRect*) final;
 
-    RefPtr<StyleImage> m_image;
+    RefPtr<StyleImage> m_inputImage;
     FilterOperations m_filterOperations;
-
-    // FIXME: Rather than caching and tracking the input image via CachedImages, we should
-    // instead use a new, StyleImage specific notification, to allow correct tracking of
-    // nested images (e.g. the input image for a StyleFilterImage is a StyleCrossfadeImage
-    // where one of the inputs to the StyleCrossfadeImage is a StyleCachedImage).
-    CachedResourceHandle<CachedImage> m_cachedImage;
     bool m_inputImageIsReady;
 };
 

@@ -236,7 +236,7 @@ on the system setting.
 /*! @abstract The preferred behavior of Writing Tools.
     @discussion The default behavior is equivalent to `NSWritingToolsBehaviorLimited`.
     */
-@property (nonatomic) NSWritingToolsBehavior writingToolsBehavior WK_API_AVAILABLE(macos(WK_MAC_TBA));
+// @property (nonatomic) NSWritingToolsBehavior writingToolsBehavior WK_API_AVAILABLE(macos(WK_MAC_TBA));
 #endif
 
 @end

@@ -39,25 +39,19 @@ public:
 
     bool operator==(const StyleImage&) const final { return false; }
     bool equals(const StyleInvalidImage&) const { return false; }
-    bool canRender(const RenderElement*, float) const final { return false; }
 
     static constexpr bool isFixedSize = true;
 
-protected:
-    void didAddClient(RenderElement&) final { }
-    void didRemoveClient(RenderElement&) final { }
-
-    FloatSize fixedSize(const RenderElement&) const final { return { }; }
-
 private:
     StyleInvalidImage();
-    
+
     bool isPending() const final { return false; }
     void load(CachedResourceLoader&, const ResourceLoaderOptions&) final;
-    bool knownToBeOpaque(const RenderElement&) const { return false; }
-
-    RefPtr<Image> image(const RenderElement*, const FloatSize&, bool isForFirstLine) const final;
-    Ref<CSSValue> computedStyleValue(const RenderStyle&) const;
+    bool knownToBeOpaqueForRenderer(const RenderElement&) const final { return false; }
+    bool canRenderForRenderer(const RenderElement*, float) const final { return false; }
+    RefPtr<Image> imageForRenderer(const RenderElement*, const FloatSize&, bool isForFirstLine) const final;
+    LayoutSize fixedSizeForRenderer(const RenderElement&) const final { return { }; }
+    Ref<CSSValue> computedStyleValue(const RenderStyle&) const final;
 };
 
 } // namespace WebCore

@@ -183,33 +183,34 @@ static MultiRepresentationHEICAttachmentData toMultiRepresentationHEICAttachment
     return attachmentData;
 }
 
-static RetainPtr<NSAdaptiveImageGlyph> toWebMultiRepresentationHEICAttachment(const MultiRepresentationHEICAttachmentData& attachmentData)
+static RetainPtr<NSAdaptiveImageGlyph> toWebMultiRepresentationHEICAttachment(const MultiRepresentationHEICAttachmentData&)
 {
-    if (RetainPtr<NSData> data = attachmentData.data ? bridge_cast((attachmentData.data).get()) : nil) {
-        RetainPtr attachment = adoptNS([[PlatformNSAdaptiveImageGlyph alloc] initWithImageContent:data.get()]);
-        if (attachment)
-            return attachment;
-    }
-
-    NSString *identifier = attachmentData.identifier;
-    NSString *description = attachmentData.description;
-    if (!description.length)
-        description = @"Apple Emoji";
-
-    NSMutableArray *images = [NSMutableArray arrayWithCapacity:attachmentData.images.size()];
-    for (auto& singleImage : attachmentData.images) {
-        RetainPtr strike = adoptNS([[CTEmojiImageStrike alloc] initWithImage:singleImage.image->nativeImage()->platformImage().get() alignmentInset:singleImage.size]);
-        [images addObject:strike.get()];
-    }
-
-    if (![images count])
-        return nil;
-
-    RetainPtr asset = adoptNS([[CTEmojiImageAsset alloc] initWithContentIdentifier:identifier shortDescription:description strikeImages:images]);
-    if (![asset imageData])
-        return nil;
-
-    return adoptNS([[PlatformNSAdaptiveImageGlyph alloc] initWithImageContent:[asset imageData]]);
+    // if (RetainPtr<NSData> data = attachmentData.data ? bridge_cast((attachmentData.data).get()) : nil) {
+    //     RetainPtr attachment = adoptNS([[PlatformNSAdaptiveImageGlyph alloc] initWithImageContent:data.get()]);
+    //     if (attachment)
+    //         return attachment;
+    // }
+    //
+    // NSString *identifier = attachmentData.identifier;
+    // NSString *description = attachmentData.description;
+    // if (!description.length)
+    //     description = @"Apple Emoji";
+    //
+    // NSMutableArray *images = [NSMutableArray arrayWithCapacity:attachmentData.images.size()];
+    // for (auto& singleImage : attachmentData.images) {
+    //     RetainPtr strike = adoptNS([[CTEmojiImageStrike alloc] initWithImage:singleImage.image->nativeImage()->platformImage().get() alignmentInset:singleImage.size]);
+    //     [images addObject:strike.get()];
+    // }
+    //
+    // if (![images count])
+    //     return nil;
+    //
+    // RetainPtr asset = adoptNS([[CTEmojiImageAsset alloc] initWithContentIdentifier:identifier shortDescription:description strikeImages:images]);
+    // if (![asset imageData])
+    //     return nil;
+    //
+    // return adoptNS([[PlatformNSAdaptiveImageGlyph alloc] initWithImageContent:[asset imageData]]);
+    return nil;
 }
 
 #endif

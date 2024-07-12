@@ -1518,7 +1518,11 @@ static LayoutSize size(CachedImage* cachedImage, RenderElement* renderer, ImageS
 {
     if (!cachedImage)
         return { };
-    LayoutSize size = cachedImage->imageSizeForRenderer(renderer, 1.0f); // FIXME: Not sure about this.
+
+    // FIXME: This sucks.
+    auto styleImage = StyleCachedImage::create(*cachedImage);
+    LayoutSize size = styleImage->imageSizeForRenderer(renderer, 1.0f); // FIXME: Not sure about this.
+
     if (auto* renderImage = dynamicDowncast<RenderImage>(renderer); sizeType == ImageSizeType::AfterDevicePixelRatio && renderImage && cachedImage->image() && !cachedImage->image()->hasRelativeWidth())
         size.scale(renderImage->imageDevicePixelRatio());
     return size;
@@ -2164,7 +2168,10 @@ ExceptionOr<RefPtr<CanvasPattern>> CanvasRenderingContext2DBase::createPattern(C
     if (cachedImage.image()->drawsSVGImage())
         originClean = false;
 
-    RefPtr image = cachedImage.imageForRenderer(renderer);
+    // FIXME: This sucks.
+    auto styleImage = StyleCachedImage::create(cachedImage);
+
+    RefPtr image = styleImage->imageForRenderer(renderer);
     if (!image)
         return Exception { ExceptionCode::InvalidStateError };
 

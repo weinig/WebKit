@@ -110,7 +110,7 @@ RenderObject::SetLayoutNeededForbiddenScope::~SetLayoutNeededForbiddenScope()
 
 #endif
 
-struct SameSizeAsRenderObject final : public CachedImageClient, public CanMakeCheckedPtr<SameSizeAsRenderObject> {
+struct SameSizeAsRenderObject final : public StyleImageClient, public CanMakeCheckedPtr<SameSizeAsRenderObject> {
     WTF_MAKE_STRUCT_FAST_ALLOCATED;
     WTF_STRUCT_OVERRIDE_DELETE_FOR_CHECKED_PTR(SameSizeAsRenderObject);
 
@@ -141,7 +141,7 @@ void RenderObjectDeleter::operator() (RenderObject* renderer) const
 }
 
 RenderObject::RenderObject(Type type, Node& node, OptionSet<TypeFlag> typeFlags, TypeSpecificFlags typeSpecificFlags)
-    : CachedImageClient()
+    : StyleImageClient()
 #if ASSERT_ENABLED
     , m_hasAXObject(false)
     , m_setNeedsLayoutForbidden(false)
@@ -1982,9 +1982,37 @@ int RenderObject::nextOffset(int current) const
     return current + 1;
 }
 
-void RenderObject::imageChanged(CachedImage* image, const IntRect* rect)
+void RenderObject::styleImageChanged(StyleImage& image, const IntRect* rect)
 {
-    imageChanged(static_cast<WrappedImagePtr>(image), rect);
+    imageChanged(image.data(), rect);
+}
+
+void RenderObject::styleImageLoadFinished(StyleImage&, CachedResource&)
+{
+}
+
+void RenderObject::styleImageNeedsScheduledRenderingUpdate(StyleImage&)
+{
+}
+
+bool RenderObject::styleImageCanDestroyDecodedData(StyleImage&) const
+{
+    return true;
+}
+
+bool RenderObject::styleImageAnimationAllowed(StyleImage&) const
+{
+    return true;
+}
+
+VisibleInViewportState RenderObject::styleImageFrameAvailable(StyleImage&, ImageAnimatingState, const IntRect*)
+{
+    return VisibleInViewportState::No;
+}
+
+VisibleInViewportState RenderObject::styleImageVisibleInViewport(StyleImage&, const Document&) const
+{
+    return VisibleInViewportState::No;
 }
 
 RenderBoxModelObject* RenderObject::offsetParent() const

@@ -25,7 +25,7 @@
 
 #import "config.h"
 
-#if ENABLE(WRITING_TOOLS)
+#if 0
 
 #import "InstanceMethodSwizzler.h"
 #import "PlatformUtilities.h"

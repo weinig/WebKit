@@ -66,15 +66,15 @@ void StylePaintImage::load(CachedResourceLoader&, const ResourceLoaderOptions&)
 {
 }
 
-RefPtr<Image> StylePaintImage::image(const RenderElement* renderer, const FloatSize& size, bool) const
+RefPtr<Image> StylePaintImage::imageForRenderer(const RenderElement* client, const FloatSize& size, bool) const
 {
-    if (!renderer)
+    if (!client)
         return &Image::nullImage();
 
     if (size.isEmpty())
         return nullptr;
 
-    auto* selectedGlobalScope = renderer->document().paintWorkletGlobalScopeForName(m_name);
+    auto* selectedGlobalScope = client->document().paintWorkletGlobalScopeForName(m_name);
     if (!selectedGlobalScope)
         return nullptr;
 
@@ -107,12 +107,12 @@ RefPtr<Image> StylePaintImage::image(const RenderElement* renderer, const FloatS
     return CustomPaintImage::create(*registration, size, *renderer, arguments);
 }
 
-bool StylePaintImage::knownToBeOpaque(const RenderElement&) const
+bool StylePaintImage::knownToBeOpaqueForRenderer(const RenderElement&) const
 {
     return false;
 }
 
-FloatSize StylePaintImage::fixedSize(const RenderElement&) const
+LayoutSize StylePaintImage::fixedSizeForRenderer(const RenderElement&) const
 {
     return { };
 }

@@ -55,7 +55,7 @@ public:
     WrappedImagePtr imagePtr() const { return m_styleImage ? m_styleImage->data() : nullptr; }
 
     void setCachedImage(CachedResourceHandle<CachedImage>&&);
-    CachedImage* cachedImage() const;
+    CachedImage* cachedImage() const { return m_styleImage ? m_styleImage->cachedImage() : nullptr; }
 
     void resetAnimation();
 

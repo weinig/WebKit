@@ -52,10 +52,10 @@ bool CSSCanvasValue::equals(const CSSCanvasValue& other) const
 
 RefPtr<StyleImage> CSSCanvasValue::createStyleImage(Style::BuilderState& state) const
 {
-    if (m_cachedStyleImage && &m_cachedStyleImage->document() == &state.document())
+    if (m_cachedStyleImage && m_cachedStyleImage->document() == &state.document())
         return m_cachedStyleImage;
 
-    m_cachedStyleImage = StyleCanvasImage::create(state.document(), m_name);
+    m_cachedStyleImage = StyleCanvasImage::create(&state.document(), m_name);
     return m_cachedStyleImage;
 }
 

@@ -45,7 +45,7 @@ namespace WebCore {
 
 // MARK: - StyleFilterImage
 
-StyleFilterImage::StyleFilterImage(Document* document, RefPtr<StyleImage>&& inputImage, FilterOperations&& filterOperations)
+StyleFilterImage::StyleFilterImage(const Document* document, RefPtr<StyleImage>&& inputImage, FilterOperations&& filterOperations)
     : StyleGeneratedImage { Type::FilterImage, StyleFilterImage::isFixedSize }
     , m_inputImage { WTFMove(inputImage) }
     , m_filterOperations { WTFMove(filterOperations) }

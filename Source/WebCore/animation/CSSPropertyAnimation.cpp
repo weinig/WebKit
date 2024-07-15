@@ -340,7 +340,7 @@ static inline FilterOperations blendFunc(const FilterOperations& from, const Fil
     return from.blend(to, context);
 }
 
-static inline RefPtr<StyleImage> blendFilter(RefPtr<StyleImage> inputImage, const FilterOperations& from, const FilterOperations& to, const CSSPropertyBlendingContext& context, Document& document)
+static inline RefPtr<StyleImage> blendFilter(RefPtr<StyleImage> inputImage, const FilterOperations& from, const FilterOperations& to, const CSSPropertyBlendingContext& context, const Document* document)
 {
     auto filterResult = from.blend(to, context);
     return StyleFilterImage::create(document, WTFMove(inputImage), WTFMove(filterResult));

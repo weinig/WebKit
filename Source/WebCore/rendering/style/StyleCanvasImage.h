@@ -37,7 +37,7 @@ class HTMLCanvasElement;
 
 class StyleCanvasImage final : public StyleGeneratedImage, public CanvasObserver {
 public:
-    static Ref<StyleCanvasImage> create(Document& document, String name)
+    static Ref<StyleCanvasImage> create(const Document* document, String name)
     {
         return adoptRef(*new StyleCanvasImage(document, WTFMove(name)));
     }
@@ -45,11 +45,13 @@ public:
 
     bool operator==(const StyleImage&) const final;
     bool equals(const StyleCanvasImage&) const;
-    
+
+    const Document* document() const { return m_document.get(); }
+
     static constexpr bool isFixedSize = true;
 
 private:
-    explicit StyleCanvasImage(Document& document, String&&);
+    explicit StyleCanvasImage(const Document* document, String&&);
 
     Ref<CSSValue> computedStyleValue(const RenderStyle&) const final;
     bool isPending() const final;
@@ -71,7 +73,7 @@ private:
     HTMLCanvasElement* element() const;
 
     String m_name;
-    WeakPtr<Document, WeakPtrImplWithEventTargetData> m_document;
+    WeakPtr<const Document, WeakPtrImplWithEventTargetData> m_document;
     mutable HTMLCanvasElement* m_element;
 };
 

@@ -33,10 +33,10 @@
 
 namespace WebCore {
 
-StyleCanvasImage::StyleCanvasImage(Document& document, String&& name)
+StyleCanvasImage::StyleCanvasImage(const Document* document, String&& name)
     : StyleGeneratedImage { Type::CanvasImage, StyleCanvasImage::isFixedSize }
     , m_name { WTFMove(name) }
-    , m_document { &document }
+    , m_document { document }
     , m_element { nullptr }
 {
 }
@@ -150,7 +150,7 @@ HTMLCanvasElement* StyleCanvasImage::element() const
     if (!m_element) {
         if (!m_document)
             return nullptr;
-        m_element = m_document->getCSSCanvasElement(m_name);
+        m_element = const_cast<Document*>(m_document.get())->getCSSCanvasElement(m_name);
         if (!m_element)
             return nullptr;
         m_element->addObserver(const_cast<StyleCanvasImage&>(*this));

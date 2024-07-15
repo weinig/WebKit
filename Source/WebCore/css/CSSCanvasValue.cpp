@@ -26,6 +26,7 @@
 #include "config.h"
 #include "CSSCanvasValue.h"
 
+#include "StyleBuilderState.h"
 #include "StyleCanvasImage.h"
 #include <wtf/text/MakeString.h>
 
@@ -49,12 +50,12 @@ bool CSSCanvasValue::equals(const CSSCanvasValue& other) const
     return m_name == other.m_name;
 }
 
-RefPtr<StyleImage> CSSCanvasValue::createStyleImage(Style::BuilderState&) const
+RefPtr<StyleImage> CSSCanvasValue::createStyleImage(Style::BuilderState& state) const
 {
-    if (m_cachedStyleImage)
+    if (m_cachedStyleImage && &m_cachedStyleImage->document() == &state.document())
         return m_cachedStyleImage;
 
-    m_cachedStyleImage = StyleCanvasImage::create(m_name);
+    m_cachedStyleImage = StyleCanvasImage::create(state.document(), m_name);
     return m_cachedStyleImage;
 }
 

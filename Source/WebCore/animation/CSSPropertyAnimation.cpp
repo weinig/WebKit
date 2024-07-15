@@ -340,10 +340,10 @@ static inline FilterOperations blendFunc(const FilterOperations& from, const Fil
     return from.blend(to, context);
 }
 
-static inline RefPtr<StyleImage> blendFilter(RefPtr<StyleImage> inputImage, const FilterOperations& from, const FilterOperations& to, const CSSPropertyBlendingContext& context)
+static inline RefPtr<StyleImage> blendFilter(RefPtr<StyleImage> inputImage, const FilterOperations& from, const FilterOperations& to, const CSSPropertyBlendingContext& context, Document& document)
 {
     auto filterResult = from.blend(to, context);
-    return StyleFilterImage::create(WTFMove(inputImage), WTFMove(filterResult));
+    return StyleFilterImage::create(document, WTFMove(inputImage), WTFMove(filterResult));
 }
 
 static inline ContentVisibility blendFunc(ContentVisibility from, ContentVisibility to, const CSSPropertyBlendingContext& context)
@@ -469,7 +469,7 @@ static inline RefPtr<StyleImage> blendFunc(StyleImage* from, StyleImage* to, con
         // Animation of generated images just possible if input images are equal.
         // Otherwise fall back to cross fade animation.
         if (fromFilter->equalInputImages(*toFilter) && is<StyleCachedImage>(fromFilter->inputImage()))
-            return blendFilter(fromFilter->inputImage(), fromFilter->filterOperations(), toFilter->filterOperations(), context);
+            return blendFilter(fromFilter->inputImage(), fromFilter->filterOperations(), toFilter->filterOperations(), context, fromFilter->document());
     } else if (auto [fromCrossfade, toCrossfade] = std::tuple { dynamicDowncast<StyleCrossfadeImage>(*from), dynamicDowncast<StyleCrossfadeImage>(*to) }; fromCrossfade && toCrossfade) {
         if (fromCrossfade->equalInputImages(*toCrossfade)) {
             if (auto crossfadeBlend = toCrossfade->blend(*fromCrossfade, context))
@@ -479,12 +479,12 @@ static inline RefPtr<StyleImage> blendFunc(StyleImage* from, StyleImage* to, con
         RefPtr fromFilterInputImage = dynamicDowncast<StyleCachedImage>(fromFilter->inputImage());
 
         if (fromFilterInputImage && toCachedImage->equals(*fromFilterInputImage))
-            return blendFilter(WTFMove(fromFilterInputImage), fromFilter->filterOperations(), FilterOperations(), context);
+            return blendFilter(WTFMove(fromFilterInputImage), fromFilter->filterOperations(), FilterOperations(), context, fromFilter->document());
     } else if (auto [fromCachedImage, toFilter] = std::tuple { dynamicDowncast<StyleCachedImage>(*from), dynamicDowncast<StyleFilterImage>(*to) }; fromCachedImage && toFilter) {
         RefPtr toFilterInputImage = dynamicDowncast<StyleCachedImage>(toFilter->inputImage());
 
         if (toFilterInputImage && fromCachedImage->equals(*toFilterInputImage))
-            return blendFilter(WTFMove(toFilterInputImage), FilterOperations(), toFilter->filterOperations(), context);
+            return blendFilter(WTFMove(toFilterInputImage), FilterOperations(), toFilter->filterOperations(), context, toFilter->document());
     }
 
     auto* fromCachedImage = dynamicDowncast<StyleCachedImage>(*from);
@@ -512,7 +512,7 @@ static inline NinePieceImage blendFunc(const NinePieceImage& from, const NinePie
         return to;
 
     if (auto* renderer = context.client.renderer()) {
-        if (from.image()->imageSize(renderer, 1.0) != to.image()->imageSize(renderer, 1.0))
+        if (from.image()->imageSizeForRenderer(renderer, 1.0) != to.image()->imageSizeForRenderer(renderer, 1.0))
             return to;
     }
 

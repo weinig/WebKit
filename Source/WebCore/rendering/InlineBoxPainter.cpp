@@ -178,8 +178,8 @@ void InlineBoxPainter::paintMask()
 
     paintFillLayers(Color(), renderer().style().maskLayers(), paintRect, compositeOp);
 
-    bool hasBoxImage = maskBorder && maskBorder->canRender(&renderer(), renderer().style().usedZoom());
-    if (!hasBoxImage || !maskBorder->isLoaded(&renderer())) {
+    bool hasBoxImage = maskBorder && maskBorder->canRenderForRenderer(&renderer(), renderer().style().usedZoom());
+    if (!hasBoxImage || !maskBorder->isLoadedForRenderer(&renderer())) {
         if (pushTransparencyLayer)
             m_paintInfo.context().endTransparencyLayer();
         return; // Don't paint anything while we wait for the image to load.
@@ -253,8 +253,8 @@ void InlineBoxPainter::paintDecorations()
 
     const NinePieceImage& borderImage = renderer().style().borderImage();
     StyleImage* borderImageSource = borderImage.image();
-    bool hasBorderImage = borderImageSource && borderImageSource->canRender(&renderer(), style.usedZoom());
-    if (hasBorderImage && !borderImageSource->isLoaded(&renderer()))
+    bool hasBorderImage = borderImageSource && borderImageSource->canRenderForRenderer(&renderer(), style.usedZoom());
+    if (hasBorderImage && !borderImageSource->isLoadedForRenderer(&renderer()))
         return; // Don't paint anything while we wait for the image to load.
 
     BorderPainter borderPainter { renderer(), m_paintInfo };
@@ -305,7 +305,7 @@ void InlineBoxPainter::paintFillLayers(const Color& color, const FillLayer& fill
 void InlineBoxPainter::paintFillLayer(const Color& color, const FillLayer& fillLayer, const LayoutRect& rect, CompositeOperator op)
 {
     auto* image = fillLayer.image();
-    bool hasFillImage = image && image->canRender(&renderer(), renderer().style().usedZoom());
+    bool hasFillImage = image && image->canRenderForRenderer(&renderer(), renderer().style().usedZoom());
     bool hasFillImageOrBorderRadious = hasFillImage || renderer().style().hasBorderRadius();
     bool hasSingleLine = !m_inlineBox.previousInlineBox() && !m_inlineBox.nextInlineBox();
 

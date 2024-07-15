@@ -149,8 +149,8 @@ private:
     bool shouldCollapseToEmpty() const;
 
     // StyleImageClient overrides
-    void styleImageLoadFinished(StyleImage&, CachedResource&) final;
-    std::optional<LayoutSize> styleImageOverrideImageSize(StyleImage&) final;
+    void styleImageFinishedLoad(StyleImage&) final;
+    std::optional<LayoutSize> styleImageOverrideImageSize(StyleImage&) const final;
 
     // Text to display as long as the image isn't available.
     String m_altText;

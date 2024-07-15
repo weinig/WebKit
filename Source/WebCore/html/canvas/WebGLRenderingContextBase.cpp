@@ -95,6 +95,7 @@
 #include "PermissionsPolicy.h"
 #include "RenderBox.h"
 #include "Settings.h"
+#include "StyleCachedImage.h"
 #include "WebCodecsVideoFrame.h"
 #include "WebCoreOpaqueRootInlines.h"
 #include "WebGL2RenderingContext.h"
@@ -3328,7 +3329,9 @@ ExceptionOr<void> WebGLRenderingContextBase::texImageSource(TexImageFunctionID f
     if (!validationResult.returnValue())
         return { };
 
-    RefPtr<Image> imageForRender = source.cachedImage()->imageForRenderer(source.renderer());
+    // FIXME: This sucks.
+    auto styleImage = StyleCachedImage::create(*source.cachedImage());
+    RefPtr<Image> imageForRender = styleImage->imageForRenderer(source.renderer());
     if (!imageForRender)
         return { };
 

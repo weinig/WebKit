@@ -1262,7 +1262,7 @@ static bool mustRepaintFillLayers(const RenderElement& renderer, const FillLayer
 
     // Make sure we have a valid image.
     RefPtr image = layer.image();
-    if (!image || !image->canRender(&renderer, renderer.style().usedZoom()))
+    if (!image || !image->canRenderForRenderer(&renderer, renderer.style().usedZoom()))
         return false;
 
     if (!layer.xPosition().isZero() || !layer.yPosition().isZero())
@@ -1501,7 +1501,7 @@ bool RenderElement::borderImageIsLoadedAndCanBeRendered() const
     ASSERT(style().hasBorder());
 
     RefPtr borderImage = style().borderImage().image();
-    return borderImage && borderImage->canRender(this, style().usedZoom()) && borderImage->isLoaded(this);
+    return borderImage && borderImage->canRenderForRenderer(this, style().usedZoom()) && borderImage->isLoadedForRenderer(this);
 }
 
 bool RenderElement::mayCauseRepaintInsideViewport(const IntRect* optionalViewportRect) const
@@ -1604,7 +1604,7 @@ bool RenderElement::allowsAnimation() const
     return page().imageAnimationEnabled();
 }
 
-bool RenderElement::repaintForPausedImageAnimationsIfNeeded(const IntRect& visibleRect, CachedImage& cachedImage)
+bool RenderElement::repaintForPausedImageAnimationsIfNeeded(const IntRect& visibleRect, StyleImage& styleImage)
 {
     ASSERT(m_hasPausedImageAnimations);
     if (!allowsAnimation() || !isVisibleInDocumentRect(visibleRect))
@@ -1612,7 +1612,7 @@ bool RenderElement::repaintForPausedImageAnimationsIfNeeded(const IntRect& visib
 
     repaint();
 
-    if (RefPtr image = cachedImage.image()) {
+    if (RefPtr image = styleImage.image()) {
         if (auto* svgImage = dynamicDowncast<SVGImage>(*image))
             svgImage->scheduleStartAnimation();
         else
@@ -2501,9 +2501,13 @@ void RenderElement::styleImageClientRemoved(StyleImage& styleImage)
         checkedView()->removeRendererWithPausedImageAnimations(*this, styleImage);
 }
 
-void RenderElement::styleImageLoadFinished(StyleImage&, CachedResource& resource)
+void RenderElement::styleImageFinishedResourceLoad(StyleImage&, CachedResource& resource)
 {
     document().protectedCachedResourceLoader()->notifyFinished(resource);
+}
+
+void RenderElement::styleImageFinishedLoad(StyleImage&)
+{
 }
 
 void RenderElement::styleImageNeedsScheduledRenderingUpdate(StyleImage&)
@@ -2512,9 +2516,9 @@ void RenderElement::styleImageNeedsScheduledRenderingUpdate(StyleImage&)
         page->scheduleRenderingUpdate(RenderingUpdateStep::Images);
 }
 
-void RenderElement::styleImageAnimationAllowed(StyleImage&) const
+bool RenderElement::styleImageAnimationAllowed(StyleImage&) const
 {
-    return animationAllowed();
+    return allowsAnimation();
 }
 
 VisibleInViewportState RenderElement::styleImageFrameAvailable(StyleImage& image, ImageAnimatingState animatingState, const IntRect* changeRect)
@@ -2546,6 +2550,13 @@ VisibleInViewportState RenderElement::styleImageVisibleInViewport(StyleImage&, c
 ImageOrientation RenderElement::styleImageOrientation(StyleImage&) const
 {
     return imageOrientation();
+}
+
+HashSet<Element*> RenderElement::styleImageReferencingElements(StyleImage&) const
+{
+    if (auto* element = this->element())
+        return { element };
+    return { };
 }
 
 }

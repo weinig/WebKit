@@ -282,7 +282,7 @@ static RefPtr<Image> findIconImage(const RenderObject& renderer)
         if (!cachedImage || cachedImage->errorOccurred())
             return nullptr;
 
-        auto* image = styleImage->imageForRenderer(renderImage);
+        RefPtr image = styleImage->imageForRenderer(renderImage);
         if (!image)
             return nullptr;
 

@@ -150,10 +150,10 @@ void BorderPainter::paintBorder(const LayoutRect& rect, const RenderStyle& style
         if (!styleImage)
             return false;
 
-        if (!styleImage->isLoaded(&m_renderer))
+        if (!styleImage->isLoadedForRenderer(&m_renderer))
             return false;
 
-        if (!styleImage->canRender(&m_renderer, style.usedZoom()))
+        if (!styleImage->canRenderForRenderer(&m_renderer, style.usedZoom()))
             return false;
 
         auto rectWithOutsets = rect;
@@ -484,10 +484,10 @@ bool BorderPainter::paintNinePieceImage(const LayoutRect& rect, const RenderStyl
     if (!styleImage)
         return false;
 
-    if (!styleImage->isLoaded(&m_renderer))
+    if (!styleImage->isLoadedForRenderer(&m_renderer))
         return true; // Never paint a nine-piece image incrementally, but don't paint the fallback borders either.
 
-    if (!styleImage->canRender(&m_renderer, style.usedZoom()))
+    if (!styleImage->canRenderForRenderer(&m_renderer, style.usedZoom()))
         return false;
 
     CheckedPtr modelObject = dynamicDowncast<RenderBoxModelObject>(m_renderer);

@@ -63,7 +63,7 @@ const StyleImage* StyleMultiImage::selectedImage() const
         [](const Ref<StyleImage>& selectedImage) -> const StyleImage* {
             return selectedImage.ptr();
         },
-        [](Pending&) -> const StyleImage* {
+        [](const Pending&) -> const StyleImage* {
             return nullptr;
         }
     );
@@ -81,7 +81,7 @@ StyleImage* StyleMultiImage::selectedImage()
     );
 }
 
-void StyleMultiImage::setSelectedImage(Ref<StyleImage>&& selection)
+void StyleMultiImage::setSelectedImageAndLoad(Ref<StyleImage>&& selection, CachedResourceLoader& loader, const ResourceLoaderOptions& options)
 {
     return WTF::switchOn(m_state,
         [&](Ref<StyleImage>&) {
@@ -95,12 +95,12 @@ void StyleMultiImage::setSelectedImage(Ref<StyleImage>&& selection)
             }
 
             // Transfer clientsWaitingForAsyncDecoding to the selected image.
-            for (auto client : pending.clientsWaitingForAsyncDecoding)
+            for (auto& client : pending.clientsWaitingForAsyncDecoding)
                 selection->addClientWaitingForAsyncDecoding(client);
 
             // Transfer container size requests to the selected image.
-            for (auto& [client, context] : pending.containerContextRequests)
-                selection->setContainerContextForRenderer(client, context.containerSize, context.containerZoom, context.url);
+            for (auto request : pending.containerContextRequests)
+                selection->setContainerContextForRenderer(request.key, request.value.containerSize, request.value.containerZoom, request.value.imageURL);
 
             if (selection->isPending())
                 selection->load(loader, options);
@@ -122,26 +122,22 @@ void StyleMultiImage::load(CachedResourceLoader& loader, const ResourceLoaderOpt
 
     ASSERT(is<StyleCachedImage>(bestFitImage.image) || is<StyleGeneratedImage>(bestFitImage.image));
 
-    if (is<StyleGeneratedImage>(bestFitImage.image)) {
-        setSelectedImage(bestFitImage.image->releaseNonNull())
-        return;
-    }
-
     if (RefPtr styleCachedImage = dynamicDowncast<StyleCachedImage>(bestFitImage.image)) {
         if (styleCachedImage->imageScaleFactor() == bestFitImage.scaleFactor)
-            setSelectedImage(styleCachedImage.releaseNonNull());
+            setSelectedImageAndLoad(styleCachedImage.releaseNonNull(), loader, options);
         else
-            setSelectedImage(StyleCachedImage::copyOverridingScaleFactor(*styleCachedImage, bestFitImage.scaleFactor));
-    }
+            setSelectedImageAndLoad(StyleCachedImage::copyOverridingScaleFactor(*styleCachedImage, bestFitImage.scaleFactor), loader, options);
+    } else
+        setSelectedImageAndLoad(*bestFitImage.image, loader, options);
 }
 
 CachedImage* StyleMultiImage::cachedImage() const
 {
     return WTF::switchOn(m_state,
-        [](Ref<StyleImage>& selectedImage) -> CachedImage* {
+        [](const Ref<StyleImage>& selectedImage) -> CachedImage* {
             return selectedImage->cachedImage();
         },
-        [](Pending&) -> CachedImage* {
+        [](const Pending&) -> CachedImage* {
             return nullptr;
         }
     );
@@ -150,10 +146,10 @@ CachedImage* StyleMultiImage::cachedImage() const
 WrappedImagePtr StyleMultiImage::data() const
 {
     return WTF::switchOn(m_state,
-        [](Ref<StyleImage>& selectedImage) -> WrappedImagePtr {
+        [](const Ref<StyleImage>& selectedImage) -> WrappedImagePtr {
             return selectedImage->data();
         },
-        [](Pending&) -> WrappedImagePtr {
+        [](const Pending&) -> WrappedImagePtr {
             return nullptr;
         }
     );
@@ -162,10 +158,10 @@ WrappedImagePtr StyleMultiImage::data() const
 float StyleMultiImage::imageScaleFactor() const
 {
     return WTF::switchOn(m_state,
-        [&](Ref<StyleImage>& selectedImage) -> float {
+        [&](const Ref<StyleImage>& selectedImage) -> float {
             return selectedImage->imageScaleFactor();
         },
-        [&](Pending&) -> float {
+        [&](const Pending&) -> float {
             return 1;
         }
     );
@@ -174,10 +170,10 @@ float StyleMultiImage::imageScaleFactor() const
 bool StyleMultiImage::canRenderForRenderer(const RenderElement* client, float multiplier) const
 {
     return WTF::switchOn(m_state,
-        [&](Ref<StyleImage>& selectedImage) {
+        [&](const Ref<StyleImage>& selectedImage) {
             return selectedImage->canRenderForRenderer(client, multiplier);
         },
-        [](Pending&) {
+        [](const Pending&) {
             return false;
         }
     );
@@ -191,10 +187,10 @@ bool StyleMultiImage::isPending() const
 bool StyleMultiImage::isLoadedForRenderer(const RenderElement* client) const
 {
     return WTF::switchOn(m_state,
-        [&](Ref<StyleImage>& selectedImage) {
+        [&](const Ref<StyleImage>& selectedImage) {
             return selectedImage->isLoadedForRenderer(client);
         },
-        [](Pending&) {
+        [](const Pending&) {
             return false;
         }
     );
@@ -203,10 +199,10 @@ bool StyleMultiImage::isLoadedForRenderer(const RenderElement* client) const
 bool StyleMultiImage::errorOccurred() const
 {
     return WTF::switchOn(m_state,
-        [](Ref<StyleImage>& selectedImage) {
+        [](const Ref<StyleImage>& selectedImage) {
             return selectedImage->errorOccurred();
         },
-        [](Pending&) {
+        [](const Pending&) {
             return false;
         }
     );
@@ -215,10 +211,10 @@ bool StyleMultiImage::errorOccurred() const
 LayoutSize StyleMultiImage::imageSizeForRenderer(const RenderElement* client, float multiplier, StyleImageSizeType sizeType) const
 {
     return WTF::switchOn(m_state,
-        [&](Ref<StyleImage>& selectedImage) -> LayoutSize {
+        [&](const Ref<StyleImage>& selectedImage) -> LayoutSize {
             return selectedImage->imageSizeForRenderer(client, multiplier, sizeType);
         },
-        [](Pending&) -> LayoutSize {
+        [](const Pending&) -> LayoutSize {
             return { };
         }
     );
@@ -227,10 +223,10 @@ LayoutSize StyleMultiImage::imageSizeForRenderer(const RenderElement* client, fl
 bool StyleMultiImage::imageHasRelativeWidth() const
 {
     return WTF::switchOn(m_state,
-        [](Ref<StyleImage>& selectedImage) {
+        [](const Ref<StyleImage>& selectedImage) {
             return selectedImage->imageHasRelativeWidth();
         },
-        [](Pending&) {
+        [](const Pending&) {
             return false;
         }
     );
@@ -239,10 +235,10 @@ bool StyleMultiImage::imageHasRelativeWidth() const
 bool StyleMultiImage::imageHasRelativeHeight() const
 {
     return WTF::switchOn(m_state,
-        [](Ref<StyleImage>& selectedImage) {
+        [](const Ref<StyleImage>& selectedImage) {
             return selectedImage->imageHasRelativeHeight();
         },
-        [](Pending&) {
+        [](const Pending&) {
             return false;
         }
     );
@@ -251,10 +247,10 @@ bool StyleMultiImage::imageHasRelativeHeight() const
 bool StyleMultiImage::usesImageContainerSize() const
 {
     return WTF::switchOn(m_state,
-        [](Ref<StyleImage>& selectedImage) {
+        [](const Ref<StyleImage>& selectedImage) {
             return selectedImage->usesImageContainerSize();
         },
-        [](Pending&) {
+        [](const Pending&) {
             return false;
         }
     );
@@ -263,10 +259,10 @@ bool StyleMultiImage::usesImageContainerSize() const
 bool StyleMultiImage::hasImage() const
 {
     return WTF::switchOn(m_state,
-        [](Ref<StyleImage>& selectedImage) {
+        [](const Ref<StyleImage>& selectedImage) {
             return selectedImage->hasImage();
         },
-        [](Pending&) {
+        [](const Pending&) {
             return false;
         }
     );
@@ -285,10 +281,10 @@ void StyleMultiImage::computeIntrinsicDimensionsForRenderer(const RenderElement*
 RefPtr<Image> StyleMultiImage::imageForRenderer(const RenderElement* client, const FloatSize& size, bool isForFirstLine) const
 {
     return WTF::switchOn(m_state,
-        [&](Ref<StyleImage>& selectedImage) -> RefPtr<Image> {
+        [&](const Ref<StyleImage>& selectedImage) -> RefPtr<Image> {
             return selectedImage->imageForRenderer(client, size, isForFirstLine);
         },
-        [&](Pending&) -> RefPtr<Image> {
+        [&](const Pending&) -> RefPtr<Image> {
             return nullptr;
         }
     );
@@ -297,17 +293,17 @@ RefPtr<Image> StyleMultiImage::imageForRenderer(const RenderElement* client, con
 bool StyleMultiImage::knownToBeOpaqueForRenderer(const RenderElement& client) const
 {
     return WTF::switchOn(m_state,
-        [&](Ref<StyleImage>& selectedImage) {
+        [&](const Ref<StyleImage>& selectedImage) {
             return selectedImage->knownToBeOpaqueForRenderer(client);
         },
-        [&](Pending&) {
+        [&](const Pending&) {
             return false;
         }
     );
 }
 
 
-void StyleMultiImage::setContainerContextForRenderer(const RenderElement& client, const FloatSize& containerSize, float containerZoom, const URL& url)
+void StyleMultiImage::setContainerContextForRenderer(const RenderElement& client, const LayoutSize& containerSize, float containerZoom, const URL& url)
 {
     if (containerSize.isEmpty())
         return;
@@ -317,7 +313,7 @@ void StyleMultiImage::setContainerContextForRenderer(const RenderElement& client
             selectedImage->setContainerContextForRenderer(client, containerSize, containerZoom, url);
         },
         [&](Pending& pending) {
-            pending.containerContextRequests.set(client, ContainerContext { containerSize, containerZoom, url });
+            pending.containerContextRequests.set(client, Pending::ContainerContext { containerSize, containerZoom, url });
         }
     );
 }
@@ -325,10 +321,10 @@ void StyleMultiImage::setContainerContextForRenderer(const RenderElement& client
 bool StyleMultiImage::isClientWaitingForAsyncDecoding(const StyleImageClient& client) const
 {
     return WTF::switchOn(m_state,
-        [&](Ref<StyleImage>& selectedImage) {
+        [&](const Ref<StyleImage>& selectedImage) {
             return selectedImage->isClientWaitingForAsyncDecoding(client);
         },
-        [&](Pending& pending) {
+        [&](const Pending& pending) {
             return pending.forceAllClientsWaitingForAsyncDecoding
                 || pending.clientsWaitingForAsyncDecoding.contains(const_cast<StyleImageClient&>(client));
         }
@@ -396,10 +392,10 @@ void StyleMultiImage::removeClient(StyleImageClient& client)
 bool StyleMultiImage::hasClient(StyleImageClient& client) const
 {
     return WTF::switchOn(m_state,
-        [&](Ref<StyleImage>& selectedImage) {
+        [&](const Ref<StyleImage>& selectedImage) {
             return selectedImage->hasClient(client);
         },
-        [&](Pending& pending) {
+        [&](const Pending& pending) {
             return pending.clients.contains(client);
         }
     );

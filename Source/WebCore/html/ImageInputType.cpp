@@ -36,6 +36,7 @@
 #include "RenderBoxInlines.h"
 #include "RenderElementInlines.h"
 #include "RenderImage.h"
+#include "StyleCachedImage.h"
 #include <wtf/NeverDestroyed.h>
 #include <wtf/text/MakeString.h>
 
@@ -183,9 +184,11 @@ unsigned ImageInputType::height() const
 
     // If the image is available, use its height.
     auto* imageLoader = element->imageLoader();
-    if (imageLoader && imageLoader->image())
-        return imageLoader->image()->imageSizeForRenderer(element->renderer(), 1).height().toUnsigned();
-
+    if (imageLoader && imageLoader->image()) {
+        // FIXME: This sucks.
+        auto styleImage = StyleCachedImage::create(*imageLoader->image());
+        return styleImage->imageSizeForRenderer(element->renderer(), 1).height().toUnsigned();
+    }
     return 0;
 }
 
@@ -205,9 +208,11 @@ unsigned ImageInputType::width() const
 
     // If the image is available, use its width.
     auto* imageLoader = element->imageLoader();
-    if (imageLoader && imageLoader->image())
-        return imageLoader->image()->imageSizeForRenderer(element->renderer(), 1).width().toUnsigned();
-
+    if (imageLoader && imageLoader->image()) {
+        // FIXME: This sucks.
+        auto styleImage = StyleCachedImage::create(*imageLoader->image());
+        return styleImage->imageSizeForRenderer(element->renderer(), 1).width().toUnsigned();
+    }
     return 0;
 }
 

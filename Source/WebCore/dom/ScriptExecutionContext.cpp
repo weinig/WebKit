@@ -37,6 +37,7 @@
 #include "Document.h"
 #include "EmptyScriptExecutionContext.h"
 #include "ErrorEvent.h"
+#include "FilterRenderingMode.h"
 #include "FontLoadRequest.h"
 #include "FrameDestructionObserverInlines.h"
 #include "JSDOMExceptionHandling.h"
@@ -730,6 +731,27 @@ void ScriptExecutionContext::setCrossOriginMode(CrossOriginMode crossOriginMode)
 CrossOriginMode ScriptExecutionContext::crossOriginMode()
 {
     return globalCrossOriginMode;
+}
+
+OptionSet<FilterRenderingMode> ScriptExecutionContext::preferredFilterRenderingModes() const
+{
+    OptionSet<FilterRenderingMode> modes = FilterRenderingMode::Software;
+#if USE(CORE_IMAGE) || USE(SKIA) || USE(GRAPHICS_CONTEXT_FILTERS)
+    auto& settingsValues = this->settingsValues();
+#endif
+#if USE(CORE_IMAGE)
+    if (settingsValues.acceleratedFiltersEnabled)
+        modes.add(FilterRenderingMode::Accelerated);
+#endif
+#if USE(SKIA)
+    if (settingsValues.acceleratedCompositingEnabled)
+        modes.add(FilterRenderingMode::Accelerated);
+#endif
+#if USE(GRAPHICS_CONTEXT_FILTERS)
+    if (settingsValues.graphicsContextFiltersEnabled)
+        modes.add(FilterRenderingMode::GraphicsContext);
+#endif
+    return modes;
 }
 
 bool ScriptExecutionContext::postTaskTo(ScriptExecutionContextIdentifier identifier, Task&& task)

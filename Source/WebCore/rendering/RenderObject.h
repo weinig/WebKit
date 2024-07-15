@@ -1102,12 +1102,14 @@ public:
 
     // StyleImageClient
     void styleImageChanged(StyleImage&, const IntRect* = nullptr) override;
-    void styleImageLoadFinished(StyleImage&, CachedResource&) override;
+    void styleImageFinishedResourceLoad(StyleImage&, CachedResource&) override;
+    void styleImageFinishedLoad(StyleImage&) override;
     void styleImageNeedsScheduledRenderingUpdate(StyleImage&) override;
     bool styleImageCanDestroyDecodedData(StyleImage&) const override;
     bool styleImageAnimationAllowed(StyleImage&) const override;
     VisibleInViewportState styleImageFrameAvailable(StyleImage&, ImageAnimatingState, const IntRect*) override;
     VisibleInViewportState styleImageVisibleInViewport(StyleImage&, const Document&) const override;
+    HashSet<Element*> styleImageReferencingElements(StyleImage&) const override;
 
     virtual void imageChanged(WrappedImagePtr, const IntRect* = nullptr) { }
 

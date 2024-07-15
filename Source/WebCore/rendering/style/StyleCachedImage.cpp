@@ -106,93 +106,6 @@ URL StyleCachedImage::reresolvedURL(const Document& document) const
     return m_cssValue->reresolvedURL(document);
 }
 
-LegacyRenderSVGResourceContainer* StyleCachedImage::uncheckedRenderSVGResource(TreeScope& treeScope, const AtomString& fragment) const
-{
-    auto renderSVGResource = ReferencedSVGResources::referencedRenderResource(treeScope, fragment);
-    m_isRenderSVGResource = renderSVGResource != nullptr;
-    return renderSVGResource;
-}
-
-LegacyRenderSVGResourceContainer* StyleCachedImage::uncheckedRenderSVGResource(const StyleImageClient* client) const
-{
-    if (!client)
-        return nullptr;
-
-    if (imageURL().string().find('#') == notFound) {
-        m_isRenderSVGResource = false;
-        return nullptr;
-    }
-
-    Ref document = client->document();
-    auto reresolvedURL = this->reresolvedURL(document);
-
-    if (!m_cachedImage) {
-        auto fragmentIdentifier = SVGURIReference::fragmentIdentifierFromIRIString(reresolvedURL.string(), document);
-        return uncheckedRenderSVGResource(client->treeScopeForSVGReferences(), fragmentIdentifier);
-    }
-
-    auto image = dynamicDowncast<SVGImage>(m_cachedImage->image());
-    if (!image)
-        return nullptr;
-
-    auto rootElement = image->rootElement();
-    if (!rootElement)
-        return nullptr;
-
-    auto fragmentIdentifier = reresolvedURL.fragmentIdentifier();
-    return uncheckedRenderSVGResource(rootElement->treeScopeForSVGReferences(), fragmentIdentifier.toAtomString());
-}
-
-LegacyRenderSVGResourceContainer* StyleCachedImage::legacyRenderSVGResource(const StyleImageClient* client) const
-{
-    if (m_isRenderSVGResource && !*m_isRenderSVGResource)
-        return nullptr;
-    return uncheckedRenderSVGResource(client);
-}
-
-RenderSVGResourceContainer* StyleCachedImage::renderSVGResource(const StyleImageClient* client) const
-{
-    if (m_isRenderSVGResource)
-        return nullptr;
-
-    if (!client)
-        return nullptr;
-
-    if (imageURL().string().find('#') == notFound)
-        return nullptr;
-
-    if (!m_cachedImage) {
-        if (RefPtr referencedMaskElement = ReferencedSVGResources::referencedMaskElement(client->treeScopeForSVGReferences(), *this)) {
-            if (auto* referencedMaskerRenderer = dynamicDowncast<RenderSVGResourceMasker>(referencedMaskElement->renderer()))
-                return referencedMaskerRenderer;
-        }
-        return nullptr;
-    }
-
-    auto image = dynamicDowncast<SVGImage>(m_cachedImage->image());
-    if (!image)
-        return nullptr;
-
-    auto rootElement = image->rootElement();
-    if (!rootElement)
-        return nullptr;
-
-    Ref document = client->document();
-    auto reresolvedURL = this->reresolvedURL(document);
-    auto fragmentIdentifier = reresolvedURL.fragmentIdentifier();
-    if (RefPtr referencedMaskElement = ReferencedSVGResources::referencedMaskElement(rootElement->treeScopeForSVGReferences(), fragmentIdentifier.toAtomString())) {
-        if (auto* referencedMaskerRenderer = dynamicDowncast<RenderSVGResourceMasker>(referencedMaskElement->renderer()))
-            return referencedMaskerRenderer;
-    }
-
-    return nullptr;
-}
-
-bool StyleCachedImage::isRenderSVGResource(const StyleImageClient* client) const
-{
-    return renderSVGResource(client) || legacyRenderSVGResource(client);
-}
-
 void StyleCachedImage::load(CachedResourceLoader& loader, const ResourceLoaderOptions& options)
 {
     ASSERT(m_isPending);
@@ -233,7 +146,7 @@ bool StyleCachedImage::canRenderForRenderer(const RenderElement* client, float m
 {
     if (isRenderSVGResource(client))
         return true;
-    return m_cachedImage && !m_cachedImage->errorOccurred() && !imageSizeForRenderer(client, multiplier).isEmpty();
+    return m_cachedImage && !m_cachedImage->errorOccurred() && !imageSizeForRenderer(client, multiplier, StyleImageSizeType::Used).isEmpty();
 }
 
 RefPtr<Image> StyleCachedImage::imageForRenderer(const RenderElement* client, const FloatSize&, bool) const
@@ -250,29 +163,36 @@ RefPtr<Image> StyleCachedImage::imageForRenderer(const RenderElement* client, co
     if (!m_cachedImage)
         return nullptr;
 
-    return imageForRenderer(client);
+    RefPtr image = m_cachedImage->image();
+    if (image->drawsSVGImage()) {
+        auto svgImage = m_cachedImage->svgImageCache()->imageForRenderer(client);
+        if (svgImage != &Image::nullImage())
+            return image;
+    }
+
+    return image.get();
 }
 
 bool StyleCachedImage::knownToBeOpaqueForRenderer(const RenderElement& client) const
 {
-    return imageForRenderer(client)->currentFrameKnownToBeOpaque();
+    return imageForRenderer(&client)->currentFrameKnownToBeOpaque();
 }
 
 LayoutSize StyleCachedImage::imageSizeForRenderer(const RenderElement* client, float multiplier, StyleImageSizeType) const
 {
     if (isRenderSVGResource(client))
-        return LayoutSize(m_containerSize);
+        return m_containerSize;
 
     auto imageSize = unclampedImageSizeForRenderer(client, multiplier, StyleImageSizeType::Used);
     if (imageSize.isEmpty() || multiplier == 1.0f)
-        return imageSize / m_scaleFactor;
+        return imageSize.scaledDown(m_scaleFactor);
 
     // Don't let images that have a width/height >= 1 shrink below 1 when zoomed.
     LayoutSize minimumSize(imageSize.width() > 0 ? 1 : 0, imageSize.height() > 0 ? 1 : 0);
     imageSize.clampToMinimumSize(minimumSize);
 
     ASSERT(multiplier != 1.0f || (imageSize.width().fraction() == 0.0f && imageSize.height().fraction() == 0.0f));
-    return imageSize / m_scaleFactor;
+    return imageSize.scaledDown(m_scaleFactor);
 }
 
 bool StyleCachedImage::imageHasRelativeWidth() const
@@ -289,7 +209,7 @@ void StyleCachedImage::computeIntrinsicDimensionsForRenderer(const RenderElement
 {
     // In case of an SVG resource, we should return the container size.
     if (isRenderSVGResource(client)) {
-        FloatSize size = floorSizeToDevicePixels(LayoutSize(m_containerSize), client ? client->document().deviceScaleFactor() : 1);
+        FloatSize size = floorSizeToDevicePixels(m_containerSize, client ? client->document().deviceScaleFactor() : 1);
         intrinsicWidth = Length(size.width(), LengthType::Fixed);
         intrinsicHeight = Length(size.height(), LengthType::Fixed);
         intrinsicRatio = size;
@@ -307,7 +227,7 @@ bool StyleCachedImage::usesImageContainerSize() const
     return m_cachedImage ? m_cachedImage->usesImageContainerSize() : false;
 }
 
-void StyleCachedImage::setContainerContextForRenderer(const RenderElement& client, const FloatSize& containerSize, float containerZoom, const URL&)
+void StyleCachedImage::setContainerContextForRenderer(const RenderElement& client, const LayoutSize& containerSize, float containerZoom, const URL&)
 {
     m_containerSize = containerSize;
 
@@ -325,10 +245,9 @@ void StyleCachedImage::setContainerContextForRenderer(const RenderElement& clien
         m_cachedImage->svgImageCache()->setContainerContextForRenderer(client, containerSize, containerZoom, imageURL());
     else
         image->setContainerSize(containerSize);
-
 }
 
-bool StyleCachedImage::isClientWaitingForAsyncDecoding(const StyleImageClient&) const
+bool StyleCachedImage::isClientWaitingForAsyncDecoding(const StyleImageClient& client) const
 {
     return m_forceAllClientsWaitingForAsyncDecoding
         || m_clientsWaitingForAsyncDecoding.contains(const_cast<StyleImageClient&>(client));
@@ -393,6 +312,11 @@ bool StyleCachedImage::hasImage() const
     return m_cachedImage && m_cachedImage->hasImage();
 }
 
+Image* StyleCachedImage::image() const
+{
+    return m_cachedImage ? m_cachedImage->rawImage() : nullptr;
+}
+
 float StyleCachedImage::imageScaleFactor() const
 {
     return m_scaleFactor;
@@ -405,10 +329,12 @@ bool StyleCachedImage::usesDataProtocol() const
 
 // MARK: - CachedImageClient
 
-void notifyFinished(CachedResource& resource, const NetworkLoadMetrics&, LoadWillContinueInAnotherProcess)
+void StyleCachedImage::notifyFinished(CachedResource& resource, const NetworkLoadMetrics&, LoadWillContinueInAnotherProcess)
 {
     for (auto entry : m_clients)
-        entry.key->styleImageLoadFinished(*this, resource);
+        entry.key.styleImageFinishedResourceLoad(*this, resource);
+    for (auto entry : m_clients)
+        entry.key.styleImageFinishedLoad(*this);
 }
 
 bool StyleCachedImage::canDestroyDecodedData(CachedImage& cachedImage) const
@@ -416,7 +342,7 @@ bool StyleCachedImage::canDestroyDecodedData(CachedImage& cachedImage) const
     ASSERT_UNUSED(cachedImage, cachedImage == m_cachedImage);
 
     for (auto entry : m_clients) {
-        if (!entry.key.styleImageCanDestroyDecodedData(*this))
+        if (!entry.key.styleImageCanDestroyDecodedData(const_cast<StyleCachedImage&>(*this)))
             return false;
     }
     return true;
@@ -427,7 +353,7 @@ bool StyleCachedImage::allowsAnimation(CachedImage& cachedImage) const
     ASSERT_UNUSED(cachedImage, cachedImage == m_cachedImage);
 
     for (auto entry : m_clients) {
-        if (entry.key->styleImageAnimationAllowed(*this))
+        if (entry.key.styleImageAnimationAllowed(const_cast<StyleCachedImage&>(*this)))
             return true;
     }
     return false;
@@ -438,12 +364,13 @@ void StyleCachedImage::imageCreated(CachedImage& cachedImage, const Image& image
     ASSERT_UNUSED(cachedImage, cachedImage == m_cachedImage);
 
     // Send queued container size requests.
-    if (image->usesContainerSize()) {
-        for (auto& [client, context] : m_pendingContainerContextRequests) {
-            if (image->drawsSVGImage())
+    if (image.usesContainerSize()) {
+        bool useSVGCache = image.drawsSVGImage();
+        for (auto [client, context] : m_pendingContainerContextRequests) {
+            if (useSVGCache)
                 m_cachedImage->svgImageCache()->setContainerContextForRenderer(client, context.containerSize, context.containerZoom, context.imageURL);
             else
-                image->setContainerSize(context.containerSize);
+                const_cast<Image&>(image).setContainerSize(context.containerSize);
         }
     }
 
@@ -454,30 +381,30 @@ void StyleCachedImage::imageCreated(CachedImage& cachedImage, const Image& image
 
 void StyleCachedImage::imageChanged(CachedImage& cachedImage, const IntRect* rect)
 {
-    ASSERT_UNUSED(cachedImage, &cachedImage == &m_cachedImage);
+    ASSERT_UNUSED(cachedImage, &cachedImage == m_cachedImage.get());
 
     for (auto entry : m_clients)
-        entry.key->styleImageChanged(*this, rect);
+        entry.key.styleImageChanged(*this, rect);
 }
 
 void StyleCachedImage::scheduleRenderingUpdateForImage(CachedImage& cachedImage)
 {
-    ASSERT_UNUSED(cachedImage, &cachedImage == &m_cachedImage);
+    ASSERT_UNUSED(cachedImage, &cachedImage == m_cachedImage.get());
 
     for (auto entry : m_clients)
-        entry.key->styleImageNeedsScheduledRenderingUpdate(*this);
+        entry.key.styleImageNeedsScheduledRenderingUpdate(*this);
 }
 
-VisibleInViewportState StyleCachedImage::imageFrameAvailable(CachedImage& cachedImage, ImageAnimatingState, const IntRect*, DecodingStatus)
+VisibleInViewportState StyleCachedImage::imageFrameAvailable(CachedImage& cachedImage, ImageAnimatingState animatingState, const IntRect* changeRect, DecodingStatus decodingStatus)
 {
-    ASSERT_UNUSED(cachedImage, &cachedImage == &m_cachedImage);
+    ASSERT_UNUSED(cachedImage, &cachedImage == m_cachedImage.get());
 
     VisibleInViewportState visibleState = VisibleInViewportState::No;
 
     for (auto entry : m_clients) {
         if (animatingState == ImageAnimatingState::No && !m_forceAllClientsWaitingForAsyncDecoding && !m_clientsWaitingForAsyncDecoding.contains(entry.key))
             continue;
-        if (entry.key->styleImageFrameAvailable(*this, animatingState, changeRect) == VisibleInViewportState::Yes)
+        if (entry.key.styleImageFrameAvailable(*this, animatingState, changeRect) == VisibleInViewportState::Yes)
             visibleState = VisibleInViewportState::Yes;
     }
 
@@ -491,10 +418,10 @@ VisibleInViewportState StyleCachedImage::imageFrameAvailable(CachedImage& cached
 
 VisibleInViewportState StyleCachedImage::imageVisibleInViewport(CachedImage& cachedImage, const Document& document) const
 {
-    ASSERT_UNUSED(cachedImage, &cachedImage == &m_cachedImage);
+    ASSERT_UNUSED(cachedImage, &cachedImage == m_cachedImage.get());
 
     for (auto entry : m_clients) {
-        if (entry.key->styleImageVisibleInViewport(*this, document) == VisibleInViewportState::Yes)
+        if (entry.key.styleImageVisibleInViewport(const_cast<StyleCachedImage&>(*this), document) == VisibleInViewportState::Yes)
             return VisibleInViewportState::Yes;
     }
     return VisibleInViewportState::No;
@@ -503,23 +430,94 @@ VisibleInViewportState StyleCachedImage::imageVisibleInViewport(CachedImage& cac
 
 // MARK: - Internal
 
-Image* StyleCachedImage::imageForRenderer(const RenderElement* client) const
+LegacyRenderSVGResourceContainer* StyleCachedImage::uncheckedRenderSVGResource(TreeScope& treeScope, const AtomString& fragment) const
 {
-    if (!m_cachedImage)
-        return &Image::nullImage();
-
-    RefPtr image = m_cachedImage->image();
-
-    if (image->drawsSVGImage()) {
-        auto svgImage = m_cachedImage->svgImageCache()->imageForRenderer(client);
-        if (svgImage != &Image::nullImage())
-            return image;
-    }
-
-    return image.get();
+    auto renderSVGResource = ReferencedSVGResources::referencedRenderResource(treeScope, fragment);
+    m_isRenderSVGResource = renderSVGResource != nullptr;
+    return renderSVGResource;
 }
 
-LayoutSize StyleCachedImage::imageSizeForRenderer(const RenderElement* client, SizeType sizeType) const
+LegacyRenderSVGResourceContainer* StyleCachedImage::uncheckedRenderSVGResource(const RenderElement* client) const
+{
+    if (!client)
+        return nullptr;
+
+    if (imageURL().string().find('#') == notFound) {
+        m_isRenderSVGResource = false;
+        return nullptr;
+    }
+
+    Ref document = client->document();
+    auto reresolvedURL = this->reresolvedURL(document);
+
+    if (!m_cachedImage) {
+        auto fragmentIdentifier = SVGURIReference::fragmentIdentifierFromIRIString(reresolvedURL.string(), document);
+        return uncheckedRenderSVGResource(client->treeScopeForSVGReferences(), fragmentIdentifier);
+    }
+
+    auto image = dynamicDowncast<SVGImage>(m_cachedImage->image());
+    if (!image)
+        return nullptr;
+
+    auto rootElement = image->rootElement();
+    if (!rootElement)
+        return nullptr;
+
+    auto fragmentIdentifier = reresolvedURL.fragmentIdentifier();
+    return uncheckedRenderSVGResource(rootElement->treeScopeForSVGReferences(), fragmentIdentifier.toAtomString());
+}
+
+LegacyRenderSVGResourceContainer* StyleCachedImage::legacyRenderSVGResource(const RenderElement* client) const
+{
+    if (m_isRenderSVGResource && !*m_isRenderSVGResource)
+        return nullptr;
+    return uncheckedRenderSVGResource(client);
+}
+
+RenderSVGResourceContainer* StyleCachedImage::renderSVGResource(const RenderElement* client) const
+{
+    if (m_isRenderSVGResource)
+        return nullptr;
+
+    if (!client)
+        return nullptr;
+
+    if (imageURL().string().find('#') == notFound)
+        return nullptr;
+
+    if (!m_cachedImage) {
+        if (RefPtr referencedMaskElement = ReferencedSVGResources::referencedMaskElement(client->treeScopeForSVGReferences(), *this)) {
+            if (auto* referencedMaskerRenderer = dynamicDowncast<RenderSVGResourceMasker>(referencedMaskElement->renderer()))
+                return referencedMaskerRenderer;
+        }
+        return nullptr;
+    }
+
+    auto image = dynamicDowncast<SVGImage>(m_cachedImage->image());
+    if (!image)
+        return nullptr;
+
+    auto rootElement = image->rootElement();
+    if (!rootElement)
+        return nullptr;
+
+    Ref document = client->document();
+    auto reresolvedURL = this->reresolvedURL(document);
+    auto fragmentIdentifier = reresolvedURL.fragmentIdentifier();
+    if (RefPtr referencedMaskElement = ReferencedSVGResources::referencedMaskElement(rootElement->treeScopeForSVGReferences(), fragmentIdentifier.toAtomString())) {
+        if (auto* referencedMaskerRenderer = dynamicDowncast<RenderSVGResourceMasker>(referencedMaskElement->renderer()))
+            return referencedMaskerRenderer;
+    }
+
+    return nullptr;
+}
+
+bool StyleCachedImage::isRenderSVGResource(const RenderElement* client) const
+{
+    return renderSVGResource(client) || legacyRenderSVGResource(client);
+}
+
+LayoutSize StyleCachedImage::unclampedImageSizeForRenderer(const RenderElement* client, float multiplier, StyleImageSizeType sizeType) const
 {
     if (!m_cachedImage)
         return { };
@@ -528,27 +526,24 @@ LayoutSize StyleCachedImage::imageSizeForRenderer(const RenderElement* client, S
     if (!image)
         return { };
 
-    if (client) {
-        if (auto overrideImageSize = client->styleImageOverrideImageSize(*this))
-            return *overrideImageSize
-    }
+    auto imageSize = [&] {
+        if (client) {
+            if (auto overrideImageSize = client->styleImageOverrideImageSize(const_cast<StyleCachedImage&>(*this)))
+                return *overrideImageSize;
+        }
 
-    if (image->drawsSVGImage() && sizeType == StyleImageSizeType::Used)
-        return m_cachedImage->svgImageCache()->imageSizeForRenderer(client);
+        if (image->drawsSVGImage() && sizeType == StyleImageSizeType::Used)
+            return m_cachedImage->svgImageCache()->imageSizeForRenderer(client);
 
-    return image->size(client ? client->styleImageOrientation(*this) : ImageOrientation(ImageOrientation::Orientation::FromImage));
-}
+        return LayoutSize(image->size(client ? client->styleImageOrientation(const_cast<StyleCachedImage&>(*this)) : ImageOrientation(ImageOrientation::Orientation::FromImage)));
+    }();
 
-LayoutSize StyleCachedImage::unclampedImageSizeForRenderer(const RenderElement* client, float multiplier, SizeType sizeType) const
-{
-    LayoutSize imageSize = imageSizeForRenderer(client, sizeType);
     if (imageSize.isEmpty() || multiplier == 1.0f)
         return imageSize;
 
-    float widthScale = m_image->hasRelativeWidth() ? 1.0f : multiplier;
-    float heightScale = m_image->hasRelativeHeight() ? 1.0f : multiplier;
-    imageSize.scale(widthScale, heightScale);
-    return imageSize;    
+    float widthScale = image->hasRelativeWidth() ? 1.0f : multiplier;
+    float heightScale = image->hasRelativeHeight() ? 1.0f : multiplier;
+    return imageSize.scaled(widthScale, heightScale);
 }
 
 } // namespace WebCore

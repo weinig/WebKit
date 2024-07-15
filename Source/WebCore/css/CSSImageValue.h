@@ -68,7 +68,7 @@ public:
 
     bool equals(const CSSImageValue&) const;
 
-    // bool knownToBeOpaque(const RenderElement&) const;
+    bool knownToBeOpaque(const RenderElement&) const;
 
     RefPtr<StyleImage> createStyleImage(Style::BuilderState&) const;
 
@@ -86,6 +86,7 @@ public:
 private:
     CSSImageValue();
     CSSImageValue(ResolvedURL&&, LoadedFromOpaqueSource, AtomString&& initiatorType);
+    CSSImageValue(URL&&, LoadedFromOpaqueSource, AtomString&& initiatorType);
     CSSImageValue(CachedResourceHandle<CachedImage>&&);
 
     ResolvedURL m_location;

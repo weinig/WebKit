@@ -53,9 +53,13 @@ public:
 
     CachedImage* cachedImage() const final;
     bool hasImage() const final;
+    Image* image() const final;
 
     RefPtr<Image> imageForRenderer(const RenderElement*, const FloatSize& = { }, bool isForFirstLine = false) const final;
-    LayoutSize imageSizeForRenderer(const RenderElement*, float multiplier, StyleImageSizeType) const final;
+    LayoutSize imageSizeForRenderer(const RenderElement*, float multiplier, StyleImageSizeType = StyleImageSizeType::Used) const final;
+    float imageScaleFactor() const final;
+
+    LayoutSize unclampedImageSizeForRenderer(const RenderElement*, float multiplier, StyleImageSizeType = StyleImageSizeType::Used) const;
 
 private:
     StyleCachedImage(Ref<CSSImageValue>&&, float);
@@ -66,7 +70,7 @@ private:
     Ref<CSSValue> computedStyleValue(const RenderStyle&) const final;
 
     bool canRenderForRenderer(const RenderElement*, float multiplier) const final;
-    void setContainerContextForRenderer(const RenderElement&, const FloatSize&, float, const URL&) final;
+    void setContainerContextForRenderer(const RenderElement&, const LayoutSize&, float, const URL&) final;
     bool knownToBeOpaqueForRenderer(const RenderElement&) const final;
     void computeIntrinsicDimensionsForRenderer(const RenderElement*, Length& intrinsicWidth, Length& intrinsicHeight, FloatSize& intrinsicRatio) final;
 
@@ -81,14 +85,13 @@ private:
     void addClient(StyleImageClient&) final;
     void removeClient(StyleImageClient&) final;
     bool hasClient(StyleImageClient&) const final;
-    float imageScaleFactor() const final;
     bool usesDataProtocol() const final;
     bool isClientWaitingForAsyncDecoding(const StyleImageClient&) const final;
     void addClientWaitingForAsyncDecoding(StyleImageClient&) final;
     void removeAllClientsWaitingForAsyncDecoding() final;
     URL reresolvedURL(const Document&) const;
 
-    // CachedImageClient
+    // MARK: - CachedImageClient
     void notifyFinished(CachedResource&, const NetworkLoadMetrics&, LoadWillContinueInAnotherProcess) final;
     bool canDestroyDecodedData(CachedImage&) const final;
     bool allowsAnimation(CachedImage&) const final;
@@ -98,29 +101,27 @@ private:
     VisibleInViewportState imageFrameAvailable(CachedImage&, ImageAnimatingState, const IntRect* changeRect, DecodingStatus) final;
     VisibleInViewportState imageVisibleInViewport(CachedImage&, const Document&) const final;
 
+    // MARK: - Internal
     LegacyRenderSVGResourceContainer* uncheckedRenderSVGResource(TreeScope&, const AtomString& fragment) const;
-    LegacyRenderSVGResourceContainer* uncheckedRenderSVGResource(const StyleImageClient*) const;
-    LegacyRenderSVGResourceContainer* legacyRenderSVGResource(const StyleImageClient*) const;
-    RenderSVGResourceContainer* renderSVGResource(const StyleImageClient*) const;
-    bool isRenderSVGResource(const StyleImageClient*) const;
-
-    Image* imageForRenderer(const RenderElement*) const;
-    LayoutSize imageSizeForRenderer(const RenderElement*, StyleImageSizeType) const;
-    LayoutSize unclampedImageSizeForRenderer(const RenderElement*, float multiplier, StyleImageSizeType = StyleImageSizeType::Used) const;
+    LegacyRenderSVGResourceContainer* uncheckedRenderSVGResource(const RenderElement*) const;
+    LegacyRenderSVGResourceContainer* legacyRenderSVGResource(const RenderElement*) const;
+    RenderSVGResourceContainer* renderSVGResource(const RenderElement*) const;
+    bool isRenderSVGResource(const RenderElement*) const;
 
     struct ContainerContext {
         LayoutSize containerSize;
         float containerZoom;
         URL imageURL;
     };
+
     Ref<CSSImageValue> m_cssValue;
     bool m_isPending { true };
     mutable float m_scaleFactor { 1 };
     mutable CachedResourceHandle<CachedImage> m_cachedImage;
     mutable std::optional<bool> m_isRenderSVGResource;
 
-    FloatSize m_containerSize;
-    SingleThreadWeakHashMap<StyleImageClient, ContainerContext> m_pendingContainerContextRequests;
+    LayoutSize m_containerSize;
+    SingleThreadWeakHashMap<RenderElement, ContainerContext> m_pendingContainerContextRequests;
 
     SingleThreadWeakHashCountedSet<StyleImageClient> m_clients;
     SingleThreadWeakHashSet<StyleImageClient> m_clientsWaitingForAsyncDecoding;

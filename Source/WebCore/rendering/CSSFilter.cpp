@@ -42,14 +42,14 @@
 
 namespace WebCore {
 
-RefPtr<CSSFilter> CSSFilter::create(RenderElement& renderer, const FilterOperations& operations, OptionSet<FilterRenderingMode> preferredFilterRenderingModes, const FloatSize& filterScale, const FloatRect& targetBoundingBox, const GraphicsContext& destinationContext)
+RefPtr<CSSFilter> CSSFilter::create(TreeScope& treeScopeForSVGReferences, const FilterOperations& operations, OptionSet<FilterRenderingMode> preferredFilterRenderingModes, const FloatSize& filterScale, const FloatRect& targetBoundingBox, const GraphicsContext& destinationContext)
 {
     bool hasFilterThatMovesPixels = operations.hasFilterThatMovesPixels();
     bool hasFilterThatShouldBeRestrictedBySecurityOrigin = operations.hasFilterThatShouldBeRestrictedBySecurityOrigin();
 
     auto filter = adoptRef(*new CSSFilter(filterScale, hasFilterThatMovesPixels, hasFilterThatShouldBeRestrictedBySecurityOrigin));
 
-    if (!filter->buildFilterFunctions(renderer, operations, preferredFilterRenderingModes, targetBoundingBox, destinationContext)) {
+    if (!filter->buildFilterFunctions(treeScopeForSVGReferences, operations, preferredFilterRenderingModes, targetBoundingBox, destinationContext)) {
         LOG_WITH_STREAM(Filters, stream << "CSSFilter::create: failed to build filters " << operations);
         return nullptr;
     }
@@ -191,12 +191,12 @@ static RefPtr<FilterEffect> createSepiaEffect(const BasicColorMatrixFilterOperat
     return FEColorMatrix::create(ColorMatrixType::FECOLORMATRIX_TYPE_MATRIX, WTFMove(inputParameters));
 }
 
-static RefPtr<SVGFilterElement> referenceFilterElement(const ReferenceFilterOperation& filterOperation, RenderElement& renderer)
+static RefPtr<SVGFilterElement> referenceFilterElement(const ReferenceFilterOperation& filterOperation, TreeScope& treeScopeForSVGReferences)
 {
-    RefPtr filterElement = ReferencedSVGResources::referencedFilterElement(renderer.treeScopeForSVGReferences(), filterOperation);
+    RefPtr filterElement = ReferencedSVGResources::referencedFilterElement(treeScopeForSVGReferences, filterOperation);
 
     if (!filterElement) {
-        LOG_WITH_STREAM(Filters, stream << " buildReferenceFilter: failed to find filter renderer, adding pending resource " << filterOperation.fragment());
+        LOG_WITH_STREAM(Filters, stream << " buildReferenceFilter: failed to find filter element, adding pending resource " << filterOperation.fragment());
         // Although we did not find the referenced filter, it might exist later in the document.
         // FIXME: This skips anonymous RenderObjects. <https://webkit.org/b/131085>
         // FIXME: Unclear if this does anything.
@@ -206,27 +206,27 @@ static RefPtr<SVGFilterElement> referenceFilterElement(const ReferenceFilterOper
     return filterElement;
 }
 
-static bool isIdentityReferenceFilter(const ReferenceFilterOperation& filterOperation, RenderElement& renderer)
+static bool isIdentityReferenceFilter(const ReferenceFilterOperation& filterOperation, TreeScope& treeScopeForSVGReferences)
 {
-    RefPtr filterElement = referenceFilterElement(filterOperation, renderer);
+    RefPtr filterElement = referenceFilterElement(filterOperation, treeScopeForSVGReferences);
     if (!filterElement)
         return false;
 
     return SVGFilter::isIdentity(*filterElement);
 }
 
-static IntOutsets calculateReferenceFilterOutsets(const ReferenceFilterOperation& filterOperation, RenderElement& renderer, const FloatRect& targetBoundingBox)
+static IntOutsets calculateReferenceFilterOutsets(const ReferenceFilterOperation& filterOperation, TreeScope& treeScopeForSVGReferences, const FloatRect& targetBoundingBox)
 {
-    RefPtr filterElement = referenceFilterElement(filterOperation, renderer);
+    RefPtr filterElement = referenceFilterElement(filterOperation, treeScopeForSVGReferences);
     if (!filterElement)
         return { };
 
     return SVGFilter::calculateOutsets(*filterElement, targetBoundingBox);
 }
 
-static RefPtr<SVGFilter> createReferenceFilter(CSSFilter& filter, const ReferenceFilterOperation& filterOperation, RenderElement& renderer, OptionSet<FilterRenderingMode> preferredFilterRenderingModes, const FloatRect& targetBoundingBox, const GraphicsContext& destinationContext)
+static RefPtr<SVGFilter> createReferenceFilter(CSSFilter& filter, const ReferenceFilterOperation& filterOperation, TreeScope& treeScopeForSVGReferences, OptionSet<FilterRenderingMode> preferredFilterRenderingModes, const FloatRect& targetBoundingBox, const GraphicsContext& destinationContext)
 {
-    RefPtr filterElement = referenceFilterElement(filterOperation, renderer);
+    RefPtr filterElement = referenceFilterElement(filterOperation, treeScopeForSVGReferences);
     if (!filterElement)
         return nullptr;
 
@@ -235,7 +235,7 @@ static RefPtr<SVGFilter> createReferenceFilter(CSSFilter& filter, const Referenc
     return SVGFilter::create(*filterElement, preferredFilterRenderingModes, filter.filterScale(), filterRegion, targetBoundingBox, destinationContext);
 }
 
-bool CSSFilter::buildFilterFunctions(RenderElement& renderer, const FilterOperations& operations, OptionSet<FilterRenderingMode> preferredFilterRenderingModes, const FloatRect& targetBoundingBox, const GraphicsContext& destinationContext)
+bool CSSFilter::buildFilterFunctions(TreeScope& treeScopeForSVGReferences, const FilterOperations& operations, OptionSet<FilterRenderingMode> preferredFilterRenderingModes, const FloatRect& targetBoundingBox, const GraphicsContext& destinationContext)
 {
     RefPtr<FilterFunction> function;
 
@@ -286,7 +286,7 @@ bool CSSFilter::buildFilterFunctions(RenderElement& renderer, const FilterOperat
             break;
 
         case FilterOperation::Type::Reference:
-            function = createReferenceFilter(*this, uncheckedDowncast<ReferenceFilterOperation>(operation), renderer, preferredFilterRenderingModes, targetBoundingBox, destinationContext);
+            function = createReferenceFilter(*this, uncheckedDowncast<ReferenceFilterOperation>(operation), treeScopeForSVGReferences, preferredFilterRenderingModes, targetBoundingBox, destinationContext);
             break;
 
         default:
@@ -382,14 +382,14 @@ void CSSFilter::setFilterRegion(const FloatRect& filterRegion)
     clampFilterRegionIfNeeded();
 }
 
-bool CSSFilter::isIdentity(RenderElement& renderer, const FilterOperations& operations)
+bool CSSFilter::isIdentity(TreeScope& treeScopeForSVGReferences, const FilterOperations& operations)
 {
     if (operations.hasFilterThatShouldBeRestrictedBySecurityOrigin())
         return false;
 
     for (auto& operation : operations) {
         if (RefPtr referenceOperation = dynamicDowncast<ReferenceFilterOperation>(operation)) {
-            if (!isIdentityReferenceFilter(*referenceOperation, renderer))
+            if (!isIdentityReferenceFilter(*referenceOperation, treeScopeForSVGReferences))
                 return false;
             continue;
         }
@@ -401,13 +401,13 @@ bool CSSFilter::isIdentity(RenderElement& renderer, const FilterOperations& oper
     return true;
 }
 
-IntOutsets CSSFilter::calculateOutsets(RenderElement& renderer, const FilterOperations& operations, const FloatRect& targetBoundingBox)
+IntOutsets CSSFilter::calculateOutsets(TreeScope& treeScopeForSVGReferences, const FilterOperations& operations, const FloatRect& targetBoundingBox)
 {
     IntOutsets outsets;
 
     for (auto& operation : operations) {
         if (RefPtr referenceOperation = dynamicDowncast<ReferenceFilterOperation>(operation)) {
-            outsets += calculateReferenceFilterOutsets(*referenceOperation, renderer, targetBoundingBox);
+            outsets += calculateReferenceFilterOutsets(*referenceOperation, treeScopeForSVGReferences, targetBoundingBox);
             continue;
         }
 

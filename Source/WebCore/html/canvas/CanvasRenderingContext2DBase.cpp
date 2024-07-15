@@ -70,6 +70,7 @@
 #include "ScriptDisallowedScope.h"
 #include "SecurityOrigin.h"
 #include "Settings.h"
+#include "StyleCachedImage.h"
 #include "StyleProperties.h"
 #include "StyleResolver.h"
 #include "TextMetrics.h"
@@ -1566,7 +1567,9 @@ static inline FloatSize size(CSSStyleImageValue& image)
     if (!cachedImage)
         return FloatSize();
 
-    return cachedImage->imageSizeForRenderer(nullptr, 1.0f);
+    // FIXME: This sucks.
+    auto styleImage = StyleCachedImage::create(*cachedImage);
+    return styleImage->imageSizeForRenderer(nullptr, 1.0f);
 }
 
 #if ENABLE(WEB_CODECS)
@@ -1712,7 +1715,7 @@ ExceptionOr<void> CanvasRenderingContext2DBase::drawImage(WebCodecsVideoFrame& f
 }
 #endif
 
-ExceptionOr<void> CanvasRenderingContext2DBase::drawImage(Document& document, CachedImage& cachedImage, const RenderObject* renderer, const FloatRect& imageRect, const FloatRect& srcRect, const FloatRect& dstRect, const CompositeOperator& op, const BlendMode& blendMode, ImageOrientation orientation)
+ExceptionOr<void> CanvasRenderingContext2DBase::drawImage(Document& document, CachedImage& cachedImage, const RenderElement* renderer, const FloatRect& imageRect, const FloatRect& srcRect, const FloatRect& dstRect, const CompositeOperator& op, const BlendMode& blendMode, ImageOrientation orientation)
 {
     if (!std::isfinite(dstRect.x()) || !std::isfinite(dstRect.y()) || !std::isfinite(dstRect.width()) || !std::isfinite(dstRect.height())
         || !std::isfinite(srcRect.x()) || !std::isfinite(srcRect.y()) || !std::isfinite(srcRect.width()) || !std::isfinite(srcRect.height()))
@@ -1741,7 +1744,9 @@ ExceptionOr<void> CanvasRenderingContext2DBase::drawImage(Document& document, Ca
     if (!state().hasInvertibleTransform)
         return { };
 
-    RefPtr<Image> image = cachedImage.imageForRenderer(renderer);
+    // FIXME: This sucks.
+    auto styleImage = StyleCachedImage::create(cachedImage);
+    RefPtr<Image> image = styleImage->imageForRenderer(renderer);
     if (!image)
         return { };
 

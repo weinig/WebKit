@@ -51,6 +51,7 @@
 #include "RenderElement.h"
 #include "SVGImageElement.h"
 #include "SharedBuffer.h"
+#include "StyleCachedImage.h"
 #include "WebCodecsVideoFrame.h"
 #include "WorkerClient.h"
 #include "WorkerGlobalScope.h"
@@ -387,7 +388,9 @@ void ImageBitmap::createCompletionHandler(ScriptExecutionContext& scriptExecutio
     //    resizeHeight options are not specified, then return a promise rejected with
     //    an "InvalidStateError" DOMException and abort these steps.
 
-    auto imageSize = cachedImage->imageSizeForRenderer(renderer, 1.0f);
+    // FIXME: This sucks.
+    auto styleImage = StyleCachedImage::create(*cachedImage);
+    auto imageSize = styleImage->imageSizeForRenderer(renderer, 1.0f);
     if ((!imageSize.width() || !imageSize.height()) && (!options.resizeWidth || !options.resizeHeight)) {
         completionHandler(Exception { ExceptionCode::InvalidStateError, "Cannot create ImageBitmap from a source with no intrinsic size without providing resize dimensions"_s });
         return;
@@ -429,7 +432,7 @@ void ImageBitmap::createCompletionHandler(ScriptExecutionContext& scriptExecutio
         return;
     }
 
-    RefPtr imageForRenderer = cachedImage->imageForRenderer(renderer);
+    RefPtr imageForRenderer = styleImage->imageForRenderer(renderer);
     if (!imageForRenderer) {
         completionHandler(Exception { ExceptionCode::InvalidStateError, "Cannot create ImageBitmap from image that can't be rendered"_s });
         return;

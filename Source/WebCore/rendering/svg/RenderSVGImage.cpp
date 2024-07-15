@@ -84,8 +84,8 @@ Ref<SVGImageElement> RenderSVGImage::protectedImageElement() const
 FloatRect RenderSVGImage::calculateObjectBoundingBox() const
 {
     LayoutSize intrinsicSize;
-    if (CachedImage* cachedImage = imageResource().cachedImage())
-        intrinsicSize = cachedImage->imageSizeForRenderer(nullptr, style().usedZoom());
+    if (StyleImage* styleImage = imageResource().styleImage())
+        intrinsicSize = styleImage->imageSizeForRenderer(nullptr, style().usedZoom());
 
     Ref imageElement = this->imageElement();
     SVGLengthContext lengthContext(imageElement.ptr());
@@ -285,8 +285,8 @@ bool RenderSVGImage::updateImageViewport()
     // by setting the image's container size to its intrinsic size.
     // See: http://www.w3.org/TR/SVG/single-page.html, 7.8 The ‘preserveAspectRatio’ attribute.
     if (imageElement->preserveAspectRatio().align() == SVGPreserveAspectRatioValue::SVG_PRESERVEASPECTRATIO_NONE) {
-        if (CachedImage* cachedImage = imageResource().cachedImage()) {
-            LayoutSize intrinsicSize = cachedImage->imageSizeForRenderer(nullptr, style().usedZoom());
+        if (StyleImage* styleImage = imageResource().styleImage()) {
+            LayoutSize intrinsicSize = styleImage->imageSizeForRenderer(nullptr, style().usedZoom());
             if (intrinsicSize != imageResource().imageSize(style().usedZoom())) {
                 imageResource().setContainerContext(roundedIntSize(intrinsicSize), imageSourceURL);
                 updatedViewport = true;
@@ -327,21 +327,21 @@ void RenderSVGImage::repaintOrMarkForLayout(const IntRect* rect)
         layer()->contentChanged(ImageChanged);
 }
 
-void RenderSVGImage::styleImageLoadFinished(StyleImage& styleImage, CachedResource& newImage)
+void RenderSVGImage::styleImageFinishedLoad(StyleImage& styleImage)
 {
     if (renderTreeBeingDestroyed())
         return;
 
     invalidateBackgroundObscurationStatus();
 
-    if (&newImage == cachedImage()) {
+    if (&styleImage == imageResource().styleImage()) {
         // tell any potential compositing layers
         // that the image is done and they can reference it directly.
         if (hasLayer())
             layer()->contentChanged(ImageChanged);
     }
 
-    RenderSVGModelObject::styleImageLoadFinished(styleImage, newImage);
+    RenderSVGModelObject::styleImageFinishedLoad(styleImage);
 }
 
 void RenderSVGImage::imageChanged(WrappedImagePtr newImage, const IntRect* rect)

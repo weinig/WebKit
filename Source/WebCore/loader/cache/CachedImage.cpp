@@ -133,14 +133,12 @@ void CachedImage::setBodyDataFrom(const CachedResource& resource)
         m_imageObserver->cachedImages().add(*this);
 
     if (RefPtr svgImage = dynamicDowncast<SVGImage>(m_image.get()))
-        m_svgImageCache = makeUnique<SVGImageCache>(svgImage.get());
+        m_svgImageCache = makeUnique<SVGImageCache>(*svgImage);
 
     // FIXME: Is this right?
     // CachedResourceClientWalker<CachedImageClient> walker(*this);
-    // while (CachedImageClient* client = walker.next()) {
-    //     if (!client->imageCreated(*this, *image))
-    //         return false;
-    // }
+    // while (CachedImageClient* client = walker.next())
+    //     !client->imageCreated(*this, *image);
 }
 
 void CachedImage::didAddClient(CachedResourceClient& client)
@@ -164,11 +162,7 @@ void CachedImage::didRemoveClient(CachedResourceClient& client)
 {
     ASSERT(client.resourceClientType() == CachedImageClient::expectedType());
 
-    // m_pendingContainerContextRequests.remove(&downcast<CachedImageClient>(client));
     m_clientsWaitingForAsyncDecoding.remove(downcast<CachedImageClient>(client));
-
-    //    if (m_svgImageCache)
-    //        m_svgImageCache->removeClientFromCache(downcast<CachedImageClient>(client));
 
     CachedResource::didRemoveClient(client);
 
@@ -296,7 +290,6 @@ void CachedImage::clear()
 {
     destroyDecodedData();
     clearImage();
-    m_pendingContainerContextRequests.clear();
     m_clientsWaitingForAsyncDecoding.clear();
     m_forceAllClientsWaitingForAsyncDecoding = false;
     setEncodedSize(0);
@@ -314,15 +307,13 @@ inline void CachedImage::createImage()
 
     if (RefPtr image = m_image) {
         if (auto* svgImage = dynamicDowncast<SVGImage>(*image))
-            m_svgImageCache = makeUnique<SVGImageCache>(svgImage);
+            m_svgImageCache = makeUnique<SVGImageCache>(*svgImage);
 
         m_clientsWaitingForAsyncDecoding.clear();
 
         CachedResourceClientWalker<CachedImageClient> walker(*this);
-        while (CachedImageClient* client = walker.next()) {
-            if (!client->imageCreated(*this, *image))
-                return false;
-        }
+        while (CachedImageClient* client = walker.next())
+            client->imageCreated(*this, *image);
     }
 }
 
@@ -590,7 +581,7 @@ bool CachedImage::canDestroyDecodedData(const Image& image) const
 
     CachedResourceClientWalker<CachedImageClient> walker(*this);
     while (CachedImageClient* client = walker.next()) {
-        if (!client->canDestroyDecodedData(*this))
+        if (!client->canDestroyDecodedData(const_cast<CachedImage&>(*this)))
             return false;
     }
 
@@ -649,7 +640,7 @@ bool CachedImage::allowsAnimation(const Image& image) const
 
     CachedResourceClientWalker<CachedImageClient> walker(*this);
     while (auto* client = walker.next()) {
-        if (!client->allowsAnimation(*this))
+        if (!client->allowsAnimation(const_cast<CachedImage&>(*this)))
             return false;
     }
     return true;
@@ -690,7 +681,7 @@ bool CachedImage::isVisibleInViewport(const Document& document) const
 {
     CachedResourceClientWalker<CachedImageClient> walker(*this);
     while (auto* client = walker.next()) {
-        if (client->imageVisibleInViewport(*this, document) == VisibleInViewportState::Yes)
+        if (client->imageVisibleInViewport(const_cast<CachedImage&>(*this), document) == VisibleInViewportState::Yes)
             return true;
     }
     return false;

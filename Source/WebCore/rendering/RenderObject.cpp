@@ -115,6 +115,17 @@ struct SameSizeAsRenderObject final : public StyleImageClient, public CanMakeChe
     WTF_STRUCT_OVERRIDE_DELETE_FOR_CHECKED_PTR(SameSizeAsRenderObject);
 
     virtual ~SameSizeAsRenderObject() = default; // Allocate vtable pointer.
+
+    void styleImageChanged(StyleImage&, const IntRect*) final { }
+    void styleImageFinishedResourceLoad(StyleImage&, CachedResource&) final { }
+    void styleImageFinishedLoad(StyleImage&) final { }
+    void styleImageNeedsScheduledRenderingUpdate(StyleImage&) final { }
+    bool styleImageCanDestroyDecodedData(StyleImage&) const final { return false; }
+    bool styleImageAnimationAllowed(StyleImage&) const final { return false; }
+    VisibleInViewportState styleImageFrameAvailable(StyleImage&, ImageAnimatingState, const IntRect*) final { return VisibleInViewportState::No; }
+    VisibleInViewportState styleImageVisibleInViewport(StyleImage&, const Document&) const final { return VisibleInViewportState::No; }
+    HashSet<Element*> styleImageReferencingElements(StyleImage&) const final { return { }; }
+
 #if ASSERT_ENABLED
     unsigned m_debugBitfields : 2;
 #endif
@@ -1987,7 +1998,11 @@ void RenderObject::styleImageChanged(StyleImage& image, const IntRect* rect)
     imageChanged(image.data(), rect);
 }
 
-void RenderObject::styleImageLoadFinished(StyleImage&, CachedResource&)
+void RenderObject::styleImageFinishedResourceLoad(StyleImage&, CachedResource&)
+{
+}
+
+void RenderObject::styleImageFinishedLoad(StyleImage&)
 {
 }
 
@@ -2013,6 +2028,11 @@ VisibleInViewportState RenderObject::styleImageFrameAvailable(StyleImage&, Image
 VisibleInViewportState RenderObject::styleImageVisibleInViewport(StyleImage&, const Document&) const
 {
     return VisibleInViewportState::No;
+}
+
+HashSet<Element*> RenderObject::styleImageReferencingElements(StyleImage&) const
+{
+    return { };
 }
 
 RenderBoxModelObject* RenderObject::offsetParent() const

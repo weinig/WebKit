@@ -197,16 +197,16 @@ static const int maxAltTextHeight = 256;
 
 IntSize RenderImage::imageSizeForError(StyleImage& newImage) const
 {
-    ASSERT_ARG(newImage, newImage->imageForRenderer(this));
+    ASSERT_ARG(newImage, newImage.imageForRenderer(this));
 
-    auto cachedImage = newImage->cachedImage();
+    auto cachedImage = newImage.cachedImage();
     FloatSize imageSize;
     if (cachedImage && cachedImage->willPaintBrokenImage()) {
         auto brokenImageAndImageScaleFactor = cachedImage->brokenImage(document().deviceScaleFactor());
         imageSize = brokenImageAndImageScaleFactor.first->size();
         imageSize.scale(1 / brokenImageAndImageScaleFactor.second);
     } else
-        imageSize = newImage->imageForRenderer(this)->size();
+        imageSize = newImage.imageForRenderer(this)->size();
 
     // imageSize() returns 0 for the error image. We need the true size of the
     // error image, so we have to get it by grabbing image() directly.
@@ -411,14 +411,14 @@ void RenderImage::repaintOrMarkForLayout(ImageSizeChangeType imageSizeChange, co
     contentChanged(ImageChanged);
 }
 
-void RenderImage::styleImageLoadFinished(StyleImage& styleImage, CachedResource& newImage)
+void RenderImage::styleImageFinishedLoad(StyleImage& styleImage)
 {
     if (renderTreeBeingDestroyed())
         return;
 
     invalidateBackgroundObscurationStatus();
 
-    if (&newImage == cachedImage()) {
+    if (&styleImage == this->styleImage()) {
         // tell any potential compositing layers
         // that the image is done and they can reference it directly.
         contentChanged(ImageChanged);
@@ -427,18 +427,16 @@ void RenderImage::styleImageLoadFinished(StyleImage& styleImage, CachedResource&
     if (RefPtr image = dynamicDowncast<HTMLImageElement>(element()))
         page().didFinishLoadingImageForElement(*image);
 
-    RenderReplaced::styleImageLoadFinished(styleImage, newImage);
+    RenderReplaced::styleImageFinishedLoad(styleImage);
 }
 
-std::optional<LayoutSize> RenderImage::styleImageOverrideImageSize(StyleImage& styleImage)
+std::optional<LayoutSize> RenderImage::styleImageOverrideImageSize(StyleImage& styleImage) const
 {
 #if ENABLE(MULTI_REPRESENTATION_HEIC)
-    if (!isMultiRepresentationHEIC())
-        return RenderReplaced::styleImageOverrideImageSize(styleImage);
-    return style().fontCascade().primaryFont().metricsForMultiRepresentationHEIC().size();
-#else
-    return RenderReplaced::styleImageOverrideImageSize(styleImage);
+    if (isMultiRepresentationHEIC())
+        return LayoutSize(style().fontCascade().primaryFont().metricsForMultiRepresentationHEIC().size());
 #endif
+    return RenderReplaced::styleImageOverrideImageSize(styleImage);
 }
 
 void RenderImage::setImageDevicePixelRatio(float factor)
@@ -470,7 +468,7 @@ bool RenderImage::hasNonBitmapImage() const
     if (!styleImage())
         return false;
 
-    Image* image = styleImage()->imageForRenderer(this);
+    Image* image = styleImage()->imageForRenderer(this).get();
     return image && !is<BitmapImage>(image);
 }
 
@@ -808,7 +806,7 @@ bool RenderImage::foregroundIsKnownToBeOpaqueInRect(const LayoutRect& localRect,
         return false;
 
     // Check for image with alpha.
-    return cachedImage() && cachedImage()->currentFrameKnownToBeOpaque(this);
+    return styleImage() && styleImage()->knownToBeOpaqueForRenderer(*this);
 }
 
 bool RenderImage::computeBackgroundIsKnownToBeObscured(const LayoutPoint& paintOffset)

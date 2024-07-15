@@ -128,7 +128,7 @@ LayoutSize StyleGeneratedImage::imageSizeForRenderer(const RenderElement* render
 void StyleGeneratedImage::computeIntrinsicDimensionsForRenderer(const RenderElement* renderer, Length& intrinsicWidth, Length& intrinsicHeight, FloatSize& intrinsicRatio)
 {
     // At a zoom level of 1 the image is guaranteed to have a device pixel size.
-    FloatSize size = floorSizeToDevicePixels(this->imageSizeForRenderer(renderer, 1), renderer ? renderer->document().deviceScaleFactor() : 1);
+    FloatSize size = floorSizeToDevicePixels(this->imageSizeForRenderer(renderer, 1, StyleImageSizeType::Used), renderer ? renderer->document().deviceScaleFactor() : 1);
     intrinsicWidth = Length(size.width(), LengthType::Fixed);
     intrinsicHeight = Length(size.height(), LengthType::Fixed);
     intrinsicRatio = size;

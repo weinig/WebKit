@@ -94,6 +94,38 @@ public:
         m_height *= heightScale;
     }
 
+    void scaleDown(float scale)
+    {
+        m_width /= scale;
+        m_height /= scale;
+    }
+
+    void scaleDown(float widthScale, float heightScale)
+    {
+        m_width /= widthScale;
+        m_height /= heightScale;
+    }
+
+    [[nodiscard]] LayoutSize scaled(float scale)
+    {
+        return LayoutSize(m_width * scale, m_height * scale);
+    }
+
+    [[nodiscard]] LayoutSize scaled(float widthScale, float heightScale)
+    {
+        return LayoutSize(m_width * widthScale, m_height * heightScale);
+    }
+
+    [[nodiscard]] LayoutSize scaledDown(float scale)
+    {
+        return LayoutSize(m_width / scale, m_height / scale);
+    }
+
+    [[nodiscard]] LayoutSize scaledDown(float widthScale, float heightScale)
+    {
+        return LayoutSize(m_width * widthScale, m_height * heightScale);
+    }
+
     LayoutSize constrainedBetween(const LayoutSize& min, const LayoutSize& max) const;
     
     LayoutSize expandedTo(const LayoutSize& other) const

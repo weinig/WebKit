@@ -85,13 +85,16 @@ class ServiceWorker;
 class ServiceWorkerContainer;
 class SocketProvider;
 class WebCoreOpaqueRoot;
-enum class AdvancedPrivacyProtections : uint16_t;
-enum class LoadedFromOpaqueSource : bool;
-enum class TaskSource : uint8_t;
 
 #if ENABLE(NOTIFICATIONS)
 class NotificationClient;
 #endif
+
+enum class AdvancedPrivacyProtections : uint16_t;
+enum class FilterRenderingMode : uint8_t;
+enum class LoadedFromOpaqueSource : bool;
+enum class TaskSource : uint8_t;
+
 
 namespace IDBClient {
 class IDBConnectionProxy;
@@ -130,6 +133,8 @@ public:
     virtual String userAgent(const URL&) const = 0;
 
     virtual const Settings::Values& settingsValues() const = 0;
+
+    OptionSet<FilterRenderingMode> preferredFilterRenderingModes() const;
 
     virtual NotificationClient* notificationClient() { return nullptr; }
     virtual std::optional<PAL::SessionID> sessionID() const { return std::nullopt; }

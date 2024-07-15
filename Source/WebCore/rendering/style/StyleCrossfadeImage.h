@@ -59,10 +59,20 @@ private:
 
     RefPtr<Image> imageForRenderer(const RenderElement*, const FloatSize&, bool isForFirstLine) const final;
     bool knownToBeOpaqueForRenderer(const RenderElement&) const final;
-    Renderer fixedSizeForRenderer(const RenderElement&) const final;
+    LayoutSize fixedSizeForRenderer(const RenderElement&) const final;
 
-    // StyleImageClient.
+    // MARK: - StyleImageClient
     void styleImageChanged(StyleImage&, const IntRect*) final;
+    void styleImageFinishedResourceLoad(StyleImage&, CachedResource&) final;
+    void styleImageFinishedLoad(StyleImage&) final;
+    void styleImageNeedsScheduledRenderingUpdate(StyleImage&) final;
+    bool styleImageCanDestroyDecodedData(StyleImage&) const final;
+    bool styleImageAnimationAllowed(StyleImage&) const final;
+    VisibleInViewportState styleImageFrameAvailable(StyleImage&, ImageAnimatingState, const IntRect*) final;
+    VisibleInViewportState styleImageVisibleInViewport(StyleImage&, const Document&) const final;
+    HashSet<Element*> styleImageReferencingElements(StyleImage&) const final;
+    ImageOrientation styleImageOrientation(StyleImage&) const final;
+    std::optional<LayoutSize> styleImageOverrideImageSize(StyleImage&) const final;
 
     RefPtr<StyleImage> m_from;
     RefPtr<StyleImage> m_to;

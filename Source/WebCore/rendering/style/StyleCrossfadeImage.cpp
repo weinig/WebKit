@@ -80,9 +80,9 @@ RefPtr<StyleCrossfadeImage> StyleCrossfadeImage::blend(const StyleCrossfadeImage
 {
     ASSERT(equalInputImages(from));
 
-    // FIXME: Do equivalent check here.
-    //    if (!m_cachedToImage || !m_cachedFromImage)
-    //        return nullptr;
+    // FIXME: Why is this check here?
+    if (!m_from || !m_from->cachedImage() || !m_to || !m_to->cachedImage())
+        return nullptr;
 
     auto newPercentage = WebCore::blend(from.m_percentage, m_percentage, context);
     return StyleCrossfadeImage::create(m_from, m_to, newPercentage, from.m_isPrefixed && m_isPrefixed);
@@ -163,18 +163,106 @@ LayoutSize StyleCrossfadeImage::fixedSizeForRenderer(const RenderElement& client
     float percentage = m_percentage;
     float inversePercentage = 1 - percentage;
 
-    return fromImageSize * inversePercentage + toImageSize * percentage;
+    return LayoutSize(fromImageSize * inversePercentage + toImageSize * percentage);
 }
+
+// MARK: - StyleImageClient
 
 void StyleCrossfadeImage::styleImageChanged(StyleImage& image, const IntRect*)
 {
-    ASSERT(&image == m_from.get() || &image == m_to.get());
-
-    if (!m_inputImagesAreReady)
-        return;
+    ASSERT_UNUSED(image, &image == m_from.get() || &image == m_to.get());
+    ASSERT(m_inputImagesAreReady);
 
     for (auto entry : clients())
         entry.key.styleImageChanged(*this);
+}
+
+void StyleCrossfadeImage::styleImageFinishedResourceLoad(StyleImage& image, CachedResource& resource)
+{
+    ASSERT_UNUSED(image, &image == m_from.get() || &image == m_to.get());
+    ASSERT(m_inputImagesAreReady);
+
+    for (auto entry : clients())
+        entry.key.styleImageFinishedResourceLoad(*this, resource);
+}
+
+void StyleCrossfadeImage::styleImageFinishedLoad(StyleImage& image)
+{
+    ASSERT_UNUSED(image, &image == m_from.get() || &image == m_to.get());
+    ASSERT(m_inputImagesAreReady);
+
+    // FIXME: Send when all non-null have finished.
+}
+
+void StyleCrossfadeImage::styleImageNeedsScheduledRenderingUpdate(StyleImage& image)
+{
+    ASSERT_UNUSED(image, &image == m_from.get() || &image == m_to.get());
+    ASSERT(m_inputImagesAreReady);
+
+    for (auto entry : clients())
+        entry.key.styleImageNeedsScheduledRenderingUpdate(*this);
+}
+
+bool StyleCrossfadeImage::styleImageCanDestroyDecodedData(StyleImage& image) const
+{
+    ASSERT_UNUSED(image, &image == m_from.get() || &image == m_to.get());
+    ASSERT(m_inputImagesAreReady);
+
+    // FIXME: Implement.
+    return false;
+}
+
+bool StyleCrossfadeImage::styleImageAnimationAllowed(StyleImage& image) const
+{
+    ASSERT_UNUSED(image, &image == m_from.get() || &image == m_to.get());
+    ASSERT(m_inputImagesAreReady);
+
+    // FIXME: Implement.
+    return false;
+}
+
+VisibleInViewportState StyleCrossfadeImage::styleImageFrameAvailable(StyleImage& image, ImageAnimatingState, const IntRect*)
+{
+    ASSERT_UNUSED(image, &image == m_from.get() || &image == m_to.get());
+    ASSERT(m_inputImagesAreReady);
+
+    // FIXME: Implement.
+    return VisibleInViewportState::No;
+}
+
+VisibleInViewportState StyleCrossfadeImage::styleImageVisibleInViewport(StyleImage& image, const Document&) const
+{
+    ASSERT_UNUSED(image, &image == m_from.get() || &image == m_to.get());
+    ASSERT(m_inputImagesAreReady);
+
+    // FIXME: Implement.
+    return VisibleInViewportState::No;
+}
+
+HashSet<Element*> StyleCrossfadeImage::styleImageReferencingElements(StyleImage& image) const
+{
+    ASSERT_UNUSED(image, &image == m_from.get() || &image == m_to.get());
+
+    HashSet<Element*> result;
+    for (auto entry : clients())
+        result.formUnion(entry.key.styleImageReferencingElements(const_cast<StyleCrossfadeImage&>(*this)));
+    return result;
+}
+
+ImageOrientation StyleCrossfadeImage::styleImageOrientation(StyleImage& image) const
+{
+    ASSERT_UNUSED(image, &image == m_from.get() || &image == m_to.get());
+
+    // FIXME: Implement.
+    return StyleImageClient::styleImageOrientation(const_cast<StyleCrossfadeImage&>(*this));
+}
+
+std::optional<LayoutSize> StyleCrossfadeImage::styleImageOverrideImageSize(StyleImage& image) const
+{
+    ASSERT_UNUSED(image, &image == m_from.get() || &image == m_to.get());
+
+    // FIXME: Implement.
+    return StyleImageClient::styleImageOverrideImageSize(const_cast<StyleCrossfadeImage&>(*this));
 }
 
 } // namespace WebCore

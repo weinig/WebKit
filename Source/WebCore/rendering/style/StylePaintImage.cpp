@@ -104,7 +104,7 @@ RefPtr<Image> StylePaintImage::imageForRenderer(const RenderElement* client, con
         arguments.append(builder.toString());
     }
 
-    return CustomPaintImage::create(*registration, size, *renderer, arguments);
+    return CustomPaintImage::create(*registration, size, *client, arguments);
 }
 
 bool StylePaintImage::knownToBeOpaqueForRenderer(const RenderElement&) const

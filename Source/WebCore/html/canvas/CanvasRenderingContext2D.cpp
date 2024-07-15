@@ -115,12 +115,11 @@ RefPtr<Filter> CanvasRenderingContext2D::createFilter(const FloatRect& bounds) c
     if (!renderer)
         return nullptr;
 
-    RefPtr page = canvas().document().page();
-    if (!page)
-        return nullptr;
+    // FIXME: Is getting this through the renderer the best way to get this, or can we just get it through canvas()?
+    auto& treeScopeForSVGReferences = renderer->treeScopeForSVGReferences();
+    auto preferredFilterRenderingModes = canvas().document().preferredFilterRenderingModes();
 
-    auto preferredFilterRenderingModes = page->preferredFilterRenderingModes();
-    auto filter = CSSFilter::create(*renderer, state().filterOperations, preferredFilterRenderingModes, { 1, 1 }, bounds, *context);
+    auto filter = CSSFilter::create(treeScopeForSVGReferences, state().filterOperations, preferredFilterRenderingModes, { 1, 1 }, bounds, *context);
     if (!filter)
         return nullptr;
 
@@ -139,7 +138,10 @@ IntOutsets CanvasRenderingContext2D::calculateFilterOutsets(const FloatRect& bou
     if (!renderer)
         return { };
 
-    return CSSFilter::calculateOutsets(*renderer, state().filterOperations, bounds);
+    // FIXME: Is getting this through the renderer the best way to get this, or can we just get it through canvas()?
+    auto& treeScopeForSVGReferences = renderer->treeScopeForSVGReferences();
+
+    return CSSFilter::calculateOutsets(treeScopeForSVGReferences, state().filterOperations, bounds);
 }
 
 void CanvasRenderingContext2D::drawFocusIfNeeded(Element& element)

@@ -50,9 +50,14 @@ CSSImageValue::CSSImageValue(ResolvedURL&& location, LoadedFromOpaqueSource load
 {
 }
 
+CSSImageValue::CSSImageValue(URL&& location, LoadedFromOpaqueSource loadedFromOpaqueSource, AtomString&& initiatorType)
+    : CSSImageValue(makeResolvedURL(WTFMove(location)), loadedFromOpaqueSource, WTFMove(initiatorType))
+{
+}
+
 CSSImageValue::CSSImageValue(CachedResourceHandle<CachedImage>&& cachedImage)
     : CSSValue(ImageClass)
-    , m_location(makeResolvedURL(cachedImage.url()))
+    , m_location(makeResolvedURL(cachedImage->url()))
     , m_cachedImage(WTFMove(cachedImage))
     , m_initiatorType()
     , m_loadedFromOpaqueSource(LoadedFromOpaqueSource::No)
@@ -69,14 +74,14 @@ Ref<CSSImageValue> CSSImageValue::create(ResolvedURL location, LoadedFromOpaqueS
     return adoptRef(*new CSSImageValue(WTFMove(location), loadedFromOpaqueSource, WTFMove(initiatorType)));
 }
 
-Ref<CSSImageValue> CSSImageValue::create(URL imageURL, LoadedFromOpaqueSource loadedFromOpaqueSource, AtomString initiatorType)
+Ref<CSSImageValue> CSSImageValue::create(URL location, LoadedFromOpaqueSource loadedFromOpaqueSource, AtomString initiatorType)
 {
-    return create(makeResolvedURL(WTFMove(imageURL)), loadedFromOpaqueSource, WTFMove(initiatorType));
+    return adoptRef(*new CSSImageValue(WTFMove(location), loadedFromOpaqueSource, WTFMove(initiatorType)));
 }
 
-Ref<CSSImageValue> CSSImageValue::create(CachedResourceHandle<CachedImage>&& cachedImage)
+Ref<CSSImageValue> CSSImageValue::create(CachedResourceHandle<CachedImage> cachedImage)
 {
-    return create(makeResolvedURL(WTFMove(imageURL)), loadedFromOpaqueSource, WTFMove(initiatorType));
+    return adoptRef(*new CSSImageValue(WTFMove(cachedImage)));
 }
 
 CSSImageValue::~CSSImageValue() = default;
@@ -181,9 +186,10 @@ Ref<DeprecatedCSSOMValue> CSSImageValue::createDeprecatedCSSOMWrapper(CSSStyleDe
     return DeprecatedCSSOMPrimitiveValue::create(CSSPrimitiveValue::createURI(m_location.resolvedURL.string()), styleDeclaration);
 }
 
-bool CSSImageValue::knownToBeOpaque(const RenderElement& renderer) const
+bool CSSImageValue::knownToBeOpaque(const RenderElement&) const
 {
-    return m_cachedImage.value_or(nullptr) && (**m_cachedImage).currentFrameKnownToBeOpaque(&renderer);
+    // FIXME: MAKE THIS WORK.
+    return false; // m_cachedImage.value_or(nullptr) && (**m_cachedImage).currentFrameKnownToBeOpaque(&renderer);
 }
 
 } // namespace WebCore

@@ -168,7 +168,7 @@ void RenderListMarker::paint(PaintInfo& paintInfo, const LayoutPoint& paintOffse
     GraphicsContext& context = paintInfo.context();
 
     if (isImage()) {
-        if (RefPtr<Image> markerImage = m_image->image(this, markerRect.size()))
+        if (RefPtr<Image> markerImage = m_image->imageForRenderer(this, markerRect.size()))
             context.drawImage(*markerImage, markerRect);
         if (selectionState() != HighlightState::None) {
             LayoutRect selRect = localSelectionRect();
@@ -246,8 +246,9 @@ void RenderListMarker::layout()
 
     if (isImage()) {
         updateMarginsAndContent();
-        setWidth(m_image->imageSize(this, style().usedZoom()).width());
-        setHeight(m_image->imageSize(this, style().usedZoom()).height());
+        auto imageSize = m_image->imageSizeForRenderer(this, style().usedZoom());
+        setWidth(imageSize.width());
+        setHeight(imageSize.height());
     } else {
         setLogicalWidth(minPreferredLogicalWidth());
         setLogicalHeight(style().metricsOfPrimaryFont().intHeight());
@@ -270,7 +271,8 @@ void RenderListMarker::imageChanged(WrappedImagePtr o, const IntRect* rect)
 {
     if (parent()) {
         if (m_image && o == m_image->data()) {
-            if (width() != m_image->imageSize(this, style().usedZoom()).width() || height() != m_image->imageSize(this, style().usedZoom()).height() || m_image->errorOccurred())
+            auto imageSize = m_image->imageSizeForRenderer(this, style().usedZoom());
+            if (width() != imageSize.width() || height() != imageSize.height() || m_image->errorOccurred())
                 setNeedsLayoutAndPrefWidthsRecalc();
             else
                 repaint();
@@ -333,7 +335,7 @@ void RenderListMarker::computePreferredLogicalWidths()
     updateContent();
 
     if (isImage()) {
-        LayoutSize imageSize = LayoutSize(m_image->imageSize(this, style().usedZoom()));
+        auto imageSize = m_image->imageSizeForRenderer(this, style().usedZoom());
         m_minPreferredLogicalWidth = m_maxPreferredLogicalWidth = style().isHorizontalWritingMode() ? imageSize.width() : imageSize.height();
         setPreferredLogicalWidthsDirty(false);
         updateMargins();
@@ -419,8 +421,10 @@ const RenderListItem* RenderListMarker::listItem() const
 
 FloatRect RenderListMarker::relativeMarkerRect()
 {
-    if (isImage())
-        return FloatRect(0, 0, m_image->imageSize(this, style().usedZoom()).width(), m_image->imageSize(this, style().usedZoom()).height());
+    if (isImage()) {
+        auto imageSize = m_image->imageSizeForRenderer(this, style().usedZoom());
+        return FloatRect(0, 0, imageSize.width(), imageSize.height());
+    }
 
     FloatRect relativeRect;
     if (widthUsesMetricsOfPrimaryFont()) {

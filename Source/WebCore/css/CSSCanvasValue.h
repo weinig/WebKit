@@ -30,6 +30,7 @@
 
 namespace WebCore {
 
+class StyleCanvasImage;
 class StyleImage;
 
 namespace Style {
@@ -50,7 +51,7 @@ private:
     explicit CSSCanvasValue(String&&);
 
     String m_name;
-    mutable RefPtr<StyleImage> m_cachedStyleImage;
+    mutable RefPtr<StyleCanvasImage> m_cachedStyleImage;
 };
 
 } // namespace WebCore

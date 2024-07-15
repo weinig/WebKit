@@ -154,7 +154,7 @@ Ref<const Shape> makeShapeForShapeOutside(const RenderBox& renderer)
         auto imageRect = renderImage ? renderImage->replacedContentRect() : LayoutRect { { }, imageSize };
 
         ASSERT(!styleImage->isPending());
-        RefPtr<Image> image = styleImage->image(const_cast<RenderBox*>(&renderer), imageSize);
+        RefPtr<Image> image = styleImage->imageForRenderer(const_cast<RenderBox*>(&renderer), imageSize);
         return Shape::createRasterShape(image.get(), shapeImageThreshold, imageRect, marginRect, writingMode, margin);
     }
     case ShapeValue::Type::Box: {

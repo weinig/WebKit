@@ -354,7 +354,7 @@ RefPtr<Node> HitTestResult::nodeForImageData() const
     return m_innerNonSharedNode;
 }
 
-Image* HitTestResult::image() const
+RefPtr<Image> HitTestResult::image() const
 {
     auto imageNode = nodeForImageData();
     if (!imageNode)

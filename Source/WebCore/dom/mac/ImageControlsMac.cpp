@@ -123,7 +123,7 @@ void createImageControls(HTMLElement& element)
         renderImage->setHasShadowControls(true);
 }
 
-static Image* imageFromImageElementNode(Node& node)
+static RefPtr<Image> imageFromImageElementNode(Node& node)
 {
     CheckedPtr renderer = dynamicDowncast<RenderImage>(node.renderer());
     if (!renderer)

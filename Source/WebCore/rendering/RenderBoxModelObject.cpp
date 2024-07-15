@@ -785,7 +785,7 @@ LayoutSize RenderBoxModelObject::calculateImageIntrinsicDimensions(StyleImage* i
     Length intrinsicWidth;
     Length intrinsicHeight;
     FloatSize intrinsicRatio;
-    image->computeIntrinsicDimensions(this, intrinsicWidth, intrinsicHeight, intrinsicRatio);
+    image->computeIntrinsicDimensionsForRenderer(this, intrinsicWidth, intrinsicHeight, intrinsicRatio);
 
     ASSERT(!intrinsicWidth.isPercentOrCalculated());
     ASSERT(!intrinsicHeight.isPercentOrCalculated());

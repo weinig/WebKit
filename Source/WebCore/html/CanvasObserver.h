@@ -25,6 +25,7 @@
 
 #pragma once
 
+#include <wtf/HashSet.h>
 #include <wtf/WeakPtr.h>
 
 namespace WebCore {
@@ -39,6 +40,7 @@ template<> struct IsDeprecatedWeakRefSmartPointerException<WebCore::CanvasObserv
 namespace WebCore {
 
 class CanvasBase;
+class Element;
 class FloatRect;
 
 class CanvasObserver : public CanMakeWeakPtr<CanvasObserver> {
@@ -50,6 +52,8 @@ public:
     virtual void canvasChanged(CanvasBase&, const FloatRect& changedRect) = 0;
     virtual void canvasResized(CanvasBase&) = 0;
     virtual void canvasDestroyed(CanvasBase&) = 0;
+
+    virtual HashSet<Element*> canvasReferencingElements(CanvasBase&) { return { }; }
 };
 
 } // namespace WebCore

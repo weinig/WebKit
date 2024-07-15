@@ -203,7 +203,7 @@ void NinePieceImage::paint(GraphicsContext& graphicsContext, const RenderElement
 {
     StyleImage* styleImage = image();
     ASSERT(styleImage);
-    ASSERT(styleImage->isLoaded(renderer));
+    ASSERT(styleImage->isLoadedForRenderer(renderer));
 
     LayoutBoxExtent sourceSlices = computeSlices(source, imageSlices(), styleImage->imageScaleFactor());
     LayoutBoxExtent destinationSlices = computeSlices(destination.size(), borderSlices(), style.borderWidth(), sourceSlices);
@@ -214,7 +214,7 @@ void NinePieceImage::paint(GraphicsContext& graphicsContext, const RenderElement
     Vector<FloatRect> sourceRects = computeNineRects(FloatRect(FloatPoint(), source), sourceSlices, deviceScaleFactor);
     Vector<FloatSize> tileScales = computeTileScales(destinationRects, sourceRects, horizontalRule(), verticalRule());
 
-    RefPtr<Image> image = styleImage->image(renderer, source);
+    RefPtr<Image> image = styleImage->imageForRenderer(renderer, source);
     if (!image)
         return;
 

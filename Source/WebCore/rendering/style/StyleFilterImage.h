@@ -33,9 +33,9 @@ namespace WebCore {
 
 class StyleFilterImage final : public StyleGeneratedImage, private StyleImageClient {
 public:
-    static Ref<StyleFilterImage> create(RefPtr<StyleImage> inputImage, FilterOperations filterOperations)
+    static Ref<StyleFilterImage> create(const Document* document, RefPtr<StyleImage> inputImage, FilterOperations filterOperations)
     {
-        return adoptRef(*new StyleFilterImage(WTFMove(inputImage), WTFMove(filterOperations)));
+        return adoptRef(*new StyleFilterImage(document, WTFMove(inputImage), WTFMove(filterOperations)));
     }
     virtual ~StyleFilterImage();
 
@@ -45,11 +45,12 @@ public:
 
     RefPtr<StyleImage> inputImage() const { return m_inputImage; }
     const FilterOperations& filterOperations() const { return m_filterOperations; }
+    const Document* document() const { return m_document.get(); }
 
     static constexpr bool isFixedSize = true;
 
 private:
-    explicit StyleFilterImage(RefPtr<StyleImage>&&, FilterOperations&&);
+    explicit StyleFilterImage(const Document*, RefPtr<StyleImage>&&, FilterOperations&&);
 
     Ref<CSSValue> computedStyleValue(const RenderStyle&) const final;
     bool isPending() const final;
@@ -58,11 +59,22 @@ private:
     bool knownToBeOpaqueForRenderer(const RenderElement&) const final;
     LayoutSize fixedSizeForRenderer(const RenderElement&) const final;
 
-    // StyleImageClient.
+    // MARK: - StyleImageClient
     void styleImageChanged(StyleImage&, const IntRect*) final;
+    void styleImageFinishedResourceLoad(StyleImage&, CachedResource&) final;
+    void styleImageFinishedLoad(StyleImage&) final;
+    void styleImageNeedsScheduledRenderingUpdate(StyleImage&) final;
+    bool styleImageCanDestroyDecodedData(StyleImage&) const final;
+    bool styleImageAnimationAllowed(StyleImage&) const final;
+    VisibleInViewportState styleImageFrameAvailable(StyleImage&, ImageAnimatingState, const IntRect*) final;
+    VisibleInViewportState styleImageVisibleInViewport(StyleImage&, const Document&) const final;
+    HashSet<Element*> styleImageReferencingElements(StyleImage&) const final;
+    ImageOrientation styleImageOrientation(StyleImage&) const final;
+    std::optional<LayoutSize> styleImageOverrideImageSize(StyleImage&) const final;
 
     RefPtr<StyleImage> m_inputImage;
     FilterOperations m_filterOperations;
+    WeakPtr<const Document, WeakPtrImplWithEventTargetData> m_document;
     bool m_inputImageIsReady;
 };
 

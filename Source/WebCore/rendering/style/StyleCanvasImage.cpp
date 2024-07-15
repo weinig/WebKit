@@ -33,9 +33,10 @@
 
 namespace WebCore {
 
-StyleCanvasImage::StyleCanvasImage(String&& name)
+StyleCanvasImage::StyleCanvasImage(Document& document, String&& name)
     : StyleGeneratedImage { Type::CanvasImage, StyleCanvasImage::isFixedSize }
     , m_name { WTFMove(name) }
+    , m_document { &document }
     , m_element { nullptr }
 {
 }
@@ -77,10 +78,9 @@ RefPtr<Image> StyleCanvasImage::imageForRenderer(const RenderElement* client, co
         return &Image::nullImage();
 
     ASSERT(clients().contains(const_cast<RenderElement&>(*client)));
-    RefPtr element = this->element(client->document());
-    if (!element)
-        return nullptr;
-    return element->copiedImage();
+    if (RefPtr element = this->element())
+        return element->copiedImage();
+    return nullptr;
 }
 
 bool StyleCanvasImage::knownToBeOpaqueForRenderer(const RenderElement&) const
@@ -89,22 +89,22 @@ bool StyleCanvasImage::knownToBeOpaqueForRenderer(const RenderElement&) const
     return false;
 }
 
-LayoutSize StyleCanvasImage::fixedSizeForRenderer(const RenderElement& client) const
+LayoutSize StyleCanvasImage::fixedSizeForRenderer(const RenderElement&) const
 {
-    if (auto* element = this->element(client.document()))
+    if (RefPtr element = this->element())
         return LayoutSize { element->size() };
     return { };
 }
 
 void StyleCanvasImage::didAddClient(StyleImageClient&)
 {
-    if (auto* element = this->element(client.document()))
+    if (RefPtr element = this->element())
         InspectorInstrumentation::didChangeCSSCanvasClientNodes(*element);
 }
 
 void StyleCanvasImage::didRemoveClient(StyleImageClient&)
 {
-    if (auto* element = this->element(client.document()))
+    if (RefPtr element = this->element())
         InspectorInstrumentation::didChangeCSSCanvasClientNodes(*element);
 }
 
@@ -134,10 +134,23 @@ void StyleCanvasImage::canvasDestroyed(CanvasBase& canvasBase)
     m_element = nullptr;
 }
 
-HTMLCanvasElement* StyleCanvasImage::element(Document& document) const
+HashSet<Element*> StyleCanvasImage::canvasReferencingElements(CanvasBase& canvasBase)
+{
+    ASSERT_UNUSED(canvasBase, is<HTMLCanvasElement>(canvasBase));
+    ASSERT_UNUSED(canvasBase, m_element == &downcast<HTMLCanvasElement>(canvasBase));
+
+    HashSet<Element*> result;
+    for (auto entry : clients())
+        result.formUnion(entry.key.styleImageReferencingElements(*this));
+    return result;
+}
+
+HTMLCanvasElement* StyleCanvasImage::element() const
 {
     if (!m_element) {
-        m_element = document.getCSSCanvasElement(m_name);
+        if (!m_document)
+            return nullptr;
+        m_element = m_document->getCSSCanvasElement(m_name);
         if (!m_element)
             return nullptr;
         m_element->addObserver(const_cast<StyleCanvasImage&>(*this));

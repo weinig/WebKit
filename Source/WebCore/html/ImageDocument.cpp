@@ -49,6 +49,7 @@
 #include "RawDataDocumentParser.h"
 #include "RenderElement.h"
 #include "Settings.h"
+#include "StyleCachedImage.h"
 #include <wtf/IsoMallocInlines.h>
 #include <wtf/text/MakeString.h>
 
@@ -136,7 +137,10 @@ LayoutSize ImageDocument::imageSize()
     auto* cachedImage = imageElement->cachedImage();
     if (!cachedImage)
         return { };
-    return cachedImage->imageSizeForRenderer(imageElement->renderer(), frame() ? frame()->pageZoomFactor() : 1);
+
+    // FIXME: This sucks.
+    auto styleImage = StyleCachedImage::create(*cachedImage);
+    return styleImage->imageSizeForRenderer(imageElement->renderer(), frame() ? frame()->pageZoomFactor() : 1);
 }
 
 void ImageDocument::updateDuringParsing()
@@ -175,7 +179,10 @@ void ImageDocument::finishedParsing()
         // Report the natural image size in the page title, regardless of zoom level.
         // At a zoom level of 1 the image is guaranteed to have an integer size.
         updateStyleIfNeeded();
-        IntSize size = flooredIntSize(cachedImage.imageSizeForRenderer(m_imageElement->renderer(), 1));
+
+        // FIXME: This sucks.
+        auto styleImage = StyleCachedImage::create(cachedImage);
+        IntSize size = flooredIntSize(styleImage->imageSizeForRenderer(m_imageElement->renderer(), 1));
         if (size.width()) {
             // Compute the title. We use the decoded filename of the resource, falling
             // back on the hostname if there is no path.

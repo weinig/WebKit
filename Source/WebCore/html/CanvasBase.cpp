@@ -202,17 +202,8 @@ void CanvasBase::notifyObserversCanvasDisplayBufferPrepared()
 HashSet<Element*> CanvasBase::cssCanvasClients() const
 {
     HashSet<Element*> cssCanvasClients;
-    for (auto& observer : m_observers) {
-        auto* image = dynamicDowncast<StyleCanvasImage>(observer);
-        if (!image)
-            continue;
-
-        for (auto entry : image->clients()) {
-            auto& client = entry.key;
-            if (auto element = client.element())
-                cssCanvasClients.add(element);
-        }
-    }
+    for (auto& observer : m_observers)
+        cssCanvasClients.formUnion(observer.canvasReferencingElements(const_cast<CanvasBase&>(*this)));
     return cssCanvasClients;
 }
 

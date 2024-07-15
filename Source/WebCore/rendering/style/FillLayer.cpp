@@ -353,7 +353,7 @@ bool FillLayer::containsImage(StyleImage& image) const
 bool FillLayer::imagesAreLoaded(const RenderElement* renderer) const
 {
     for (auto* layer = this; layer; layer = layer->m_next.get()) {
-        if (layer->m_image && !layer->m_image->isLoaded(renderer))
+        if (layer->m_image && !layer->m_image->isLoadedForRenderer(renderer))
             return false;
     }
     return true;
@@ -367,7 +367,7 @@ bool FillLayer::hasOpaqueImage(const RenderElement& renderer) const
     if (static_cast<CompositeOperator>(m_composite) == CompositeOperator::Clear || static_cast<CompositeOperator>(m_composite) == CompositeOperator::Copy)
         return true;
 
-    return static_cast<BlendMode>(m_blendMode) == BlendMode::Normal && static_cast<CompositeOperator>(m_composite) == CompositeOperator::SourceOver && m_image->knownToBeOpaque(renderer);
+    return static_cast<BlendMode>(m_blendMode) == BlendMode::Normal && static_cast<CompositeOperator>(m_composite) == CompositeOperator::SourceOver && m_image->knownToBeOpaqueForRenderer(renderer);
 }
 
 bool FillLayer::hasRepeatXY() const

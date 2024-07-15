@@ -226,7 +226,7 @@ public:
     void setDidContibuteToVisuallyNonEmptyPixelCount() { m_didContributeToVisuallyNonEmptyPixelCount = true; }
 
     bool allowsAnimation() const;
-    bool repaintForPausedImageAnimationsIfNeeded(const IntRect& visibleRect, CachedImage&);
+    bool repaintForPausedImageAnimationsIfNeeded(const IntRect& visibleRect, StyleImage&);
     bool hasPausedImageAnimations() const { return m_hasPausedImageAnimations; }
     void setHasPausedImageAnimations(bool b) { m_hasPausedImageAnimations = b; }
 
@@ -310,13 +310,15 @@ public:
 
     // StyleImageClient
     void styleImageClientRemoved(StyleImage&) final;
-    void styleImageLoadFinished(StyleImage&, CachedResource&) override;
+    void styleImageFinishedResourceLoad(StyleImage&, CachedResource&) final;
+    void styleImageFinishedLoad(StyleImage&) override;
     void styleImageNeedsScheduledRenderingUpdate(StyleImage&) final;
     bool styleImageCanDestroyDecodedData(StyleImage&) const final { return !isVisibleInViewport(); }
     bool styleImageAnimationAllowed(StyleImage&) const final;
     VisibleInViewportState styleImageFrameAvailable(StyleImage&, ImageAnimatingState, const IntRect* changeRect) final;
     VisibleInViewportState styleImageVisibleInViewport(StyleImage&, const Document&) const final;
     ImageOrientation styleImageOrientation(StyleImage&) const final;
+    HashSet<Element*> styleImageReferencingElements(StyleImage&) const final;
 
 protected:
     RenderElement(Type, Element&, RenderStyle&&, OptionSet<TypeFlag>, TypeSpecificFlags);

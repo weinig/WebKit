@@ -96,7 +96,7 @@ ImageWithScale StyleCursorImage::selectBestFitImage(const Document& document)
         }
     }
 
-    return { m_image.ptr(), 1, String() };
+    return { m_image.copyRef(), 1, String() };
 }
 
 RefPtr<SVGCursorElement> StyleCursorImage::updateCursorElement(const Document& document)
@@ -133,11 +133,13 @@ void StyleCursorImage::cursorElementChanged(SVGCursorElement& cursorElement)
     // FIXME: Why doesn't this funtion check for a change to the href of the cursor element? Why would we dynamically track changes to x/y but not href?
 }
 
-void StyleCursorImage::setContainerContextForRenderer(const RenderElement& renderer, const FloatSize& containerSize, float containerZoom, const URL&)
+void StyleCursorImage::setContainerContextForRenderer(const RenderElement&, const LayoutSize&, float, const URL&)
 {
+    // FIXME: Implement.
+
     if (!hasCachedImage())
         return;
-    cachedImage()->setContainerContextForRenderer(renderer, LayoutSize(containerSize), containerZoom, m_originalURL);
+    // cachedImage()->setContainerContextForRenderer(renderer, containerSize, containerZoom, m_originalURL);
 }
 
 bool StyleCursorImage::usesDataProtocol() const

@@ -38,15 +38,16 @@ namespace WebCore {
 
 class CachedResourceLoader;
 class CSSValue;
+class Element;
 class Document;
 class RenderStyle;
 class StyleImage;
 struct ResourceLoaderOptions;
 
 enum class ImageAnimatingState : bool;
+enum class VisibleInViewportState : uint8_t;
 
 typedef const void* WrappedImagePtr;
-
 
 class WEBCORE_EXPORT StyleImageClient : public CanMakeSingleThreadWeakPtr<StyleImageClient> {
     WTF_MAKE_NONCOPYABLE(StyleImageClient);
@@ -54,47 +55,57 @@ public:
     explicit StyleImageClient() = default;
     virtual ~StyleImageClient() = default;
 
-    // Called for all StyleImages when a call to StyleImage::removeClient() fully removes a client.
+    // Called when a client has been fully removed from the client set.
     virtual void styleImageClientRemoved(StyleImage&) { }
 
-    // Called for all StyleImages when a style image changes.
+    // Called when a style image changes.
     virtual void styleImageChanged(StyleImage&, const IntRect* = nullptr) = 0;
 
-    // Called for all StyleCachedImage & StyleMultiImages backed by a StyleCachedImage when the underlying
-    // CachedResource load completes.
-    virtual void styleImageLoadFinished(StyleImage&, CachedResource&) = 0;
+    // Called when when an underlying CachedResource load completes. May be called multiple
+    // times if there are multiple underlying CachedResources (such as with StyleCrossfadeImage).
+    virtual void styleImageFinishedResourceLoad(StyleImage&, CachedResource&) = 0;
 
-    // Called for all StyleCachedImage & StyleMultiImages backed by a StyleCachedImage when the underlying
-    // CachedResource requests a rendering updated.
+    // Called when when ALL underlying CachedResource loads have completed.
+    virtual void styleImageFinishedLoad(StyleImage&) = 0;
+
+    // Called to request a rendering updated.
     virtual void styleImageNeedsScheduledRenderingUpdate(StyleImage&) = 0;
 
-    // Called for all StyleCachedImage & StyleMultiImages backed by a StyleCachedImage when the underlying
-    // CachedResource needs to know if can destroy decoded data.
+    // Called to determine if it is profitable to destroy decoded data.
     virtual bool styleImageCanDestroyDecodedData(StyleImage&) const = 0;
 
-    // Called for all StyleCachedImage & StyleMultiImages backed by a StyleCachedImage when the underlying
-    // CachedResource needs to know if can allow image animations.
+    // Called to determine if animations are allowed.
     virtual bool styleImageAnimationAllowed(StyleImage&) const = 0;
 
-    // Called for all StyleCachedImage & StyleMultiImages backed by a StyleCachedImage when the underlying
-    // CachedResource has a new frame available.
+    // Called when an underlying CachedImage has a new frame available.
     virtual VisibleInViewportState styleImageFrameAvailable(StyleImage&, ImageAnimatingState, const IntRect*) = 0;
 
-    // Called for all StyleCachedImage & StyleMultiImages backed by a StyleCachedImage when the underlying
-    // CachedResource needs to know if the image is visible in the viewport.
+    // Called to determine if the image is visible in the viewport.
     virtual VisibleInViewportState styleImageVisibleInViewport(StyleImage&, const Document&) const = 0;
 
-    // Called for all StyleImages to determine what orientation to draw the image in.
+    // Called to determine the set of Elements referencing this StyleImage.
+    virtual HashSet<Element*> styleImageReferencingElements(StyleImage&) const = 0;
+
+    // Called to determine what orientation to draw the image in.
     virtual ImageOrientation styleImageOrientation(StyleImage&) const { return ImageOrientation::Orientation::FromImage; }
 
-    // Called for all StyleImages to determine the override size from the client.
-    virtual std::optional<LayoutSize> styleImageOverrideImageSize(StyleImage&) { return std::nullopt; }
+    // Called to determine an override size from the client.
+    virtual std::optional<LayoutSize> styleImageOverrideImageSize(StyleImage&) const { return std::nullopt; }
 };
 
-enum class StyleImageSizeType : bool {
-    Used,
-    Intrinsic
-};
+//class StyleImageContext : public StyleImageClient {
+//public:
+//    explicit StyleImageContext() = default;
+//    virtual ~StyleImageContext() = default;
+//
+//    // Called to determine what orientation to draw the image in.
+//    virtual ImageOrientation styleImageOrientation(StyleImage&) const { return ImageOrientation::Orientation::FromImage; }
+//
+//    // Called to determine an override size from the client.
+//    virtual std::optional<LayoutSize> styleImageOverrideImageSize(StyleImage&) const { return std::nullopt; }
+//};
+
+enum class StyleImageSizeType : bool { Used, Intrinsic };
 
 class StyleImage : public RefCounted<StyleImage>, public CanMakeWeakPtr<StyleImage> {
 public:
@@ -119,6 +130,7 @@ public:
     // will always return nullptr / false, even if `to` or `from` are StyleCachedImages).
     virtual CachedImage* cachedImage() const { return nullptr; }
     virtual bool hasImage() const { return false; }
+    virtual Image* image() const { return nullptr; }
 
     // Loading
     virtual bool isPending() const = 0;
@@ -146,7 +158,7 @@ public:
     virtual RefPtr<Image> imageForRenderer(const RenderElement*, const FloatSize& = { }, bool isForFirstLine = false) const = 0;
     virtual void computeIntrinsicDimensionsForRenderer(const RenderElement*, Length& intrinsicWidth, Length& intrinsicHeight, FloatSize& intrinsicRatio) = 0;
     virtual bool canRenderForRenderer(const RenderElement*, float) const { return true; }
-    virtual void setContainerContextForRenderer(const RenderElement&, const FloatSize&, float, const URL& = { }) = 0;
+    virtual void setContainerContextForRenderer(const RenderElement&, const LayoutSize&, float, const URL& = { }) = 0;
     virtual bool knownToBeOpaqueForRenderer(const RenderElement&) const = 0;
 
     // Animation

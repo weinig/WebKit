@@ -32,7 +32,7 @@ namespace WebCore {
 class Document;
 
 struct ImageWithScale {
-    Ref<StyleImage> image { StyleInvalidImage::create() };
+    RefPtr<StyleImage> image { StyleInvalidImage::create() };
     float scaleFactor { 1 };
     String mimeType { String() };
 };
@@ -56,7 +56,7 @@ protected:
     CachedImage* cachedImage() const final;
 
 private:
-    void setSelectedImage(Ref<StyleImage>&&);
+    void setSelectedImageAndLoad(Ref<StyleImage>&&, CachedResourceLoader&, const ResourceLoaderOptions&);
 
     WrappedImagePtr data() const final;
 
@@ -75,16 +75,16 @@ private:
     bool hasImage() const final;
 
     bool canRenderForRenderer(const RenderElement*, float multiplier) const final;
-    LayoutSize imageSizeForRenderer(const RenderElement*, float multiplier, StyleImageSizeType) const final;
-    RefPtr<Image> imageForRenderer(const RenderElement*, const FloatSize&, bool isForFirstLine) const final;
-    void setContainerContextForRenderer(const RenderElement&, const FloatSize&, float, const URL&);
+    LayoutSize imageSizeForRenderer(const RenderElement*, float multiplier, StyleImageSizeType = StyleImageSizeType::Used) const final;
+    RefPtr<Image> imageForRenderer(const RenderElement*, const FloatSize& = { }, bool isForFirstLine = false) const final;
+    void setContainerContextForRenderer(const RenderElement&, const LayoutSize&, float, const URL&);
     bool knownToBeOpaqueForRenderer(const RenderElement&) const final;
 
     void addClient(StyleImageClient&) final;
     void removeClient(StyleImageClient&) final;
     bool hasClient(StyleImageClient&) const final;
 
-    bool isClientWaitingForAsyncDecoding(const StyleImageClient&) final;
+    bool isClientWaitingForAsyncDecoding(const StyleImageClient&) const final;
     void addClientWaitingForAsyncDecoding(StyleImageClient&) final;
     void removeAllClientsWaitingForAsyncDecoding() final;
 
@@ -94,7 +94,7 @@ private:
             float containerZoom;
             URL imageURL;
         };
-        SingleThreadWeakHashMap<StyleImageClient, ContainerContext> containerContextRequests;
+        SingleThreadWeakHashMap<RenderElement, ContainerContext> containerContextRequests;
         SingleThreadWeakHashCountedSet<StyleImageClient> clients;
         SingleThreadWeakHashSet<StyleImageClient> clientsWaitingForAsyncDecoding;
         bool forceAllClientsWaitingForAsyncDecoding { false };

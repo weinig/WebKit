@@ -36,6 +36,7 @@
 #include "ComputedStyleExtractor.h"
 #include "HostWindow.h"
 #include "ImageBuffer.h"
+#include "LocalFrameView.h"
 #include "NullGraphicsContext.h"
 #include "RenderElement.h"
 #include <wtf/PointerComparison.h>
@@ -44,10 +45,11 @@ namespace WebCore {
 
 // MARK: - StyleFilterImage
 
-StyleFilterImage::StyleFilterImage(RefPtr<StyleImage>&& inputImage, FilterOperations&& filterOperations)
+StyleFilterImage::StyleFilterImage(Document* document, RefPtr<StyleImage>&& inputImage, FilterOperations&& filterOperations)
     : StyleGeneratedImage { Type::FilterImage, StyleFilterImage::isFixedSize }
     , m_inputImage { WTFMove(inputImage) }
     , m_filterOperations { WTFMove(filterOperations) }
+    , m_document { document }
     , m_inputImageIsReady { false }
 {
     if (m_inputImage)
@@ -92,6 +94,7 @@ void StyleFilterImage::load(CachedResourceLoader& cachedResourceLoader, const Re
         m_inputImage->load(cachedResourceLoader, options);
 
     for (auto& filterOperation : m_filterOperations) {
+        // FIXME: StyleFilterImage needs to be able to track if these have finished loading.
         if (RefPtr referenceFilterOperation = dynamicDowncast<ReferenceFilterOperation>(filterOperation))
             referenceFilterOperation->loadExternalDocumentIfNeeded(cachedResourceLoader, options);
     }
@@ -107,23 +110,26 @@ RefPtr<Image> StyleFilterImage::imageForRenderer(const RenderElement* client, co
     if (size.isEmpty())
         return nullptr;
 
-    if (!m_inputImage)
+    if (!m_inputImage || !m_document)
         return &Image::nullImage();
 
     auto image = m_inputImage->imageForRenderer(client, size, isForFirstLine);
     if (!image || image->isNull())
         return &Image::nullImage();
 
-    auto preferredFilterRenderingModes = client->page().preferredFilterRenderingModes();
+    auto& treeScopeForSVGReferences = const_cast<RenderElement*>(client)->treeScopeForSVGReferences();
+    auto preferredFilterRenderingModes = m_document->preferredFilterRenderingModes();
     auto sourceImageRect = FloatRect { { }, size };
 
-    auto cssFilter = CSSFilter::create(const_cast<RenderElement&>(*client), m_filterOperations, preferredFilterRenderingModes, FloatSize { 1, 1 }, sourceImageRect, NullGraphicsContext());
+    auto cssFilter = CSSFilter::create(treeScopeForSVGReferences, m_filterOperations, preferredFilterRenderingModes, FloatSize { 1, 1 }, sourceImageRect, NullGraphicsContext());
     if (!cssFilter)
         return &Image::nullImage();
 
     cssFilter->setFilterRegion(sourceImageRect);
 
-    auto sourceImage = ImageBuffer::create(size, RenderingPurpose::DOM, 1, DestinationColorSpace::SRGB(), ImageBufferPixelFormat::BGRA8, bufferOptionsForRendingMode(cssFilter->renderingMode()), client->hostWindow());
+    auto hostWindow = (m_document->view() && m_document->view()->root()) ? m_document->view()->root()->hostWindow() : nullptr;
+
+    auto sourceImage = ImageBuffer::create(size, RenderingPurpose::DOM, 1, DestinationColorSpace::SRGB(), ImageBufferPixelFormat::BGRA8, bufferOptionsForRendingMode(cssFilter->renderingMode()), hostWindow);
     if (!sourceImage)
         return &Image::nullImage();
 
@@ -148,13 +154,121 @@ LayoutSize StyleFilterImage::fixedSizeForRenderer(const RenderElement& client) c
     return m_inputImage->imageSizeForRenderer(&client, 1);
 }
 
-void StyleFilterImage::styleImageChanged(StyleImage&, const IntRect*)
+// MARK: - StyleImageClient
+
+void StyleFilterImage::styleImageChanged(StyleImage& image, const IntRect*)
 {
-    if (!m_inputImageIsReady)
-        return;
+    ASSERT_UNUSED(image, &image == m_inputImage.get());
+    ASSERT(m_inputImageIsReady);
 
     for (auto entry : clients())
         entry.key.styleImageChanged(*this);
+}
+
+void StyleFilterImage::styleImageFinishedResourceLoad(StyleImage& image, CachedResource& resource)
+{
+    ASSERT_UNUSED(image, &image == m_inputImage.get());
+    ASSERT(m_inputImageIsReady);
+
+    for (auto entry : clients())
+        entry.key.styleImageFinishedResourceLoad(*this, resource);
+}
+
+void StyleFilterImage::styleImageFinishedLoad(StyleImage& image)
+{
+    ASSERT_UNUSED(image, &image == m_inputImage.get());
+    ASSERT(m_inputImageIsReady);
+
+    // FIXME: This should also wait until any loads from FilterOperations are complete.
+
+    for (auto entry : clients())
+        entry.key.styleImageFinishedLoad(*this);
+}
+
+void StyleFilterImage::styleImageNeedsScheduledRenderingUpdate(StyleImage& image)
+{
+    ASSERT_UNUSED(image, &image == m_inputImage.get());
+    ASSERT(m_inputImageIsReady);
+
+    for (auto entry : clients())
+        entry.key.styleImageNeedsScheduledRenderingUpdate(*this);
+}
+
+bool StyleFilterImage::styleImageCanDestroyDecodedData(StyleImage& image) const
+{
+    ASSERT_UNUSED(image, &image == m_inputImage.get());
+    ASSERT(m_inputImageIsReady);
+
+    for (auto entry : clients()) {
+        if (!entry.key.styleImageCanDestroyDecodedData(const_cast<StyleFilterImage&>(*this)))
+            return false;
+    }
+    return true;
+}
+
+bool StyleFilterImage::styleImageAnimationAllowed(StyleImage& image) const
+{
+    ASSERT_UNUSED(image, &image == m_inputImage.get());
+    ASSERT(m_inputImageIsReady);
+
+    for (auto entry : clients()) {
+        if (!entry.key.styleImageAnimationAllowed(const_cast<StyleFilterImage&>(*this)))
+            return false;
+    }
+    return true;
+}
+
+VisibleInViewportState StyleFilterImage::styleImageFrameAvailable(StyleImage& image, ImageAnimatingState animatingState, const IntRect* rect)
+{
+    ASSERT_UNUSED(image, &image == m_inputImage.get());
+    ASSERT(m_inputImageIsReady);
+
+    // FIXME: Should we delay this until filter operations have loaded?
+
+    auto visibilityState = VisibleInViewportState::No;
+    for (auto entry : clients()) {
+        if (entry.key.styleImageFrameAvailable(*this, animatingState, rect) == VisibleInViewportState::Yes)
+            visibilityState = VisibleInViewportState::Yes;
+    }
+    return visibilityState;
+}
+
+VisibleInViewportState StyleFilterImage::styleImageVisibleInViewport(StyleImage& image, const Document& document) const
+{
+    ASSERT_UNUSED(image, &image == m_inputImage.get());
+    ASSERT(m_inputImageIsReady);
+
+    for (auto entry : clients()) {
+        if (entry.key.styleImageVisibleInViewport(const_cast<StyleFilterImage&>(*this), document) == VisibleInViewportState::Yes)
+            return VisibleInViewportState::Yes;
+    }
+    return VisibleInViewportState::No;
+}
+
+HashSet<Element*> StyleFilterImage::styleImageReferencingElements(StyleImage& image) const
+{
+    ASSERT_UNUSED(image, &image == m_inputImage.get());
+
+    HashSet<Element*> result;
+    for (auto entry : clients())
+        result.formUnion(entry.key.styleImageReferencingElements(const_cast<StyleFilterImage&>(*this)));
+    return result;
+}
+
+ImageOrientation StyleFilterImage::styleImageOrientation(StyleImage& image) const
+{
+    ASSERT_UNUSED(image, &image == m_inputImage.get());
+
+    // FIXME: Implement.
+    return StyleImageClient::styleImageOrientation(const_cast<StyleFilterImage&>(*this));
+}
+
+std::optional<LayoutSize> StyleFilterImage::styleImageOverrideImageSize(StyleImage& image) const
+{
+    ASSERT_UNUSED(image, &image == m_inputImage.get());
+
+    // FIXME: Implement.
+    return StyleImageClient::styleImageOverrideImageSize(const_cast<StyleFilterImage&>(*this));
 }
 
 } // namespace WebCore

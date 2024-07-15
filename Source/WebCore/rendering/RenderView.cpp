@@ -870,7 +870,7 @@ void RenderView::addRendererWithPausedImageAnimations(RenderElement& renderer, S
 
     renderer.setHasPausedImageAnimations(true);
     auto& images = m_renderersWithPausedImageAnimation.ensure(renderer, [] {
-        return Vector<WeakPtr<CachedImage>>();
+        return Vector<WeakPtr<StyleImage>>();
     }).iterator->value;
     if (!images.contains(&image))
         images.append(image);
@@ -904,7 +904,7 @@ void RenderView::removeRendererWithPausedImageAnimations(RenderElement& renderer
 
 void RenderView::resumePausedImageAnimationsIfNeeded(const IntRect& visibleRect)
 {
-    Vector<std::pair<SingleThreadWeakPtr<RenderElement>, WeakPtr<CachedImage>>, 10> toRemove;
+    Vector<std::pair<SingleThreadWeakPtr<RenderElement>, WeakPtr<StyleImage>>, 10> toRemove;
     for (auto it : m_renderersWithPausedImageAnimation) {
         auto& renderer = it.key;
         for (auto& image : it.value) {
@@ -944,19 +944,19 @@ void RenderView::updatePlayStateForAllAnimations(const IntRect& visibleRect)
         bool needsRepaint = false;
         bool shouldAnimate = animationEnabled && renderElement.isVisibleInDocumentRect(visibleRect);
 
-        auto updateAnimation = [&](CachedImage* cachedImage) {
-            if (!cachedImage)
+        auto updateAnimation = [&](StyleImage* styleImage) {
+            if (!styleImage)
                 return;
 
             bool hasPausedAnimation = renderElement.hasPausedImageAnimations();
-            auto* image = cachedImage->image();
+            auto* image = styleImage->image();
             if (auto* svgImage = dynamicDowncast<SVGImage>(image)) {
                 if (shouldAnimate && hasPausedAnimation) {
                     svgImage->resumeAnimation();
-                    removeRendererWithPausedImageAnimations(renderElement, *cachedImage);
+                    removeRendererWithPausedImageAnimations(renderElement, *styleImage);
                 } else if (!hasPausedAnimation) {
                     svgImage->stopAnimation();
-                    addRendererWithPausedImageAnimations(renderElement, *cachedImage);
+                    addRendererWithPausedImageAnimations(renderElement, *styleImage);
                 }
             } else if (image && image->isAnimated()) {
                 // Override any individual animation play state that may have been set.
@@ -968,19 +968,19 @@ void RenderView::updatePlayStateForAllAnimations(const IntRect& visibleRect)
                 // Animations of this type require a repaint to be paused or resumed.
                 if (shouldAnimate && hasPausedAnimation) {
                     needsRepaint = true;
-                    removeRendererWithPausedImageAnimations(renderElement, *cachedImage);
+                    removeRendererWithPausedImageAnimations(renderElement, *styleImage);
                 } else if (!hasPausedAnimation) {
                     needsRepaint = true;
-                    addRendererWithPausedImageAnimations(renderElement, *cachedImage);
+                    addRendererWithPausedImageAnimations(renderElement, *styleImage);
                 }
             }
         };
 
         for (const auto* layer = &renderElement.style().backgroundLayers(); layer; layer = layer->next())
-            updateAnimation(layer->image() ? layer->image()->cachedImage() : nullptr);
+            updateAnimation(layer->image());
 
         if (auto* renderImage = dynamicDowncast<RenderImage>(renderElement))
-            updateAnimation(renderImage->cachedImage());
+            updateAnimation(renderImage->styleImage());
 
         if (needsRepaint)
             renderElement.repaint();

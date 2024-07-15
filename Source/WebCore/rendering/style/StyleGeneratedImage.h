@@ -50,9 +50,9 @@ protected:
 
     WrappedImagePtr data() const final { return this; }
 
-    LayoutSize imageSizeForRenderer(const RenderElement*, float multiplier, StyleImageSizeType) const final;
+    LayoutSize imageSizeForRenderer(const RenderElement*, float multiplier, StyleImageSizeType = StyleImageSizeType::Used) const final;
     void computeIntrinsicDimensionsForRenderer(const RenderElement*, Length& intrinsicWidth, Length& intrinsicHeight, FloatSize& intrinsicRatio) final;
-    void setContainerContextForRenderer(const RenderElement&, const FloatSize& containerSize, float, const URL&) final { m_containerSize = containerSize; }
+    void setContainerContextForRenderer(const RenderElement&, const LayoutSize& containerSize, float, const URL&) final { m_containerSize = containerSize; }
 
     bool imageHasRelativeWidth() const final { return !m_fixedSize; }
     bool imageHasRelativeHeight() const final { return !m_fixedSize; }
@@ -81,7 +81,7 @@ protected:
         URL imageURL;
     };
     SingleThreadWeakHashMap<RenderObject, ContainerContext> m_containerContext;
-    FloatSize m_containerSize;
+    LayoutSize m_containerSize;
     bool m_fixedSize;
     SingleThreadWeakHashCountedSet<StyleImageClient> m_clients;
     HashMap<FloatSize, std::unique_ptr<CachedGeneratedImage>> m_images;

@@ -33,6 +33,7 @@
 #include "RenderElement.h"
 #include "RenderImage.h"
 #include "RenderStyleInlines.h"
+#include "StyleCachedImage.h"
 #include <wtf/IsoMallocInlines.h>
 
 namespace WebCore {
@@ -73,7 +74,7 @@ void RenderImageResource::setCachedImage(CachedResourceHandle<CachedImage>&& cac
         return;
 
     if (m_styleImage) {
-        if (m_styleImage->equals(cachedImage))
+        if (m_styleImage->cachedImage() == cachedImage.get())
             return;
 
         m_styleImage->removeClient(*m_renderer);
@@ -82,8 +83,8 @@ void RenderImageResource::setCachedImage(CachedResourceHandle<CachedImage>&& cac
     if (!cachedImage)
         return;
 
-    m_styleImage = StyleCachedImaged::create(WTFMove(cachedImage));
-    m_styleImage->addClient(renderer);
+    m_styleImage = StyleCachedImage::create(WTFMove(cachedImage));
+    m_styleImage->addClient(*m_renderer);
 
     if (m_styleImage->errorOccurred())
         m_renderer->imageChanged(m_styleImage.get());
@@ -104,7 +105,7 @@ RefPtr<Image> RenderImageResource::image(const IntSize& size) const
 {
     if (!m_styleImage || m_styleImage->isPending())
         return &Image::nullImage();
-    if (auto image = m_styleImage->image(renderer(), size))
+    if (auto image = m_styleImage->imageForRenderer(m_renderer.get(), size))
         return image;
     return &Image::nullImage();
 }
@@ -119,7 +120,7 @@ void RenderImageResource::setContainerContext(const IntSize& imageContainerSize,
     m_styleImage->setContainerContextForRenderer(*m_renderer, imageContainerSize, m_renderer->style().usedZoom(), url);
 }
 
-LayoutSize RenderImageResource::imageSize(float multiplier, CachedImage::SizeType type) const
+LayoutSize RenderImageResource::imageSize(float multiplier, StyleImageSizeType type) const
 {
     if (!m_styleImage)
         return { };

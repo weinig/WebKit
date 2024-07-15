@@ -37,9 +37,9 @@ class HTMLCanvasElement;
 
 class StyleCanvasImage final : public StyleGeneratedImage, public CanvasObserver {
 public:
-    static Ref<StyleCanvasImage> create(String name)
+    static Ref<StyleCanvasImage> create(Document& document, String name)
     {
-        return adoptRef(*new StyleCanvasImage(WTFMove(name)));
+        return adoptRef(*new StyleCanvasImage(document, WTFMove(name)));
     }
     virtual ~StyleCanvasImage();
 
@@ -49,7 +49,7 @@ public:
     static constexpr bool isFixedSize = true;
 
 private:
-    explicit StyleCanvasImage(String&&);
+    explicit StyleCanvasImage(Document& document, String&&);
 
     Ref<CSSValue> computedStyleValue(const RenderStyle&) const final;
     bool isPending() const final;
@@ -66,15 +66,12 @@ private:
     void canvasChanged(CanvasBase&, const FloatRect&) final;
     void canvasResized(CanvasBase&) final;
     void canvasDestroyed(CanvasBase&) final;
+    HashSet<Element*> canvasReferencingElements(CanvasBase&) final;
 
-    HTMLCanvasElement* element(Document&) const;
+    HTMLCanvasElement* element() const;
 
-    // The name of the canvas.
     String m_name;
-
-    // FIXME: This really needs to be a set of HTMLCanvasElements (one per document) as StyleCanvasImage could conceivably be shared among different documents.
-    // FIXME: We may need more explicit client calls to make this work.
-    // The document supplies the element and owns it.
+    WeakPtr<Document, WeakPtrImplWithEventTargetData> m_document;
     mutable HTMLCanvasElement* m_element;
 };
 

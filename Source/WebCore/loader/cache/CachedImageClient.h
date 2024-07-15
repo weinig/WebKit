@@ -41,7 +41,7 @@ class Document;
 class Image;
 class IntRect;
 
-enum class VisibleInViewportState { Unknown, Yes, No };
+enum class VisibleInViewportState : uint8_t { Unknown, Yes, No };
 
 class CachedImageClient : public CachedResourceClient {
 public:

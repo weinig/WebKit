@@ -81,7 +81,7 @@ private:
     CachedImage* cachedImage() const { return imageResource().cachedImage(); }
 
     // StyleImageClient overrides
-    void styleImageLoadFinished(StyleImage&, CachedResource&) final;
+    void styleImageFinishedLoad(StyleImage&) final;
 
     FloatRect m_objectBoundingBox;
     std::unique_ptr<RenderImageResource> m_imageResource;

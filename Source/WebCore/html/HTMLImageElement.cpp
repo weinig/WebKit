@@ -63,6 +63,7 @@
 #include "Settings.h"
 #include "ShadowRoot.h"
 #include "SizesAttributeParser.h"
+#include "StyleCachedImage.h"
 #include <wtf/IsoMallocInlines.h>
 #include <wtf/text/StringBuilder.h>
 
@@ -567,8 +568,11 @@ unsigned HTMLImageElement::width()
             return optionalWidth.value();
 
         // if the image is available, use its width
-        if (m_imageLoader->image())
-            return m_imageLoader->image()->imageSizeForRenderer(renderer(), 1.0f).width().toUnsigned();
+        if (m_imageLoader->image()) {
+            // FIXME: This sucks.
+            auto styleImage = StyleCachedImage::create(*m_imageLoader->image());
+            return styleImage->imageSizeForRenderer(renderer(), 1.0f).width().toUnsigned();
+        }
     }
 
     RenderBox* box = renderBox();
@@ -590,8 +594,11 @@ unsigned HTMLImageElement::height()
             return optionalHeight.value();
 
         // if the image is available, use its height
-        if (m_imageLoader->image())
-            return m_imageLoader->image()->imageSizeForRenderer(renderer(), 1.0f).height().toUnsigned();
+        if (m_imageLoader->image()) {
+            // FIXME: This sucks.
+            auto styleImage = StyleCachedImage::create(*m_imageLoader->image());
+            return styleImage->imageSizeForRenderer(renderer(), 1.0f).height().toUnsigned();
+        }
     }
 
     RenderBox* box = renderBox();
@@ -619,7 +626,9 @@ unsigned HTMLImageElement::naturalWidth() const
     if (!m_imageLoader->image())
         return 0;
 
-    return m_imageLoader->image()->unclampedImageSizeForRenderer(renderer(), effectiveImageDevicePixelRatio()).width().toUnsigned();
+    // FIXME: This sucks.
+    auto styleImage = StyleCachedImage::create(*m_imageLoader->image());
+    return styleImage->unclampedImageSizeForRenderer(renderer(), effectiveImageDevicePixelRatio()).width().toUnsigned();
 }
 
 unsigned HTMLImageElement::naturalHeight() const
@@ -627,7 +636,9 @@ unsigned HTMLImageElement::naturalHeight() const
     if (!m_imageLoader->image())
         return 0;
 
-    return m_imageLoader->image()->unclampedImageSizeForRenderer(renderer(), effectiveImageDevicePixelRatio()).height().toUnsigned();
+    // FIXME: This sucks.
+    auto styleImage = StyleCachedImage::create(*m_imageLoader->image());
+    return styleImage->unclampedImageSizeForRenderer(renderer(), effectiveImageDevicePixelRatio()).height().toUnsigned();
 }
 
 bool HTMLImageElement::isURLAttribute(const Attribute& attribute) const

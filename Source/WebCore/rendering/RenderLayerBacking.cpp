@@ -3144,7 +3144,7 @@ bool RenderLayerBacking::isDirectlyCompositedImage() const
     if (!cachedImage || !cachedImage->hasImage())
         return false;
 
-    auto* image = dynamicDowncast<BitmapImage>(style->imageForRenderer(imageRenderer.get()));
+    RefPtr image = dynamicDowncast<BitmapImage>(styleImage->imageForRenderer(imageRenderer.get()));
     if (!image)
         return false;
 
@@ -3159,7 +3159,7 @@ bool RenderLayerBacking::isDirectlyCompositedImage() const
         return false;
 #endif
 
-    return m_graphicsLayer->shouldDirectlyCompositeImage(image);
+    return m_graphicsLayer->shouldDirectlyCompositeImage(image.get());
 }
 
 bool RenderLayerBacking::isBitmapOnly() const
@@ -3192,7 +3192,7 @@ bool RenderLayerBacking::isUnscaledBitmapOnly() const
         if (!cachedImage || !cachedImage->hasImage())
             return false;
 
-        auto* image = dynamicDowncast<BitmapImage>(style->imageForRenderer(imageRenderer.get()));
+        RefPtr image = dynamicDowncast<BitmapImage>(styleImage->imageForRenderer(imageRenderer.get()));
         if (!image)
             return false;
 
@@ -3258,16 +3258,15 @@ void RenderLayerBacking::updateImageContents(PaintedContentsInfo& contentsInfo)
 {
     auto& imageRenderer = downcast<RenderImage>(renderer());
 
-    auto styleImage = imageRenderer->styleImage();
+    auto styleImage = imageRenderer.styleImage();
     if (!styleImage)
-        return false;
-
+        return;
 
     auto* cachedImage = styleImage->cachedImage();
     if (!cachedImage)
         return;
 
-    auto* image = styleImage->imageForRenderer(&imageRenderer);
+    RefPtr image = styleImage->imageForRenderer(&imageRenderer);
     if (!image)
         return;
 
@@ -3276,7 +3275,7 @@ void RenderLayerBacking::updateImageContents(PaintedContentsInfo& contentsInfo)
         return;
 
     updateContentsRects();
-    m_graphicsLayer->setContentsToImage(image);
+    m_graphicsLayer->setContentsToImage(image.get());
     
     updateDrawsContent(contentsInfo);
     

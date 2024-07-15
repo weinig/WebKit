@@ -1593,7 +1593,11 @@ std::optional<Cursor> EventHandler::selectCursor(const HitTestResult& result, bo
             float scale = styleImage->imageScaleFactor();
             // Get hotspot and convert from logical pixels to physical pixels.
             IntPoint hotSpot = (*cursors)[i].hotSpot();
-            FloatSize size = styleImage->imageForRenderer(renderer)->size();
+
+            // FIXME: Cursors should be passing in their own resolver.
+
+            // FIXME: MAKE WORK.
+            FloatSize size = { }; // styleImage->imageForRenderer(renderer)->size();
             if (cachedImage->errorOccurred())
                 continue;
             // Limit the size of cursors (in UI pixels) so that they cannot be
@@ -1602,15 +1606,18 @@ std::optional<Cursor> EventHandler::selectCursor(const HitTestResult& result, bo
             if (size.width() > maximumCursorSize || size.height() > maximumCursorSize)
                 continue;
 
-            Image* image = styleImage->imageForRenderer(renderer);
+            // FIXME: Cursors should be passing in their own resolver.
+
+            // FIXME: MAKE WORK.
+            RefPtr<Image> image = nullptr; // styleImage->imageForRenderer(renderer);
 #if ENABLE(MOUSE_CURSOR_SCALE)
             // Ensure no overflow possible in calculations above.
             if (scale < minimumCursorScale)
                 continue;
-            return Cursor(image, hotSpot, scale);
+            return Cursor(image.get(), hotSpot, scale);
 #else
             ASSERT(scale == 1);
-            return Cursor(image, hotSpot);
+            return Cursor(image.get(), hotSpot);
 #endif // ENABLE(MOUSE_CURSOR_SCALE)
         }
     }

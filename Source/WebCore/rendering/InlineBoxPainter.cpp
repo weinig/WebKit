@@ -305,6 +305,8 @@ void InlineBoxPainter::paintFillLayers(const Color& color, const FillLayer& fill
 void InlineBoxPainter::paintFillLayer(const Color& color, const FillLayer& fillLayer, const LayoutRect& rect, CompositeOperator op)
 {
     auto* image = fillLayer.image();
+
+
     bool hasFillImage = image && image->canRenderForRenderer(&renderer(), renderer().style().usedZoom());
     bool hasFillImageOrBorderRadious = hasFillImage || renderer().style().hasBorderRadius();
     bool hasSingleLine = !m_inlineBox.previousInlineBox() && !m_inlineBox.nextInlineBox();

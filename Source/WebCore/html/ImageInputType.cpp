@@ -182,12 +182,12 @@ unsigned ImageInputType::height() const
     if (auto optionalHeight = parseHTMLNonNegativeInteger(element->attributeWithoutSynchronization(heightAttr)))
         return optionalHeight.value();
 
-    // If the image is available, use its height.
+    // If the image is available and has a natural width and height, use its natural height.
     auto* imageLoader = element->imageLoader();
     if (imageLoader && imageLoader->image()) {
-        // FIXME: This sucks.
-        auto styleImage = StyleCachedImage::create(*imageLoader->image());
-        return styleImage->imageSizeForRenderer(element->renderer(), 1).height().toUnsigned();
+        auto naturalDimensions = m_imageLoader->image()->naturalDimensions();
+        if (naturalDimensions.width && naturalDimensions.height)
+            return naturalDimensions.height->toUnsigned();
     }
     return 0;
 }
@@ -206,12 +206,12 @@ unsigned ImageInputType::width() const
     if (auto optionalWidth = parseHTMLNonNegativeInteger(element->attributeWithoutSynchronization(widthAttr)))
         return optionalWidth.value();
 
-    // If the image is available, use its width.
+    // If the image is available and has a natural width and height, use its natural width.
     auto* imageLoader = element->imageLoader();
     if (imageLoader && imageLoader->image()) {
-        // FIXME: This sucks.
-        auto styleImage = StyleCachedImage::create(*imageLoader->image());
-        return styleImage->imageSizeForRenderer(element->renderer(), 1).width().toUnsigned();
+        auto naturalDimensions = m_imageLoader->image()->naturalDimensions();
+        if (naturalDimensions.width && naturalDimensions.height)
+            return naturalDimensions.width->toUnsigned();
     }
     return 0;
 }

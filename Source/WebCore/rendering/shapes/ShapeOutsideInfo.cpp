@@ -145,16 +145,34 @@ Ref<const Shape> makeShapeForShapeOutside(const RenderBox& renderer)
     }
     case ShapeValue::Type::Image: {
         ASSERT(shapeValue.isImageValid());
+
+        // https://drafts.csswg.org/css-shapes/#shapes-from-image
+        //
+        //   "The image is sized and positioned as if it were a replaced element
+        //    whose specified width and height are the same as the element’s used
+        //    content box size."
+
+
         auto* styleImage = shapeValue.image();
-        auto imageSize = renderer.calculateImageIntrinsicDimensions(styleImage, boxSize, RenderImage::ScaleByUsedZoom::Yes);
-        styleImage->setContainerContextForRenderer(renderer, imageSize, style.usedZoom());
+
+//        auto imageSize = renderer.calculateImageIntrinsicDimensions(styleImage, boxSize, RenderImage::ScaleByUsedZoom::Yes);
+//        styleImage->setContainerContextForRenderer(renderer, imageSize, style.usedZoom());
 
         auto marginRect = getShapeImageMarginRect(renderer, boxSize);
+
         auto* renderImage = dynamicDowncast<RenderImage>(renderer);
         auto imageRect = renderImage ? renderImage->replacedContentRect() : LayoutRect { { }, imageSize };
 
         ASSERT(!styleImage->isPending());
-        RefPtr<Image> image = styleImage->imageForRenderer(const_cast<RenderBox*>(&renderer), imageSize);
+
+        StyleImageContext imageContext {
+            .specifiedSize = ,
+            .defaultObjectSize =
+            .style = renderer.style(),
+            .deviceScaleFactor = renderer.document().deviceScaleFactor()
+        };
+        RefPtr image = styleImage->imageForRenderer(&imageContext);
+
         return Shape::createRasterShape(image.get(), shapeImageThreshold, imageRect, marginRect, writingMode, margin);
     }
     case ShapeValue::Type::Box: {

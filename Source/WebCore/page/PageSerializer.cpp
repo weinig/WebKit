@@ -279,11 +279,9 @@ void PageSerializer::addImageToResources(CachedImage* image, RenderElement* imag
     if (!image || image->image() == &Image::nullImage())
         return;
 
-    // FIXME: This sucks.
-    auto styleImage = StyleCachedImage::create(*image);
-    RefPtr<FragmentedSharedBuffer> data = imageRenderer ? styleImage->imageForRenderer(imageRenderer)->data() : 0;
-    if (!data)
-        data = image->image()->data();
+    RefPtr data = image->resourceBuffer();
+    if (!data && image->rawImage())
+        data = image->rawImage()->data();
 
     if (!data) {
         LOG_ERROR("No data for image %s", url.string().utf8().data());

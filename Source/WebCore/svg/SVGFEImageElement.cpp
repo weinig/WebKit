@@ -218,9 +218,7 @@ std::tuple<RefPtr<ImageBuffer>, FloatRect> SVGFEImageElement::imageBufferForEffe
 RefPtr<FilterEffect> SVGFEImageElement::createFilterEffect(const FilterEffectVector&, const GraphicsContext& destinationContext) const
 {
     if (CachedResourceHandle cachedImage = m_cachedImage) {
-        // FIXME: This sucks.
         auto styleImage = StyleCachedImage::create(cachedImage);
-
         RefPtr image = styleImage->imageForRenderer(renderer());
         if (!image || image->isNull())
             return nullptr;

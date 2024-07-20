@@ -3329,22 +3329,20 @@ ExceptionOr<void> WebGLRenderingContextBase::texImageSource(TexImageFunctionID f
     if (!validationResult.returnValue())
         return { };
 
-    // FIXME: This sucks.
-    auto styleImage = StyleCachedImage::create(*source.cachedImage());
-    RefPtr<Image> imageForRender = styleImage->imageForRenderer(source.renderer());
-    if (!imageForRender)
+    RefPtr image = source.cachedImage()->rawImage();
+    if (!image)
         return { };
 
-    if (imageForRender->drawsSVGImage() || imageForRender->orientation() != ImageOrientation::Orientation::None || imageForRender->hasDensityCorrectedSize())
-        imageForRender = drawImageIntoBuffer(*imageForRender, source.width(), source.height(), 1, functionName);
+    if (image->drawsSVGImage() || image->orientation() != ImageOrientation::Orientation::None || image->hasDensityCorrectedSize())
+        image = drawImageIntoBuffer(*image, source.width(), source.height(), 1, functionName);
 
-    if (!imageForRender || !validateTexFunc(functionID, SourceHTMLImageElement, target, level, internalformat, imageForRender->width(), imageForRender->height(), depth, border, format, type, xoffset, yoffset, zoffset))
+    if (!image || !validateTexFunc(functionID, SourceHTMLImageElement, target, level, internalformat, image->width(), image->height(), depth, border, format, type, xoffset, yoffset, zoffset))
         return { };
 
     // Pass along inputSourceImageRect unchanged. HTMLImageElements are unique in that their
     // size may differ from that of the Image obtained from them (because of devicePixelRatio),
     // so for WebGL 1.0 uploads, defer measuring their rectangle as long as possible.
-    texImageImpl(functionID, target, level, internalformat, xoffset, yoffset, zoffset, format, type, imageForRender.get(), GraphicsContextGL::DOMSource::Image, m_unpackFlipY, m_unpackPremultiplyAlpha, false, inputSourceImageRect, depth, unpackImageHeight);
+    texImageImpl(functionID, target, level, internalformat, xoffset, yoffset, zoffset, format, type, image.get(), GraphicsContextGL::DOMSource::Image, m_unpackFlipY, m_unpackPremultiplyAlpha, false, inputSourceImageRect, depth, unpackImageHeight);
     return { };
 }
 

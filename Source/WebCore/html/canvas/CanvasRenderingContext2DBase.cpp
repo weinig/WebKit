@@ -1514,458 +1514,313 @@ bool CanvasRenderingContext2DBase::shouldDrawShadows() const
     return state().shadowColor.isVisible() && (state().shadowBlur || !state().shadowOffset.isZero());
 }
 
-enum class ImageSizeType { AfterDevicePixelRatio, BeforeDevicePixelRatio };
-static LayoutSize size(CachedImage* cachedImage, RenderElement* renderer, ImageSizeType sizeType = ImageSizeType::BeforeDevicePixelRatio)
+
+template<typename T> ExceptionOr<void> CanvasRenderingContext2DBase::drawImage(CanvasImageSource&& image, const T& arguments)
 {
-    if (!cachedImage)
-        return { };
+    // 1. If any of the arguments are infinite or NaN, then return.
+    if (!arguments.allFinite())
+        return { }
 
-    // FIXME: This sucks.
-    auto styleImage = StyleCachedImage::create(*cachedImage);
-    LayoutSize size = styleImage->imageSizeForRenderer(renderer, 1.0f); // FIXME: Not sure about this.
+    return WTF::switchOn(image,
+        [&]<typename T>(T& image) -> ExceptionOr<void> {
+            // 2. Let usability be the result of checking the usability of image.
+            auto usability = checkUsabilityForImmediateUse(*this, *image);
+            if (usability.hasException())
+                return usability.releaseException();
 
-    if (auto* renderImage = dynamicDowncast<RenderImage>(renderer); sizeType == ImageSizeType::AfterDevicePixelRatio && renderImage && cachedImage->image() && !cachedImage->image()->hasRelativeWidth())
-        size.scale(renderImage->imageDevicePixelRatio());
-    return size;
+            // 3. If usability is bad, then return (without drawing anything).
+            if (std::holds_alternative<ImageUsabilityBad>(usability.returnValue()))
+                return { };
+
+            auto goodUsability = std::get<ImageUsabilityGood<T, ImageUse::Immediate>>(usability.releaseReturnValue());
+
+            // 4. Establish the source and destination rectangles as follows:
+
+            FloatRect source;
+            FloatRect destination;
+
+            // NOTE: The order of the text has been reversed to make the
+            // constraints happen in an order that operations must be done.
+
+            if constexpr (T::hasSourceRect) {
+                source = FloatRect(arguments.sx, arguments.sy, arguments.sw, arguments.sh);
+            } else {
+                // If the image has no natural dimensions, then the concrete object
+                // size must be used instead, as determined using the CSS "Concrete
+                // Object Size Resolution" algorithm, with the specified size having
+                // neither a definite width nor height, nor any additional constraints,
+                // the object's natural properties being those of the image argument,
+                // and the default object size being the size of the output bitmap
+
+                // NOTE: The details of this are implemented in `checkUsability`.
+                auto size = goodUsability.size;
+
+                // If the sx, sy, sw, and sh arguments are omitted, then they must
+                // default to 0, 0, the image's natural width in image pixels, and the
+                // image's natural height in image pixels, respectively.
+
+                source = FloatRect(0, 0, size.width(), size.height());
+            }
+
+            if constexpr (T::hasDestinationSize) {
+                destination = FloatRect(arguments.dx, arguments.dy, arguments.dw, arguments.dh);
+            } else {
+                // If not specified, the dw and dh arguments must default to the values
+                // of sw and sh, interpreted such that one CSS pixel in the image is
+                // treated as one unit in the output bitmap's coordinate space
+
+                destination = FloatRect(arguments.dx, arguments.dy, sw, sh);
+            }
+
+            // 5. If one of the sw or sh arguments is zero, then return. Nothing is painted.
+            if (!source.width() || !source.height())
+                return { };
+
+            // While the specification doesn't call out the following checks, no drawing can
+            // happen if they fail.
+
+            auto normalizedSource = normalizeRect(source);
+            if (normalizedSource.isEmpty())
+                return { };
+            auto normalizedDestination = normalizeRect(destination);
+            if (normalizedDestination.isEmpty())
+                return { };
+
+            auto targetSwitcher = CanvasFilterContextSwitcher::create(*this, normalizedDestination);
+
+            GraphicsContext* context = effectiveDrawingContext();
+            if (!context)
+                return { };
+            if (!state().hasInvertibleTransform)
+                return { };
+
+            // FIXME: What about ImageSizeType::AfterDevicePixelRatio / ImageSizeType::BeforeDevicePixelRatio
+
+            // 6. Paint the region of the image argument specified [...]
+            this->drawImage(*image, WTFMove(goodUsability), normalizedSource, normalizedDestination, *context, targetSwitcher.get() state().globalComposite, state().globalBlend);
+
+            // 7. If image is not origin-clean, then set the CanvasRenderingContext2D's origin-clean flag to false.
+            checkOrigin(*image);
+
+            return { };
+        }
+    );
 }
-
-static LayoutSize size(HTMLImageElement& element, ImageSizeType sizeType = ImageSizeType::BeforeDevicePixelRatio)
-{
-    return size(element.cachedImage(), element.renderer(), sizeType);
-}
-
-static LayoutSize size(SVGImageElement& element, ImageSizeType sizeType = ImageSizeType::BeforeDevicePixelRatio)
-{
-    return size(element.cachedImage(), element.renderer(), sizeType);
-}
-
-static inline FloatSize size(CanvasBase& canvas)
-{
-    return canvas.size();
-}
-
-static inline FloatSize size(ImageBitmap& imageBitmap)
-{
-    return FloatSize { static_cast<float>(imageBitmap.width()), static_cast<float>(imageBitmap.height()) };
-}
-
-#if ENABLE(VIDEO)
-
-static inline FloatSize size(HTMLVideoElement& video)
-{
-    RefPtr player = video.player();
-    if (!player)
-        return { };
-    return player->naturalSize();
-}
-
-#endif
-
-static inline FloatSize size(CSSStyleImageValue& image)
-{
-    auto* cachedImage = image.image();
-    if (!cachedImage)
-        return FloatSize();
-
-    // FIXME: This sucks.
-    auto styleImage = StyleCachedImage::create(*cachedImage);
-    return styleImage->imageSizeForRenderer(nullptr, 1.0f);
-}
-
-#if ENABLE(WEB_CODECS)
-static inline FloatSize size(const WebCodecsVideoFrame& frame)
-{
-    return FloatSize { static_cast<float>(frame.displayWidth()), static_cast<float>(frame.displayHeight()) };
-}
-#endif
 
 ExceptionOr<void> CanvasRenderingContext2DBase::drawImage(CanvasImageSource&& image, float dx, float dy)
 {
-    return WTF::switchOn(image,
-        [&] (RefPtr<HTMLImageElement>& imageElement) -> ExceptionOr<void> {
-            LayoutSize destRectSize = size(*imageElement, ImageSizeType::AfterDevicePixelRatio);
-            LayoutSize sourceRectSize = size(*imageElement, ImageSizeType::BeforeDevicePixelRatio);
-            return this->drawImage(*imageElement, FloatRect { 0, 0, sourceRectSize.width(), sourceRectSize.height() }, FloatRect { dx, dy, destRectSize.width(), destRectSize.height() });
-        },
-        [&] (RefPtr<SVGImageElement>& imageElement) -> ExceptionOr<void> {
-            LayoutSize destRectSize = size(*imageElement, ImageSizeType::AfterDevicePixelRatio);
-            LayoutSize sourceRectSize = size(*imageElement, ImageSizeType::BeforeDevicePixelRatio);
-            return this->drawImage(*imageElement, FloatRect { 0, 0, sourceRectSize.width(), sourceRectSize.height() }, FloatRect { dx, dy, destRectSize.width(), destRectSize.height() });
-        },
-        [&] (auto& element) -> ExceptionOr<void> {
-            FloatSize elementSize = size(*element);
-            return this->drawImage(*element, FloatRect { 0, 0, elementSize.width(), elementSize.height() }, FloatRect { dx, dy, elementSize.width(), elementSize.height() });
-        }
-    );
+    struct Arguments {
+        static constexpr bool hasSourceRect = false;
+        static constexpr bool hasDestinationSize = false;
+
+        bool allFinite() const { std::isfinite(dx) && std::isfinite(dy); }
+
+        float dx;
+        float dy;
+    };
+    return drawImage(WTFMove(image), Arguments { dx, dy });
 }
 
 ExceptionOr<void> CanvasRenderingContext2DBase::drawImage(CanvasImageSource&& image, float dx, float dy, float dw, float dh)
 {
-    return WTF::switchOn(image,
-        [&] (auto& element) -> ExceptionOr<void> {
-            FloatSize elementSize = size(*element);
-            return this->drawImage(*element, FloatRect { 0, 0, elementSize.width(), elementSize.height() }, FloatRect { dx, dy, dw, dh });
-        }
-    );
+    struct Arguments {
+        static constexpr bool hasSourceRect = false;
+        static constexpr bool hasDestinationSize = true;
+
+        bool allFinite() const { std::isfinite(dx) && std::isfinite(dy) && std::isfinite(dw) && std::isfinite(dh); }
+
+        float dx;
+        float dy;
+        float dw;
+        float dh;
+    };
+    return drawImage(WTFMove(image), Arguments { dx, dy, dw, dh });
 }
+
 
 ExceptionOr<void> CanvasRenderingContext2DBase::drawImage(CanvasImageSource&& image, float sx, float sy, float sw, float sh, float dx, float dy, float dw, float dh)
 {
-    return WTF::switchOn(image,
-        [&] (auto& element) -> ExceptionOr<void> {
-            return this->drawImage(*element, FloatRect { sx, sy, sw, sh }, FloatRect { dx, dy, dw, dh });
-        }
-    );
+    struct Arguments {
+        static constexpr bool hasSourceRect = true;
+        static constexpr bool hasDestinationSize = true;
+
+        bool allFinite() const { std::isfinite(sx) && std::isfinite(sy) && std::isfinite(sw) && std::isfinite(sh) && std::isfinite(dx) && std::isfinite(dy) && std::isfinite(dw) && std::isfinite(dh); }
+
+        float sx;
+        float sy;
+        float sw;
+        float sh;
+        float dx;
+        float dy;
+        float dw;
+        float dh;
+    };
+    return drawImage(WTFMove(image), Arguments { sx, sy, sw, sh, dx, dy, dw, dh });
 }
 
-ExceptionOr<void> CanvasRenderingContext2DBase::drawImage(HTMLImageElement& imageElement, const FloatRect& srcRect, const FloatRect& dstRect)
+// MARK: Draw Image Core (for HTMLImageElement, SVGImageElement and CSSStyleImageValue)
+
+void CanvasRenderingContext2DBase::drawImageCore(Document& document, Ref<Image>&& image, const FloatRect& srcRect, const FloatRect& dstRect, GraphicsContext& context, CanvasFilterContextSwitcher* targetSwitcher, const CompositeOperator& op, const BlendMode& blendMode)
 {
-    return drawImage(imageElement, srcRect, dstRect, state().globalComposite, state().globalBlend);
-}
-
-ExceptionOr<void> CanvasRenderingContext2DBase::drawImage(HTMLImageElement& imageElement, const FloatRect& srcRect, const FloatRect& dstRect, const CompositeOperator& op, const BlendMode& blendMode)
-{
-    if (!imageElement.complete())
-        return { };
-
-    auto* cachedImage = imageElement.cachedImage();
-    if (!cachedImage)
-        return { };
-
-    if (cachedImage->status() == CachedImage::Status::DecodeError)
-        return Exception { ExceptionCode::InvalidStateError, "The HTMLImageElement provided is in the 'broken' state."_s };
-
-
-
-    auto imageRect = FloatRect(FloatPoint(), size(imageElement, ImageSizeType::BeforeDevicePixelRatio));
-
-    auto orientation = ImageOrientation::Orientation::FromImage;
-    if (imageElement.allowsOrientationOverride()) {
-        if (auto* renderer = imageElement.renderer())
-            orientation = renderer->style().imageOrientation().orientation();
-        else if (auto* computedStyle = imageElement.computedStyle())
-            orientation = computedStyle->imageOrientation().orientation();
-    }
-
-    auto result = drawImage(imageElement.document(), *cachedImage, imageElement.renderer(), imageRect, srcRect, dstRect, op, blendMode, orientation);
-
-    if (!result.hasException())
-        checkOrigin(&imageElement);
-    return result;
-}
-
-ExceptionOr<void> CanvasRenderingContext2DBase::drawImage(SVGImageElement& imageElement, const FloatRect& srcRect, const FloatRect& dstRect)
-{
-    return drawImage(imageElement, srcRect, dstRect, state().globalComposite, state().globalBlend);
-}
-
-ExceptionOr<void> CanvasRenderingContext2DBase::drawImage(SVGImageElement& imageElement, const FloatRect& srcRect, const FloatRect& dstRect, const CompositeOperator& op, const BlendMode& blendMode)
-{
-    auto* cachedImage = imageElement.cachedImage();
-    if (!cachedImage)
-        return { };
-
-    if (cachedImage->status() == CachedImage::Status::DecodeError)
-        return Exception { ExceptionCode::InvalidStateError, "The SVGImageElement provided is in the 'broken' state."_s };
-
-    auto imageRect = FloatRect(FloatPoint(), size(imageElement, ImageSizeType::BeforeDevicePixelRatio));
-
-    auto result = drawImage(imageElement.document(), *cachedImage, imageElement.renderer(), imageRect, srcRect, dstRect, op, blendMode);
-
-    if (!result.hasException())
-        checkOrigin(&imageElement);
-    return result;
-}
-
-ExceptionOr<void> CanvasRenderingContext2DBase::drawImage(CSSStyleImageValue& image, const FloatRect& srcRect, const FloatRect& dstRect)
-{
-    auto* cachedImage = image.image();
-    if (!cachedImage || !image.document())
-        return { };
-    FloatRect imageRect = FloatRect(FloatPoint(), size(image));
-
-    auto result = drawImage(*image.document(), *cachedImage, nullptr, imageRect, srcRect, dstRect, state().globalComposite, state().globalBlend);
-
-    if (!result.hasException())
-        checkOrigin(image);
-    return result;
-}
-
-#if ENABLE(WEB_CODECS)
-ExceptionOr<void> CanvasRenderingContext2DBase::drawImage(WebCodecsVideoFrame& frame, const FloatRect&, const FloatRect& dstRect)
-{
-    if (frame.isDetached())
-        return Exception { ExceptionCode::InvalidStateError, "frame is detached"_s };
-
-    auto* context = effectiveDrawingContext();
-    if (!context)
-        return { };
-
-    auto internalFrame = frame.internalFrame();
-    if (!internalFrame)
-        return { };
-
-    // FIXME: Add support for srcRect
-    context->paintVideoFrame(*internalFrame, dstRect, frame.shoudlDiscardAlpha());
-
-    auto normalizedDstRect = normalizeRect(dstRect);
-    bool repaintEntireCanvas = rectContainsCanvas(normalizedDstRect);
-    // FIXME: Can we avoid post-processing in any cases?
-    didDraw(repaintEntireCanvas, normalizedDstRect);
-
-    return { };
-}
-#endif
-
-ExceptionOr<void> CanvasRenderingContext2DBase::drawImage(Document& document, CachedImage& cachedImage, const RenderElement* renderer, const FloatRect& imageRect, const FloatRect& srcRect, const FloatRect& dstRect, const CompositeOperator& op, const BlendMode& blendMode, ImageOrientation orientation)
-{
-    if (!std::isfinite(dstRect.x()) || !std::isfinite(dstRect.y()) || !std::isfinite(dstRect.width()) || !std::isfinite(dstRect.height())
-        || !std::isfinite(srcRect.x()) || !std::isfinite(srcRect.y()) || !std::isfinite(srcRect.width()) || !std::isfinite(srcRect.height()))
-        return { };
-
-    if (!srcRect.width() || !srcRect.height())
-        return { };
-
-    if (!dstRect.width() || !dstRect.height())
-        return { };
-
-    auto normalizedSrcRect = normalizeRect(srcRect);
-    auto normalizedDstRect = normalizeRect(dstRect);
-
-    if (normalizedSrcRect.isEmpty())
-        return { };
-
-    if (normalizedDstRect.isEmpty())
-        return { };
-
-    auto targetSwitcher = CanvasFilterContextSwitcher::create(*this, normalizedDstRect);
-
-    GraphicsContext* c = effectiveDrawingContext();
-    if (!c)
-        return { };
-    if (!state().hasInvertibleTransform)
-        return { };
-
-    // FIXME: This sucks.
-    auto styleImage = StyleCachedImage::create(cachedImage);
-    RefPtr<Image> image = styleImage->imageForRenderer(renderer);
-    if (!image)
-        return { };
-
-    auto observer = image->imageObserver();
-    auto shouldPostProcess { true };
-
-    if (image->drawsSVGImage()) {
-        image->setImageObserver(nullptr);
-        image->setContainerSize(imageRect.size());
-    }
-
-    if (RefPtr bitmapImage = dynamicDowncast<BitmapImage>(*image)) {
-        // Drawing an animated image to a canvas should draw the first frame (except for a few layout tests)
-        if (image->isAnimated() && !document.settings().animatedImageDebugCanvasDrawingEnabled()) {
-            bitmapImage = BitmapImage::create(image->nativeImage());
-            if (!bitmapImage)
-                return { };
-            image = bitmapImage.copyRef();
-        }
-
-        shouldPostProcess = false;
-    }
+    bool shouldPostProcess = !is<BitmapImage>(image);
 
     ImagePaintingOptions options = {
         op,
         blendMode,
-        orientation,
         document.settings().imageSubsamplingEnabled() ? AllowImageSubsampling::Yes : AllowImageSubsampling::No,
         document.settings().showDebugBorders() ? ShowDebugBackground::Yes : ShowDebugBackground::No
     };
 
     bool repaintEntireCanvas = false;
-    if (rectContainsCanvas(normalizedDstRect)) {
-        c->drawImage(*image, normalizedDstRect, normalizedSrcRect, options);
+    if (rectContainsCanvas(dstRect)) {
+        context.drawImage(image, dstRect, srcRect, options);
         repaintEntireCanvas = true;
     } else if (isFullCanvasCompositeMode(op)) {
-        fullCanvasCompositedDrawImage(*image, normalizedDstRect, normalizedSrcRect, op);
+        fullCanvasCompositedDrawImage(image, dstRect, srcRect, op);
         repaintEntireCanvas = true;
     } else if (op == CompositeOperator::Copy) {
         clearCanvas();
-        c->drawImage(*image, normalizedDstRect, normalizedSrcRect, options);
+        context.drawImage(image, dstRect, srcRect, options);
         repaintEntireCanvas = true;
     } else
-        c->drawImage(*image, normalizedDstRect, normalizedSrcRect, options);
+        context.drawImage(image, dstRect, srcRect, options);
 
-    didDraw(repaintEntireCanvas, targetSwitcher ? targetSwitcher->expandedBounds() : normalizedDstRect, shouldPostProcess ? defaultDidDrawOptions() : defaultDidDrawOptionsWithoutPostProcessing());
-
-    if (image->drawsSVGImage())
-        image->setImageObserver(WTFMove(observer));
-
-    return { };
+    didDraw(repaintEntireCanvas, targetSwitcher ? targetSwitcher->expandedBounds() : dstRect, shouldPostProcess ? defaultDidDrawOptions() : defaultDidDrawOptionsWithoutPostProcessing());
 }
 
-ExceptionOr<void> CanvasRenderingContext2DBase::drawImage(CanvasBase& sourceCanvas, const FloatRect& srcRect, const FloatRect& dstRect)
+// MARK: Draw Image Core (for HTMLCanvasElement and OffscreenCanvas)
+
+void CanvasRenderingContext2DBase::drawImageCore(CanvasBase& sourceCanvas, const Ref<ImageBuffer>&& buffer, const FloatRect& srcRect, const FloatRect& dstRect, GraphicsContext& context, CanvasFilterContextSwitcher* targetSwitcher, const CompositeOperator& op, const BlendMode& blendMode)
 {
-    FloatRect srcCanvasRect = FloatRect(FloatPoint(), sourceCanvas.size());
-
-    if (!srcCanvasRect.width() || !srcCanvasRect.height())
-        return Exception { ExceptionCode::InvalidStateError };
-
-    if (!srcRect.width() || !srcRect.height())
-        return { };
-
-    auto normalizedSrcRect = normalizeRect(srcRect);
-    auto normalizedDstRect = normalizeRect(dstRect);
-
-    if (normalizedSrcRect.isEmpty())
-        return { };
-
-    if (normalizedDstRect.isEmpty())
-        return { };
-
-    auto targetSwitcher = CanvasFilterContextSwitcher::create(*this, normalizedDstRect);
-
-    GraphicsContext* c = effectiveDrawingContext();
-    if (!c)
-        return { };
-    if (!state().hasInvertibleTransform)
-        return { };
-
-    Ref protectedCanvas { sourceCanvas };
-    checkOrigin(&sourceCanvas);
-
-    RefPtr buffer = sourceCanvas.makeRenderingResultsAvailable(ShouldApplyPostProcessingToDirtyRect::No);
-    if (!buffer)
-        return { };
-
     bool repaintEntireCanvas = false;
-    if (rectContainsCanvas(normalizedDstRect)) {
-        c->drawImageBuffer(*buffer, normalizedDstRect, normalizedSrcRect, { state().globalComposite, state().globalBlend });
+    if (rectContainsCanvas(dstRect)) {
+        context.drawImageBuffer(buffer, dstRect, srcRect, { op, blendMode });
         repaintEntireCanvas = true;
-    } else if (isFullCanvasCompositeMode(state().globalComposite)) {
-        fullCanvasCompositedDrawImage(*buffer, normalizedDstRect, normalizedSrcRect, state().globalComposite);
+    } else if (isFullCanvasCompositeMode(op)) {
+        fullCanvasCompositedDrawImage(buffer, dstRect, srcRect, op);
         repaintEntireCanvas = true;
     } else if (state().globalComposite == CompositeOperator::Copy) {
         if (&sourceCanvas == &canvasBase()) {
-            if (auto copy = c->createImageBuffer(normalizedSrcRect.size(), 1, colorSpace())) {
-                copy->context().drawImageBuffer(*buffer, -normalizedSrcRect.location());
+            if (auto copy = context.createImageBuffer(srcRect.size(), 1, colorSpace())) {
+                copy->context().drawImageBuffer(buffer, -srcRect.location());
                 clearCanvas();
-                c->drawImageBuffer(*copy, normalizedDstRect, { { }, normalizedSrcRect.size() }, { state().globalComposite, state().globalBlend });
+                context.drawImageBuffer(*copy, dstRect, { { }, srcRect.size() }, { op, blendMode });
             }
         } else {
             clearCanvas();
-            c->drawImageBuffer(*buffer, normalizedDstRect, normalizedSrcRect, { state().globalComposite, state().globalBlend });
+            context.drawImageBuffer(buffer, dstRect, srcRect, { op, blendMode });
         }
         repaintEntireCanvas = true;
     } else
-        c->drawImageBuffer(*buffer, normalizedDstRect, normalizedSrcRect, { state().globalComposite, state().globalBlend });
+        context.drawImageBuffer(buffer, dstRect, srcRect, { op, blendMode });
 
     auto shouldUseDrawOptionsWithoutPostProcessing = sourceCanvas.renderingContext() && sourceCanvas.renderingContext()->is2d() && !sourceCanvas.havePendingCanvasNoiseInjection();
-    didDraw(repaintEntireCanvas, targetSwitcher ? targetSwitcher->expandedBounds() : normalizedDstRect, shouldUseDrawOptionsWithoutPostProcessing ? defaultDidDrawOptionsWithoutPostProcessing() : defaultDidDrawOptions());
+    didDraw(repaintEntireCanvas, targetSwitcher ? targetSwitcher->expandedBounds() : dstRect, shouldUseDrawOptionsWithoutPostProcessing ? defaultDidDrawOptionsWithoutPostProcessing() : defaultDidDrawOptions());
+}
 
-    return { };
+void CanvasRenderingContext2DBase::drawImageCore(ImageBitmap& imageBitmap, Ref<ImageBuffer>&& buffer, const FloatRect& srcRect, const FloatRect& dstRect, GraphicsContext& context, CanvasFilterContextSwitcher* targetSwitcher, const CompositeOperator& op, const BlendMode& blendMode)
+{
+    bool repaintEntireCanvas = false;
+    if (rectContainsCanvas(dstRect)) {
+        context.drawImageBuffer(buffer, dstRect, srcRect, { op, blendMode });
+        repaintEntireCanvas = true;
+    } else if (isFullCanvasCompositeMode(op)) {
+        fullCanvasCompositedDrawImage(buffer, dstRect, srcRect, op);
+        repaintEntireCanvas = true;
+    } else if (state().globalComposite == CompositeOperator::Copy) {
+        clearCanvas();
+        context.drawImageBuffer(buffer, dstRect, srcRect, { op, blendMode });
+        repaintEntireCanvas = true;
+    } else
+        context.drawImageBuffer(buffer, dstRect, srcRect, { op, blendMode });
+
+    didDraw(repaintEntireCanvas, targetSwitcher ? targetSwitcher->expandedBounds() : dstRect, defaultDidDrawOptionsWithoutPostProcessing());
 }
 
 #if ENABLE(VIDEO)
+// MARK: Draw Image Core (for HTMLVideoElement)
 
-ExceptionOr<void> CanvasRenderingContext2DBase::drawImage(HTMLVideoElement& video, const FloatRect& srcRect, const FloatRect& dstRect)
+void CanvasRenderingContext2DBase::drawImageCore(HTMLVideoElement& video, const FloatSize& videoSize, const FloatRect& srcRect, const FloatRect& dstRect, GraphicsContext& context, CanvasFilterContextSwitcher* targetSwitcher, const CompositeOperator& op, const BlendMode& blendMode)
 {
-    if (video.readyState() == HTMLMediaElement::HAVE_NOTHING || video.readyState() == HTMLMediaElement::HAVE_METADATA)
-        return { };
-
-    if (!srcRect.width() || !srcRect.height())
-        return { };
-
-    auto normalizedSrcRect = normalizeRect(srcRect);
-    auto normalizedDstRect = normalizeRect(dstRect);
-
-    if (normalizedSrcRect.isEmpty())
-        return { };
-
-    if (normalizedDstRect.isEmpty())
-        return { };
-
-    auto targetSwitcher = CanvasFilterContextSwitcher::create(*this, normalizedDstRect);
-
-    GraphicsContext* c = effectiveDrawingContext();
-    if (!c)
-        return { };
-    if (!state().hasInvertibleTransform)
-        return { };
-
-    checkOrigin(&video);
-
-    bool repaintEntireCanvas = rectContainsCanvas(normalizedDstRect);
+    bool repaintEntireCanvas = rectContainsCanvas(dstRect);
 
 #if USE(CG)
-    if (c->hasPlatformContext() && video.shouldGetNativeImageForCanvasDrawing()) {
+    if (context.hasPlatformContext() && video.shouldGetNativeImageForCanvasDrawing()) {
         if (auto image = video.nativeImageForCurrentTime()) {
-            c->drawNativeImage(*image, normalizedDstRect, normalizedSrcRect);
+            context.drawNativeImage(*image, dstRect, srcRect);
 
-            didDraw(repaintEntireCanvas, targetSwitcher ? targetSwitcher->expandedBounds() : normalizedDstRect, defaultDidDrawOptionsWithoutPostProcessing());
-            return { };
+            didDraw(repaintEntireCanvas, targetSwitcher ? targetSwitcher->expandedBounds() : dstRect, defaultDidDrawOptionsWithoutPostProcessing());
+            return;
         }
     }
 #endif
 
-    GraphicsContextStateSaver stateSaver(*c);
-    c->clip(normalizedDstRect);
-    c->translate(normalizedDstRect.location());
-    c->scale(FloatSize(normalizedDstRect.width() / normalizedSrcRect.width(), normalizedDstRect.height() / normalizedSrcRect.height()));
-    c->translate(-normalizedSrcRect.location());
-    video.paintCurrentFrameInContext(*c, FloatRect(FloatPoint(), size(video)));
+    GraphicsContextStateSaver stateSaver(context);
+    context.clip(dstRect);
+    context.translate(dstRect.location());
+    context.scale(FloatSize(dstRect.width() / srcRect.width(), dstRect.height() / srcRect.height()));
+    context.translate(-srcRect.location());
+    video.paintCurrentFrameInContext(context, FloatRect(FloatPoint(), videoSize));
     stateSaver.restore();
 
-    didDraw(repaintEntireCanvas, targetSwitcher ? targetSwitcher->expandedBounds() : normalizedDstRect, defaultDidDrawOptionsWithoutPostProcessing());
-    return { };
+    didDraw(repaintEntireCanvas, targetSwitcher ? targetSwitcher->expandedBounds() : dstRect, defaultDidDrawOptionsWithoutPostProcessing());
 }
-
 #endif
 
-ExceptionOr<void> CanvasRenderingContext2DBase::drawImage(ImageBitmap& imageBitmap, const FloatRect& srcRect, const FloatRect& dstRect)
+#if ENABLE(WEB_CODECS)
+// MARK: Draw Image Core (for WebCodecsVideoFrame)
+
+void CanvasRenderingContext2DBase::drawImageCore(WebCodecsVideoFrame& videoFrame, Ref<VideoFrame>&& internalFrame, const FloatRect& srcRect, const FloatRect& dstRect, GraphicsContext& context, CanvasFilterContextSwitcher*, const CompositeOperator& op, const BlendMode& blendMode)
 {
-    if (!imageBitmap.width() || !imageBitmap.height())
-        return Exception { ExceptionCode::InvalidStateError };
+    context.paintVideoFrame(internalFrame, dstRect, videoFrame.shoudlDiscardAlpha());
 
-    auto normalizedSrcRect = normalizeRect(srcRect);
+    bool repaintEntireCanvas = rectContainsCanvas(dstRect);
 
-    if (normalizedSrcRect.isEmpty())
-        return { };
-
-    FloatRect srcBitmapRect = FloatRect(FloatPoint(), FloatSize(imageBitmap.width(), imageBitmap.height()));
-
-    if (!srcBitmapRect.contains(normalizedSrcRect) || !dstRect.width() || !dstRect.height())
-        return { };
-
-    auto targetSwitcher = CanvasFilterContextSwitcher::create(*this, dstRect);
-
-    GraphicsContext* c = effectiveDrawingContext();
-    if (!c)
-        return { };
-    if (!state().hasInvertibleTransform)
-        return { };
-
-    RefPtr buffer = imageBitmap.buffer();
-    if (!buffer)
-        return { };
-
-    checkOrigin(&imageBitmap);
-
-    bool repaintEntireCanvas = false;
-    if (rectContainsCanvas(dstRect)) {
-        c->drawImageBuffer(*buffer, dstRect, srcRect, { state().globalComposite, state().globalBlend });
-        repaintEntireCanvas = true;
-    } else if (isFullCanvasCompositeMode(state().globalComposite)) {
-        fullCanvasCompositedDrawImage(*buffer, dstRect, srcRect, state().globalComposite);
-        repaintEntireCanvas = true;
-    } else if (state().globalComposite == CompositeOperator::Copy) {
-        clearCanvas();
-        c->drawImageBuffer(*buffer, dstRect, srcRect, { state().globalComposite, state().globalBlend });
-        repaintEntireCanvas = true;
-    } else
-        c->drawImageBuffer(*buffer, dstRect, srcRect, { state().globalComposite, state().globalBlend });
-
-    didDraw(repaintEntireCanvas, targetSwitcher ? targetSwitcher->expandedBounds() : dstRect, defaultDidDrawOptionsWithoutPostProcessing());
-    return { };
+    // FIXME: Can we avoid post-processing in any cases?
+    didDraw(repaintEntireCanvas, dstRect);
 }
+#endif
+
+// MARK: Draw Image Trampolines
+
+void CanvasRenderingContext2DBase::drawImage(HTMLImageElement& imageElement, ImageUsabilityGood<RefPtr<HTMLImageElement>, ImageUse::Immediate>&& goodUsability, const FloatRect& srcRect, const FloatRect& dstRect, GraphicsContext& context, CanvasFilterContextSwitcher* targetSwitcher, const CompositeOperator& op, const BlendMode& blendMode)
+{
+    drawImageCore(imageElement.document(), goodUsability, srcRect, dstRect, context, targetSwitcher, op, blendMode);
+}
+
+void CanvasRenderingContext2DBase::drawImage(SVGImageElement& imageElement, ImageUsabilityGood<RefPtr<SVGImageElement>, ImageUse::Immediate>&& goodUsability, const FloatRect& srcRect, const FloatRect& dstRect, GraphicsContext& context, CanvasFilterContextSwitcher* targetSwitcher, const CompositeOperator& op, const BlendMode& blendMode)
+{
+    drawImageCore(imageElement.document(), goodUsability, srcRect, dstRect, context, targetSwitcher, op, blendMode);
+}
+
+void CanvasRenderingContext2DBase::drawImage(HTMLCanvasElement& sourceCanvas, ImageUsabilityGood<RefPtr<HTMLCanvasElement>, ImageUse::Immediate>&& goodUsability, const FloatRect& srcRect, const FloatRect& dstRect, GraphicsContext& context, CanvasFilterContextSwitcher* targetSwitcher, const CompositeOperator& op, const BlendMode& blendMode)
+{
+    drawImageCore(sourceCanvas, goodUsability, srcRect, dstRect, context, targetSwitcher, op, blendMode);
+}
+
+void CanvasRenderingContext2DBase::drawImage(OffscreenCanvas& sourceCanvas, ImageUsabilityGood<RefPtr<OffscreenCanvas>, ImageUse::Immediate>&& goodUsability, const FloatRect& srcRect, const FloatRect& dstRect, GraphicsContext& context, CanvasFilterContextSwitcher* targetSwitcher, const CompositeOperator& op, const BlendMode& blendMode)
+{
+    drawImageCore(sourceCanvas, goodUsability, srcRect, dstRect, context, targetSwitcher, op, blendMode);
+}
+
+ExceptionOr<void> CanvasRenderingContext2DBase::drawImage(ImageBitmap& imageBitmap, ImageUsabilityGood<RefPtr<ImageBitmap>, ImageUse::Immediate>&& goodUsability, const FloatRect& srcRect, const FloatRect& dstRect, GraphicsContext& context, CanvasFilterContextSwitcher* targetSwitcher, const CompositeOperator& op, const BlendMode& blendMode)
+{
+    drawImageCore(imageBitmap, goodUsability, srcRect, dstRect, context, targetSwitcher, op, blendMode);
+}
+
+#if ENABLE(WEB_CODECS)
+void CanvasRenderingContext2DBase::drawImage(WebCodecsVideoFrame& videoFrame, ImageUsabilityGood<RefPtr<WebCodecsVideoFrame>, ImageUse::Immediate>&& goodUsability, const FloatRect& srcRect, const FloatRect& dstRect, GraphicsContext& context, CanvasFilterContextSwitcher* targetSwitcher, const CompositeOperator& op, const BlendMode& blendMode)
+{
+    drawImageCore(videoFrame, goodUsability, srcRect, dstRect, context, targetSwitcher, op, blendMode);
+}
+#endif
+
+#if ENABLE(VIDEO)
+void CanvasRenderingContext2DBase::drawImage(HTMLVideoElement& video, ImageUsabilityGood<RefPtr<HTMLVideoElement>, ImageUse::Immediate>&& goodUsability, const FloatRect& srcRect, const FloatRect& dstRect, GraphicsContext& context, CanvasFilterContextSwitcher* targetSwitcher, const CompositeOperator& op, const BlendMode& blendMode)
+{
+    drawImageCore(video, goodUsability.size, srcRect, dstRect, context, targetSwitcher, op, blendMode);
+}
+#endif
 
 void CanvasRenderingContext2DBase::drawImageFromRect(HTMLImageElement& imageElement, float sx, float sy, float sw, float sh, float dx, float dy, float dw, float dh, const String& compositeOperation)
 {
@@ -1973,7 +1828,32 @@ void CanvasRenderingContext2DBase::drawImageFromRect(HTMLImageElement& imageElem
     auto blendOp = BlendMode::Normal;
     if (!parseCompositeAndBlendOperator(compositeOperation, op, blendOp) || blendOp != BlendMode::Normal)
         op = CompositeOperator::SourceOver;
-    drawImage(imageElement, FloatRect { sx, sy, sw, sh }, FloatRect { dx, dy, dw, dh }, op, BlendMode::Normal);
+
+    auto usability = checkUsabilityForImmediateUse(*this, imageElement);
+    if (usability.hasException())
+        return;
+
+    if (std::holds_alternative<ImageUsabilityBad>(usability.returnValue()))
+        return;
+
+    auto normalizedSource = normalizeRect(FloatRect { sx, sy, sw, sh });
+    if (normalizedSource.isEmpty())
+        return;
+    auto normalizedDestination = normalizeRect(FloatRect { dx, dy, dw, dh });
+    if (normalizedDestination.isEmpty())
+        return;
+
+    auto targetSwitcher = CanvasFilterContextSwitcher::create(*this, normalizedDestination);
+
+    GraphicsContext* context = effectiveDrawingContext();
+    if (!context)
+        return;
+    if (!state().hasInvertibleTransform)
+        return;
+
+    auto goodUsability = std::get<ImageUsabilityGood<RefPtr<HTMLImageElement>>>(usability.releaseReturnValue());
+
+    this->drawImage(imageElement, WTFMove(goodUsability), normalizedSource, normalizedDestination, context, targetSwitcher, op, BlendMode::Normal);
 }
 
 void CanvasRenderingContext2DBase::clearCanvas()
@@ -2153,157 +2033,32 @@ ExceptionOr<Ref<CanvasGradient>> CanvasRenderingContext2DBase::createConicGradie
 
 ExceptionOr<RefPtr<CanvasPattern>> CanvasRenderingContext2DBase::createPattern(CanvasImageSource&& image, const String& repetition)
 {
-    bool repeatX, repeatY;
-    if (!CanvasPattern::parseRepetitionType(repetition, repeatX, repeatY))
-        return Exception { ExceptionCode::SyntaxError };
-
     return WTF::switchOn(image,
-        [&] (auto& element) -> ExceptionOr<RefPtr<CanvasPattern>> { return this->createPattern(*element, repeatX, repeatY); }
+        [&](auto& element) -> ExceptionOr<RefPtr<CanvasPattern>> {
+            // 1. Let usability be the result of checking the usability of image.
+            auto usability = checkUsabilityForPersistentUse(canvasBase(), *image);
+            if (usability.hasException())
+                return usability.releaseException();
+
+            // 2. If usability is bad, then return null.
+            if (std::holds_alternative<ImageUsabilityBad>(usability.returnValue()))
+                return nullptr;
+
+            // 3. Assert: usability is good.
+            auto goodUsability = std::get<ImageUsabilityGood<T, ImageUse::Persistent>>(usability.releaseReturnValue());
+
+            // 4. If repetition is the empty string, then set it to "repeat".
+            // 5. If repetition is not identical to one of "repeat", "repeat-x", "repeat-y", or "no-repeat", then throw a "SyntaxError" DOMException.
+            bool repeatX, repeatY;
+            if (!CanvasPattern::parseRepetitionType(repetition, repeatX, repeatY))
+                return Exception { ExceptionCode::SyntaxError };
+
+            // 6. Let pattern be a new CanvasPattern object with the image image and the repetition behavior given by repetition.
+            // 7. If image is not origin-clean, then mark pattern as not origin-clean.
+            // 8. Return pattern.
+            return { CanvasPattern::create(WTFMove(goodUsability.source), repeatX, repeatY, taintsOrigin(*image)) };
+        }
     );
-}
-
-ExceptionOr<RefPtr<CanvasPattern>> CanvasRenderingContext2DBase::createPattern(CachedImage& cachedImage, RenderElement* renderer, bool repeatX, bool repeatY)
-{
-    bool originClean = cachedImage.isOriginClean(canvasBase().securityOrigin());
-
-    // FIXME: SVG images with animations can switch between clean and dirty (leaking cross-origin
-    // data). We should either:
-    //   1) Take a fixed snapshot of an SVG image when creating a pattern and determine then whether
-    //      the origin is clean.
-    //   2) Dynamically verify the origin checks at draw time, and dirty the canvas accordingly.
-    // To be on the safe side, taint the origin for all patterns containing SVG images for now.
-    if (cachedImage.image()->drawsSVGImage())
-        originClean = false;
-
-    // FIXME: This sucks.
-    auto styleImage = StyleCachedImage::create(cachedImage);
-
-    RefPtr image = styleImage->imageForRenderer(renderer);
-    if (!image)
-        return Exception { ExceptionCode::InvalidStateError };
-
-    RefPtr nativeImage = image->nativeImage();
-    if (!nativeImage)
-        return Exception { ExceptionCode::InvalidStateError };
-
-    return RefPtr<CanvasPattern> { CanvasPattern::create({ nativeImage.releaseNonNull() }, repeatX, repeatY, originClean) };
-}
-
-ExceptionOr<RefPtr<CanvasPattern>> CanvasRenderingContext2DBase::createPattern(HTMLImageElement& imageElement, bool repeatX, bool repeatY)
-{
-    CachedResourceHandle cachedImage = imageElement.cachedImage();
-    
-    // If the image loading hasn't started or the image is not complete, it is not fully decodable.
-    if (!cachedImage || !imageElement.complete())
-        return nullptr;
-
-    if (cachedImage->status() == CachedResource::LoadError)
-        return Exception { ExceptionCode::InvalidStateError };
-
-    // Image may have a zero-width or a zero-height.
-    Length intrinsicWidth;
-    Length intrinsicHeight;
-    FloatSize intrinsicRatio;
-    cachedImage->computeIntrinsicDimensions(intrinsicWidth, intrinsicHeight, intrinsicRatio);
-    if (intrinsicWidth.isZero() || intrinsicHeight.isZero())
-        return nullptr;
-
-    return createPattern(*cachedImage, imageElement.renderer(), repeatX, repeatY);
-}
-
-ExceptionOr<RefPtr<CanvasPattern>> CanvasRenderingContext2DBase::createPattern(SVGImageElement& imageElement, bool repeatX, bool repeatY)
-{
-    CachedResourceHandle cachedImage = imageElement.cachedImage();
-
-    // The image loading hasn't started.
-    if (!cachedImage)
-        return nullptr;
-
-    if (cachedImage->errorOccurred())
-        return Exception { ExceptionCode::InvalidStateError };
-
-    // The image loading hasn startedbut it is not complete.
-    if (!cachedImage->image())
-        return nullptr;
-
-    // Image may have a zero-width or a zero-height.
-    Length intrinsicWidth;
-    Length intrinsicHeight;
-    FloatSize intrinsicRatio;
-    cachedImage->computeIntrinsicDimensions(intrinsicWidth, intrinsicHeight, intrinsicRatio);
-    if (intrinsicWidth.isZero() || intrinsicHeight.isZero())
-        return nullptr;
-
-    return createPattern(*cachedImage, imageElement.renderer(), repeatX, repeatY);
-}
-
-ExceptionOr<RefPtr<CanvasPattern>> CanvasRenderingContext2DBase::createPattern(CanvasBase& canvas, bool repeatX, bool repeatY)
-{
-    if (!canvas.width() || !canvas.height())
-        return Exception { ExceptionCode::InvalidStateError };
-    auto* copiedImage = canvas.copiedImage();
-
-    if (!copiedImage)
-        return Exception { ExceptionCode::InvalidStateError };
-    
-    auto nativeImage = copiedImage->nativeImage();
-    if (!nativeImage)
-        return Exception { ExceptionCode::InvalidStateError };
-
-    return RefPtr<CanvasPattern> { CanvasPattern::create({ nativeImage.releaseNonNull() }, repeatX, repeatY, canvas.originClean()) };
-}
-    
-#if ENABLE(VIDEO)
-
-ExceptionOr<RefPtr<CanvasPattern>> CanvasRenderingContext2DBase::createPattern(HTMLVideoElement& videoElement, bool repeatX, bool repeatY)
-{
-    if (videoElement.readyState() < HTMLMediaElement::HAVE_CURRENT_DATA)
-        return nullptr;
-    
-    checkOrigin(&videoElement);
-    bool originClean = canvasBase().originClean();
-
-#if USE(CG)
-    if (auto nativeImage = videoElement.nativeImageForCurrentTime())
-        return RefPtr<CanvasPattern> { CanvasPattern::create({ nativeImage.releaseNonNull() }, repeatX, repeatY, originClean) };
-#endif
-
-    auto renderingMode = drawingContext() ? drawingContext()->renderingMode() : RenderingMode::Unaccelerated;
-    auto imageBuffer = videoElement.createBufferForPainting(size(videoElement), renderingMode, colorSpace(), pixelFormat());
-    if (!imageBuffer)
-        return nullptr;
-
-    videoElement.paintCurrentFrameInContext(imageBuffer->context(), FloatRect(FloatPoint(), size(videoElement)));
-    
-    return RefPtr<CanvasPattern> { CanvasPattern::create({ imageBuffer.releaseNonNull() }, repeatX, repeatY, originClean) };
-}
-
-#endif
-
-#if ENABLE(WEB_CODECS)
-ExceptionOr<RefPtr<CanvasPattern>> CanvasRenderingContext2DBase::createPattern(WebCodecsVideoFrame& frame, bool repeatX, bool repeatY)
-{
-    UNUSED_PARAM(frame);
-    UNUSED_PARAM(repeatX);
-    UNUSED_PARAM(repeatY);
-    // FIXME: Implement.
-    return Exception { ExceptionCode::TypeError };
-}
-#endif
-
-ExceptionOr<RefPtr<CanvasPattern>> CanvasRenderingContext2DBase::createPattern(ImageBitmap& imageBitmap, bool repeatX, bool repeatY)
-{
-    RefPtr<ImageBuffer> buffer = imageBitmap.buffer();
-    if (!buffer)
-        return Exception { ExceptionCode::InvalidStateError };
-
-    return RefPtr<CanvasPattern> { CanvasPattern::create({ buffer.releaseNonNull() }, repeatX, repeatY, imageBitmap.originClean()) };
-}
-
-ExceptionOr<RefPtr<CanvasPattern>> CanvasRenderingContext2DBase::createPattern(CSSStyleImageValue&, bool, bool)
-{
-    // FIXME: Implement.
-    return Exception { ExceptionCode::TypeError };
 }
 
 void CanvasRenderingContext2DBase::didDrawEntireCanvas(OptionSet<DidDrawOption> options)

@@ -241,7 +241,7 @@ public:
     void clearFirstLetterRemainingText();
 
     enum class ScaleByUsedZoom : bool { No, Yes };
-    LayoutSize calculateImageIntrinsicDimensions(StyleImage*, const LayoutSize& scaledPositioningAreaSize, ScaleByUsedZoom) const;
+    LayoutSize calculateImageIntrinsicDimensions(StyleImage&, const LayoutSize& scaledPositioningAreaSize, ScaleByUsedZoom) const;
 
     RenderBlock* containingBlockForAutoHeightDetection(Length logicalHeight) const;
 

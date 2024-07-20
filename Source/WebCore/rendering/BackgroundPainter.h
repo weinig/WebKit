@@ -32,7 +32,17 @@ class FloatRoundedRect;
 
 enum class ShadowStyle : uint8_t;
 
-class FloatRoundedRect;
+class BackgroundImageSizingContext final : public StyleImageSizingContext {
+public:
+    explicit BackgroundImageSizingContext(const RenderBoxModelObject&, const FillLayer&, LayoutSize);
+
+    LayoutSize negotiateObjectSize(StyleImage&) final;
+
+private:
+    const RenderBoxModelObject& renderer;
+    const FillLayer& fillLayer;
+    LayoutSize positioningAreaSize;
+};
 
 struct BackgroundImageGeometry {
     BackgroundImageGeometry(const LayoutRect& destinationRect, const LayoutSize& tileSizeWithoutPixelSnapping, const LayoutSize& tileSize, const LayoutSize& phase, const LayoutSize& spaceSize, bool fixedAttachment);

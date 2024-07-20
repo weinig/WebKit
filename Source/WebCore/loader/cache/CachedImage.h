@@ -82,6 +82,7 @@ public:
     bool usesImageContainerSize() const { return m_image && m_image->usesContainerSize(); }
     bool imageHasRelativeWidth() const { return m_image && m_image->hasRelativeWidth(); }
     bool imageHasRelativeHeight() const { return m_image && m_image->hasRelativeHeight(); }
+    NaturalDimensions naturalDimensions() const;
 
     void updateBuffer(const FragmentedSharedBuffer&) override;
     void finishLoading(const FragmentedSharedBuffer*, const NetworkLoadMetrics&) override;

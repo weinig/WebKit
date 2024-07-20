@@ -138,9 +138,7 @@ LayoutSize ImageDocument::imageSize()
     if (!cachedImage)
         return { };
 
-    // FIXME: This sucks.
-    auto styleImage = StyleCachedImage::create(*cachedImage);
-    return styleImage->imageSizeForRenderer(imageElement->renderer(), frame() ? frame()->pageZoomFactor() : 1);
+    return StyleCachedImage::create(*cachedImage)->imageSizeForRenderer(imageElement->renderer(), frame() ? frame()->pageZoomFactor() : 1);
 }
 
 void ImageDocument::updateDuringParsing()
@@ -180,9 +178,7 @@ void ImageDocument::finishedParsing()
         // At a zoom level of 1 the image is guaranteed to have an integer size.
         updateStyleIfNeeded();
 
-        // FIXME: This sucks.
-        auto styleImage = StyleCachedImage::create(cachedImage);
-        IntSize size = flooredIntSize(styleImage->imageSizeForRenderer(m_imageElement->renderer(), 1));
+        IntSize size = flooredIntSize(StyleCachedImage::create(cachedImage)->imageSizeForRenderer(m_imageElement->renderer(), 1));
         if (size.width()) {
             // Compute the title. We use the decoded filename of the resource, falling
             // back on the hostname if there is no path.

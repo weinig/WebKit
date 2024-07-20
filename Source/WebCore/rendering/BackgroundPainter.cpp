@@ -131,7 +131,14 @@ void BackgroundPainter::paintFillLayers(const Color& color, const FillLayer& fil
         // and pass it down.
 
         // The clipOccludesNextLayers condition must be evaluated first to avoid short-circuiting.
-        if (layer->clipOccludesNextLayers(layer == &fillLayer) && layer->hasOpaqueImage(m_renderer) && layer->image()->canRenderForRenderer(&m_renderer, m_renderer.style().usedZoom()) && layer->hasRepeatXY() && layer->blendMode() == BlendMode::Normal && !boxShadowShouldBeAppliedToBackground(m_renderer, rect.location(), bleedAvoidance, { }))
+
+        if (layer->clipOccludesNextLayers(layer == &fillLayer)
+            && layer->hasOpaqueImage(m_renderer)
+                // Geometry is needed for canRenderForContext() to be accurate.
+            && layer->image()->canRenderForContext(BackgroundImageSizingContext { m_renderer, *layer, LayoutSize { 300, 150 } })
+            && layer->hasRepeatXY()
+            && layer->blendMode() == BlendMode::Normal
+            && !boxShadowShouldBeAppliedToBackground(m_renderer, rect.location(), bleedAvoidance, { }))
             break;
     }
 
@@ -180,7 +187,9 @@ void BackgroundPainter::paintFillLayer(const Color& color, const FillLayer& bgLa
 
     Color bgColor = color;
     StyleImage* bgImage = bgLayer.image();
-    bool shouldPaintBackgroundImage = bgImage && bgImage->canRenderForRenderer(&m_renderer, style.usedZoom());
+
+    // FIXME: Geometry is needed for canRenderForContext() to be accurate.
+    bool shouldPaintBackgroundImage = bgImage && bgImage->canRenderForContext(BackgroundImageSizingContext { m_renderer, bgLayer, LayoutSize { 300, 150 } });
 
     if (context.detectingContentfulPaint()) {
         if (!context.contentfulPaintDetected() && shouldPaintBackgroundImage && bgImage->cachedImage()) {
@@ -393,12 +402,21 @@ void BackgroundPainter::paintFillLayer(const Color& color, const FillLayer& bgLa
         auto geometry = calculateBackgroundImageGeometry(m_renderer, m_paintInfo.paintContainer, bgLayer, paintOffset, imageRect);
 
         auto& clientForBackgroundImage = backgroundObject ? *backgroundObject : m_renderer;
-        bgImage->setContainerContextForRenderer(clientForBackgroundImage, geometry.tileSizeWithoutPixelSnapping, m_renderer.style().usedZoom());
+        // bgImage->setContainerContextForRenderer(clientForBackgroundImage, geometry.tileSizeWithoutPixelSnapping, m_renderer.style().usedZoom());
 
         geometry.clip(LayoutRect(pixelSnappedRect));
+
         RefPtr<Image> image;
         bool isFirstLine = box && box->lineBox()->isFirst();
-        if (!geometry.destinationRect.isEmpty() && (image = bgImage->imageForRenderer(backgroundObject ? backgroundObject : &m_renderer, geometry.tileSize, isFirstLine))) {
+
+        StyleImageContext imageContext {
+            .specifiedSize = ,
+            .defaultObjectSize =
+            .style = isFirstLine ? clientForBackgroundImage.firstLineStyle() : clientForBackgroundImage.style(),
+            .deviceScaleFactor = document().deviceScaleFactor()
+        };
+
+        if (!geometry.destinationRect.isEmpty() && (image = bgImage->imageForRenderer(clientForBackgroundImage, geometry.tileSize, isFirstLine))) {
             context.setDrawLuminanceMask(bgLayer.maskMode() == MaskMode::Luminance);
 
             ImagePaintingOptions options = {
@@ -693,84 +711,213 @@ BackgroundImageGeometry BackgroundPainter::calculateBackgroundImageGeometry(cons
     return BackgroundImageGeometry(destinationRect, tileSizeWithoutPixelSnapping, tileSize, phase, spaceSize, fixedAttachment);
 }
 
-LayoutSize BackgroundPainter::calculateFillTileSize(const RenderBoxModelObject& renderer, const FillLayer& fillLayer, const LayoutSize& positioningAreaSize)
+BackgroundImageSizingContext::BackgroundImageSizingContext(const RenderBoxModelObject& renderer, const FillLayer& fillLayer, LayoutSize positioningAreaSize)
+    : renderer { renderer }
+    , fillLayer { fillLayer }
+    , positioningAreaSize { positioningAreaSize }
 {
-    StyleImage* image = fillLayer.image();
+}
+
+LayoutSize BackgroundImageSizingContext::negotiateObjectSize(StyleImage& image) final
+{
+    BackgroundImageSizingContext childSizingContext { renderer, fillLayer, positionAreaSize };
+    auto naturalDimensions = image->naturalDimensions(childSizingContext);
+
     FillSizeType type = fillLayer.size().type;
     auto devicePixelSize = LayoutUnit { 1.0 / renderer.document().deviceScaleFactor() };
 
-    LayoutSize imageIntrinsicSize;
-    if (image) {
-        imageIntrinsicSize = renderer.calculateImageIntrinsicDimensions(image, positioningAreaSize, RenderBoxModelObject::ScaleByUsedZoom::Yes);
-        imageIntrinsicSize.scale(1 / image->imageScaleFactor(), 1 / image->imageScaleFactor());
-    } else
-        imageIntrinsicSize = positioningAreaSize;
+    auto resolveAutos = [&](this const auto& self, std::optional<LayoutUnit> tileWidth, std::optional<LayoutUnit> tileHeight) -> LayoutSize {
+        //  An auto value for one dimension is resolved by using the image’s natural
+        //  aspect ratio and the size of the other dimension, or failing that, using
+        //  the image’s natural size, or failing that, treating it as 100%.
+
+        if (!tileWidth && tileHeight) {
+            if (naturalDimensions.aspectRatio)
+                return { naturalDimensions.aspectRatio->width() * *tileHeight / naturalDimensions.aspectRatio->height(), *tileHeight };
+            if (naturalDimensions.width)
+                return { *naturalDimensions.width, *tileHeight };
+            return { positioningAreaSize.width(), *tileHeight };
+        }
+
+        if (tileWidth && !tileHeight) {
+            if (naturalDimensions.aspectRatio)
+                return { *tileWidth, naturalDimensions.aspectRatio->height() * *layerHeight / naturalDimensions.aspectRatio->width()) };
+            if (naturalDimensions.height)
+                return { *tileWidth, *naturalDimensions.height };
+            return { *tileWidth, positioningAreaSize.height();
+        }
+
+        //  If both values are auto then the natural width and/or height of the image
+        //  should be used, if any, the missing dimension (if any) behaving as auto
+        //  as described above. If the image has neither natural size, its size is
+        //  determined as for contain.
+
+        if (!tileWidth && !tileHeight) {
+            if (naturalDimensions.width && naturalDimensions.height)
+                return { *naturalDimensions.width, *naturalDimensions.height };
+            if (naturalDimensions.width)
+                return self(*naturalDimensions.width, std::nullopt);
+            if (naturalDimensions.height)
+                return self(std::nullopt, *naturalDimensions.height);
+
+            // FIXME: May need to rework resolveContainConstraint to use floating point more.
+            // FIXME: May need to pass in a minimum size.
+            return ObjectSizeNegotiation::resolveContainConstraint(naturalDimensions, positioningAreaSize);
+        }
+
+        return { *tileWidth, *tileHeight };
+    };
 
     switch (type) {
-    case FillSizeType::Size: {
-        LayoutSize tileSize = positioningAreaSize;
+    case FillSizeType::Contain:
+        // Scale the image, while preserving its natural aspect ratio (if any), to
+        // the largest size such that both its width and its height can fit inside
+        // the background positioning area.
 
+        // FIXME: May need to rework resolveContainConstraint to use floating point more.
+        // FIXME: May need to pass in a minimum size.
+        return ObjectSizeNegotiation::resolveContainConstraint(naturalDimensions, positioningAreaSize);
+
+    case FillSizeType::Cover:
+        // Scale the image, while preserving its natural aspect ratio (if any), to
+        // the smallest size such that both its width and its height can completely
+        // cover the background positioning area.
+
+        // FIXME: May need to rework resolveContainConstraint to use floating point more.
+        // FIXME: May need to pass in a minimum size.
+        return ObjectSizeNegotiation::resolveCoverConstraint(naturalDimensions, positioningAreaSize);
+
+    case FillSizeType::Size: {
         Length layerWidth = fillLayer.size().size.width;
         Length layerHeight = fillLayer.size().size.height;
 
+        ASSERT(layerWidth.isFixed() || layerWidth.isPercentOrCalculated() || layerWidth.isAuto());
+        ASSERT(layerHeight.isFixed() || layerHeight.isPercentOrCalculated() || layerHeight.isAuto());
+
+        // A <percentage> is relative to the background positioning area.
+
+        std::optional<LayoutUnit> tileWidth;
         if (layerWidth.isFixed())
-            tileSize.setWidth(layerWidth.value());
+            tileWidth = layerWidth.value();
         else if (layerWidth.isPercentOrCalculated()) {
             auto resolvedWidth = valueForLength(layerWidth, positioningAreaSize.width());
             // Non-zero resolved value should always produce some content.
-            tileSize.setWidth(!resolvedWidth ? resolvedWidth : std::max(devicePixelSize, resolvedWidth));
+            tileWidth = !resolvedWidth ? resolvedWidth : std::max(devicePixelSize, resolvedWidth);
         }
 
+        std::optional<LayoutUnit> tileHeight;
         if (layerHeight.isFixed())
-            tileSize.setHeight(layerHeight.value());
+            tileHeight = layerHeight.value();
         else if (layerHeight.isPercentOrCalculated()) {
             auto resolvedHeight = valueForLength(layerHeight, positioningAreaSize.height());
             // Non-zero resolved value should always produce some content.
-            tileSize.setHeight(!resolvedHeight ? resolvedHeight : std::max(devicePixelSize, resolvedHeight));
+            tileHeight = !resolvedHeight ? resolvedHeight : std::max(devicePixelSize, resolvedHeight);
         }
 
-        // If one of the values is auto we have to use the appropriate
-        // scale to maintain our aspect ratio.
-        bool hasNaturalAspectRatio = image && image->imageHasNaturalDimensions();
-        if (layerWidth.isAuto() && !layerHeight.isAuto()) {
-            if (hasNaturalAspectRatio && imageIntrinsicSize.height())
-                tileSize.setWidth(imageIntrinsicSize.width() * tileSize.height() / imageIntrinsicSize.height());
-        } else if (!layerWidth.isAuto() && layerHeight.isAuto()) {
-            if (hasNaturalAspectRatio && imageIntrinsicSize.width())
-                tileSize.setHeight(imageIntrinsicSize.height() * tileSize.width() / imageIntrinsicSize.width());
-        } else if (layerWidth.isAuto() && layerHeight.isAuto()) {
-            // If both width and height are auto, use the image's intrinsic size.
-            tileSize = imageIntrinsicSize;
-        }
-
+        auto tileSize = resolveAutos(tileWidth, tileHeight);
         tileSize.clampNegativeToZero();
         return tileSize;
     }
     case FillSizeType::None: {
-        // If both values are ‘auto’ then the intrinsic width and/or height of the image should be used, if any.
-        if (!imageIntrinsicSize.isEmpty())
-            return imageIntrinsicSize;
-
-        // If the image has neither an intrinsic width nor an intrinsic height, its size is determined as for ‘contain’.
-        type = FillSizeType::Contain;
-    }
-    FALLTHROUGH;
-    case FillSizeType::Contain:
-    case FillSizeType::Cover: {
-        // Scale computation needs higher precision than what LayoutUnit can offer.
-        FloatSize localImageIntrinsicSize = imageIntrinsicSize;
-        FloatSize localPositioningAreaSize = positioningAreaSize;
-
-        float horizontalScaleFactor = localImageIntrinsicSize.width() ? (localPositioningAreaSize.width() / localImageIntrinsicSize.width()) : 1;
-        float verticalScaleFactor = localImageIntrinsicSize.height() ? (localPositioningAreaSize.height() / localImageIntrinsicSize.height()) : 1;
-        float scaleFactor = type == FillSizeType::Contain ? std::min(horizontalScaleFactor, verticalScaleFactor) : std::max(horizontalScaleFactor, verticalScaleFactor);
-
-        if (localImageIntrinsicSize.isEmpty())
-            return { };
-
-        return LayoutSize(localImageIntrinsicSize.scaled(scaleFactor).expandedTo({ devicePixelSize, devicePixelSize }));
+        auto tileSize = resolveAutos(std::nullopt, std::nullopt);
+        tileSize.clampNegativeToZero();
+        return tileSize;
     }
     }
+}
+
+LayoutSize BackgroundPainter::calculateFillTileSize(const RenderBoxModelObject& renderer, const FillLayer& fillLayer, const LayoutSize& positioningAreaSize)
+{
+    StyleImage* image = fillLayer.image();
+    if (!image)
+        return positioningAreaSize;
+
+    BackgroundImageSizingContext sizingContext { renderer, fillLayer, positioningAreaSize };
+    return sizingContext.negotiateObjectSize(*image);
+
+//    LayoutSize imageIntrinsicSize;
+//    imageIntrinsicSize = renderer.calculateImageIntrinsicDimensions(*image, positioningAreaSize, RenderBoxModelObject::ScaleByUsedZoom::Yes);
+//    imageIntrinsicSize.scale(1 / image->imageScaleFactor(), 1 / image->imageScaleFactor());
+//
+//    switch (type) {
+//    case FillSizeType::Size: {
+//        LayoutSize tileSize = positioningAreaSize;
+//
+//        Length layerWidth = fillLayer.size().size.width;
+//        Length layerHeight = fillLayer.size().size.height;
+//
+//        if (layerWidth.isFixed())
+//            tileSize.setWidth(layerWidth.value());
+//        else if (layerWidth.isPercentOrCalculated()) {
+//            auto resolvedWidth = valueForLength(layerWidth, positioningAreaSize.width());
+//            // Non-zero resolved value should always produce some content.
+//            tileSize.setWidth(!resolvedWidth ? resolvedWidth : std::max(devicePixelSize, resolvedWidth));
+//        }
+//
+//        if (layerHeight.isFixed())
+//            tileSize.setHeight(layerHeight.value());
+//        else if (layerHeight.isPercentOrCalculated()) {
+//            auto resolvedHeight = valueForLength(layerHeight, positioningAreaSize.height());
+//            // Non-zero resolved value should always produce some content.
+//            tileSize.setHeight(!resolvedHeight ? resolvedHeight : std::max(devicePixelSize, resolvedHeight));
+//        }
+//
+//        // If one of the values is auto we have to use the appropriate
+//        // scale to maintain our aspect ratio.
+//        bool hasNaturalAspectRatio = image && image->imageHasNaturalDimensions();
+//        if (layerWidth.isAuto() && !layerHeight.isAuto()) {
+//            if (hasNaturalAspectRatio && imageIntrinsicSize.height())
+//                tileSize.setWidth(imageIntrinsicSize.width() * tileSize.height() / imageIntrinsicSize.height());
+//        } else if (!layerWidth.isAuto() && layerHeight.isAuto()) {
+//            if (hasNaturalAspectRatio && imageIntrinsicSize.width())
+//                tileSize.setHeight(imageIntrinsicSize.height() * tileSize.width() / imageIntrinsicSize.width());
+//        } else if (layerWidth.isAuto() && layerHeight.isAuto()) {
+//            // If both width and height are auto, use the image's intrinsic size.
+//            tileSize = imageIntrinsicSize;
+//        }
+//
+//        tileSize.clampNegativeToZero();
+//        return tileSize;
+//    }
+//    case FillSizeType::None: {
+//        // If both values are ‘auto’ then the intrinsic width and/or height of the image should be used, if any.
+//        if (!imageIntrinsicSize.isEmpty())
+//            return imageIntrinsicSize;
+//
+//        // If the image has neither an intrinsic width nor an intrinsic height, its size is determined as for ‘contain’.
+//        type = FillSizeType::Contain;
+//    }
+//    FALLTHROUGH;
+//    case FillSizeType::Contain: {
+//        // Scale computation needs higher precision than what LayoutUnit can offer.
+//        FloatSize localImageIntrinsicSize = imageIntrinsicSize;
+//        FloatSize localPositioningAreaSize = positioningAreaSize;
+//
+//        float horizontalScaleFactor = localImageIntrinsicSize.width() ? (localPositioningAreaSize.width() / localImageIntrinsicSize.width()) : 1;
+//        float verticalScaleFactor = localImageIntrinsicSize.height() ? (localPositioningAreaSize.height() / localImageIntrinsicSize.height()) : 1;
+//        float scaleFactor = std::min(horizontalScaleFactor, verticalScaleFactor);
+//
+//        if (localImageIntrinsicSize.isEmpty())
+//            return { };
+//
+//        return LayoutSize(localImageIntrinsicSize.scaled(scaleFactor).expandedTo({ devicePixelSize, devicePixelSize }));
+//    }
+//
+//    case FillSizeType::Cover: {
+//        // Scale computation needs higher precision than what LayoutUnit can offer.
+//        FloatSize localImageIntrinsicSize = imageIntrinsicSize;
+//        FloatSize localPositioningAreaSize = positioningAreaSize;
+//
+//        float horizontalScaleFactor = localImageIntrinsicSize.width() ? (localPositioningAreaSize.width() / localImageIntrinsicSize.width()) : 1;
+//        float verticalScaleFactor = localImageIntrinsicSize.height() ? (localPositioningAreaSize.height() / localImageIntrinsicSize.height()) : 1;
+//        float scaleFactor = std::max(horizontalScaleFactor, verticalScaleFactor);
+//
+//        if (localImageIntrinsicSize.isEmpty())
+//            return { };
+//
+//        return LayoutSize(localImageIntrinsicSize.scaled(scaleFactor).expandedTo({ devicePixelSize, devicePixelSize }));
+//    }
+//    }
 
     ASSERT_NOT_REACHED();
     return { };
@@ -1006,7 +1153,10 @@ bool BackgroundPainter::boxShadowShouldBeAppliedToBackground(const RenderBoxMode
             return true;
         auto* image = lastBackgroundLayer->image();
         auto& renderer = inlineBox->renderer();
-        bool hasFillImage = image && image->canRenderForRenderer(&renderer, renderer.style().usedZoom());
+
+        BackgroundImageSizingContext sizingContext { renderer, *lastBackgroundLayer, LayoutSize { 300, 150 } };
+        bool hasFillImage = image && image->canRenderForContext(sizingContext); // &renderer, renderer.style().usedZoom());
+
         return !hasFillImage && !renderer.style().hasBorderRadius();
     };
 

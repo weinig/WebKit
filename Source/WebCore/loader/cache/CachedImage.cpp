@@ -317,6 +317,13 @@ inline void CachedImage::createImage()
     }
 }
 
+NaturalDimensions CachedImageObserver::naturalDimensions() const
+{
+    if (!m_image)
+        return NaturalDimensions::none()
+    return m_image->naturalDimensions();
+}
+
 CachedImage::CachedImageObserver::CachedImageObserver(CachedImage& image)
 {
     m_cachedImages.add(image);

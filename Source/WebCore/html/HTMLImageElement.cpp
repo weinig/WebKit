@@ -567,12 +567,15 @@ unsigned HTMLImageElement::width()
         if (optionalWidth)
             return optionalWidth.value();
 
-        // if the image is available, use its width
+        // if the image is available and has density-corrected natural width and height, use its width.
         if (m_imageLoader->image()) {
-            // FIXME: This sucks.
-            auto styleImage = StyleCachedImage::create(*m_imageLoader->image());
-            return styleImage->imageSizeForRenderer(renderer(), 1.0f).width().toUnsigned();
+            // FIXME: This should be "density-corrected". See https://html.spec.whatwg.org/multipage/embedded-content.html#dom-img-width
+            auto naturalDimensions = m_imageLoader->image()->naturalDimensions();
+            if (naturalDimensions.width && naturalDimensions.height)
+                return naturalDimensions.width->toUnsigned();
         }
+
+        return 0;
     }
 
     RenderBox* box = renderBox();
@@ -593,11 +596,12 @@ unsigned HTMLImageElement::height()
         if (optionalHeight)
             return optionalHeight.value();
 
-        // if the image is available, use its height
+        // if the image is available and has density-corrected natural width and height, use its height.
         if (m_imageLoader->image()) {
-            // FIXME: This sucks.
-            auto styleImage = StyleCachedImage::create(*m_imageLoader->image());
-            return styleImage->imageSizeForRenderer(renderer(), 1.0f).height().toUnsigned();
+            // FIXME: This should be "density-corrected". See https://html.spec.whatwg.org/multipage/embedded-content.html#dom-img-height
+            auto naturalDimensions = m_imageLoader->image()->naturalDimensions();
+            if (naturalDimensions.width && naturalDimensions.height)
+                return naturalDimensions.height->toUnsigned();
         }
     }
 
@@ -626,9 +630,13 @@ unsigned HTMLImageElement::naturalWidth() const
     if (!m_imageLoader->image())
         return 0;
 
-    // FIXME: This sucks.
-    auto styleImage = StyleCachedImage::create(*m_imageLoader->image());
-    return styleImage->unclampedImageSizeForRenderer(renderer(), effectiveImageDevicePixelRatio()).width().toUnsigned();
+    //    return styleImage->unclampedImageSizeForRenderer(renderer(), effectiveImageDevicePixelRatio()).width().toUnsigned();
+
+    // FIXME: This should be "density-corrected". See https://html.spec.whatwg.org/multipage/embedded-content.html#dom-img-naturalwidth
+    auto naturalDimensions = m_imageLoader->image()->naturalDimensions();
+    if (naturalDimensions.width && naturalDimensions.height)
+        return naturalDimensions.width->toUnsigned();
+    return 0;
 }
 
 unsigned HTMLImageElement::naturalHeight() const
@@ -636,9 +644,13 @@ unsigned HTMLImageElement::naturalHeight() const
     if (!m_imageLoader->image())
         return 0;
 
-    // FIXME: This sucks.
-    auto styleImage = StyleCachedImage::create(*m_imageLoader->image());
-    return styleImage->unclampedImageSizeForRenderer(renderer(), effectiveImageDevicePixelRatio()).height().toUnsigned();
+    //    return styleImage->unclampedImageSizeForRenderer(renderer(), effectiveImageDevicePixelRatio()).height().toUnsigned();
+
+    // FIXME: This should be "density-corrected". See https://html.spec.whatwg.org/multipage/embedded-content.html#dom-img-naturalwidth
+    auto naturalDimensions = m_imageLoader->image()->naturalDimensions();
+    if (naturalDimensions.width && naturalDimensions.height)
+        return naturalDimensions.height->toUnsigned();
+    return 0;
 }
 
 bool HTMLImageElement::isURLAttribute(const Attribute& attribute) const

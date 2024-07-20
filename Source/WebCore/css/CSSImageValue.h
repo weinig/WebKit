@@ -68,7 +68,7 @@ public:
 
     bool equals(const CSSImageValue&) const;
 
-    bool knownToBeOpaque(const RenderElement&) const;
+    bool knownToBeOpaque() const;
 
     RefPtr<StyleImage> createStyleImage(Style::BuilderState&) const;
 

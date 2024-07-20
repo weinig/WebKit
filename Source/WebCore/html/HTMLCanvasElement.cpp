@@ -940,7 +940,7 @@ void HTMLCanvasElement::eventListenersDidChange()
 #if ENABLE(WEBGL)
     auto& eventNames = WebCore::eventNames();
     m_hasRelevantWebGLEventListener = hasEventListeners(eventNames.webglcontextlostEvent)
-        || hasEventListeners(eventNames.webglcontextrestoredEvent);
+        || hasEventListeners(eventNameNames.webglcontextrestoredEvent);
 #endif
 }
 

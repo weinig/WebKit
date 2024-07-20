@@ -28,6 +28,7 @@
 #include "AffineTransform.h"
 #include "CanvasDirection.h"
 #include "CanvasFillRule.h"
+#include "CanvasImageSource.h"
 #include "CanvasLineCap.h"
 #include "CanvasLineJoin.h"
 #include "CanvasPath.h"
@@ -71,23 +72,6 @@ class TextMetrics;
 class WebCodecsVideoFrame;
 
 struct DOMMatrix2DInit;
-
-
-using CanvasImageSource = std::variant<RefPtr<HTMLImageElement>
-    , RefPtr<SVGImageElement>
-    , RefPtr<HTMLCanvasElement>
-    , RefPtr<ImageBitmap>
-    , RefPtr<CSSStyleImageValue>
-#if ENABLE(OFFSCREEN_CANVAS)
-    , RefPtr<OffscreenCanvas>
-#endif
-#if ENABLE(VIDEO)
-    , RefPtr<HTMLVideoElement>
-#endif
-#if ENABLE(WEB_CODECS)
-    , RefPtr<WebCodecsVideoFrame>
-#endif
-    >;
 
 class CanvasRenderingContext2DBase : public CanvasRenderingContext, public CanvasPath {
     WTF_MAKE_ISO_ALLOCATED(CanvasRenderingContext2DBase);
@@ -380,10 +364,8 @@ protected:
     OptionSet<ImageBufferOptions> adjustImageBufferOptionsForTesting(OptionSet<ImageBufferOptions>) final;
 
 private:
-    struct CachedContentsTransparent {
-    };
-    struct CachedContentsUnknown {
-    };
+    struct CachedContentsTransparent { };
+    struct CachedContentsUnknown { };
     struct CachedContentsImageData {
         CachedContentsImageData(CanvasRenderingContext2DBase&, Ref<ByteArrayPixelBuffer>);
 
@@ -416,32 +398,31 @@ private:
     void setFillStyle(CanvasStyle);
     void setFillStyle(std::optional<CanvasStyle>);
 
-    ExceptionOr<RefPtr<CanvasPattern>> createPattern(CachedImage&, RenderElement*, bool repeatX, bool repeatY);
-    ExceptionOr<RefPtr<CanvasPattern>> createPattern(HTMLImageElement&, bool repeatX, bool repeatY);
-    ExceptionOr<RefPtr<CanvasPattern>> createPattern(SVGImageElement&, bool repeatX, bool repeatY);
-    ExceptionOr<RefPtr<CanvasPattern>> createPattern(CanvasBase&, bool repeatX, bool repeatY);
+    template<typename> ExceptionOr<void> drawImage(CanvasImageSource&& image, const T& arguments);
+
+    void drawImageCore(Document&, Ref<Image>&&, const FloatRect& srcRect, const FloatRect& dstRect, GraphicsContext&, CanvasFilterContextSwitcher*, const CompositeOperator&, const BlendMode&);
+    void drawImageCore(CanvasBase&, Ref<ImageBuffer>&&, const FloatRect& srcRect, const FloatRect& dstRect, GraphicsContext&, CanvasFilterContextSwitcher*, const CompositeOperator&, const BlendMode&);
+    void drawImageCore(ImageBitmap&, Ref<ImageBuffer>&&, const FloatRect& srcRect, const FloatRect& dstRect, GraphicsContext&, CanvasFilterContextSwitcher*, const CompositeOperator&, const BlendMode&);
 #if ENABLE(VIDEO)
-    ExceptionOr<RefPtr<CanvasPattern>> createPattern(HTMLVideoElement&, bool repeatX, bool repeatY);
+    void drawImageCore(HTMLVideoElement&, const FloatSize& videoSize, const FloatRect& srcRect, const FloatRect& dstRect, GraphicsContext&, CanvasFilterContextSwitcher*, const CompositeOperator&, const BlendMode&);
 #endif
-    ExceptionOr<RefPtr<CanvasPattern>> createPattern(ImageBitmap&, bool repeatX, bool repeatY);
-    ExceptionOr<RefPtr<CanvasPattern>> createPattern(CSSStyleImageValue&, bool repeatX, bool repeatY);
 #if ENABLE(WEB_CODECS)
-    ExceptionOr<RefPtr<CanvasPattern>> createPattern(WebCodecsVideoFrame&, bool repeatX, bool repeatY);
+    void drawImageCore(WebCodecsVideoFrame&, Ref<VideoFrame>&&, const FloatRect& srcRect, const FloatRect& dstRect, GraphicsContext&, CanvasFilterContextSwitcher*, const CompositeOperator&, const BlendMode&)
 #endif
 
-    ExceptionOr<void> drawImage(HTMLImageElement&, const FloatRect& srcRect, const FloatRect& dstRect);
-    ExceptionOr<void> drawImage(HTMLImageElement&, const FloatRect& srcRect, const FloatRect& dstRect, const CompositeOperator&, const BlendMode&);
-    ExceptionOr<void> drawImage(SVGImageElement&, const FloatRect& srcRect, const FloatRect& dstRect);
-    ExceptionOr<void> drawImage(SVGImageElement&, const FloatRect& srcRect, const FloatRect& dstRect, const CompositeOperator&, const BlendMode&);
-    ExceptionOr<void> drawImage(CanvasBase&, const FloatRect& srcRect, const FloatRect& dstRect);
-    ExceptionOr<void> drawImage(Document&, CachedImage&, const RenderElement*, const FloatRect& imageRect, const FloatRect& srcRect, const FloatRect& dstRect, const CompositeOperator&, const BlendMode&, ImageOrientation = ImageOrientation::Orientation::FromImage);
-#if ENABLE(VIDEO)
-    ExceptionOr<void> drawImage(HTMLVideoElement&, const FloatRect& srcRect, const FloatRect& dstRect);
+    void drawImage(HTMLImageElement&, ImageUsabilityGood<RefPtr<HTMLImageElement>, ImageUse::Immediate>&&, const FloatRect& srcRect, const FloatRect& dstRect, GraphicsContext&, CanvasFilterContextSwitcher*, const CompositeOperator&, const BlendMode&);
+    void drawImage(SVGImageElement&, ImageUsabilityGood<RefPtr<SVGImageElement>, ImageUse::Immediate>&&, const FloatRect& srcRect, const FloatRect& dstRect, GraphicsContext&, CanvasFilterContextSwitcher*, const CompositeOperator&, const BlendMode&);
+    void drawImage(CSSStyleImageValue&, ImageUsabilityGood<RefPtr<CSSStyleImageValue>, ImageUse::Immediate>&&, const FloatRect& srcRect, const FloatRect& dstRect, GraphicsContext&, CanvasFilterContextSwitcher*, const CompositeOperator&, const BlendMode&);
+    void drawImage(ImageBitmap&, ImageUsabilityGood<RefPtr<ImageBitmap>, ImageUse::Immediate>&&, const FloatRect& srcRect, const FloatRect& dstRect, GraphicsContext&, CanvasFilterContextSwitcher*, const CompositeOperator&, const BlendMode&);
+    void drawImage(HTMLCanvasElement&, ImageUsabilityGood<RefPtr<HTMLCanvasElement>, ImageUse::Immediate>&&, const FloatRect& srcRect, const FloatRect& dstRect, GraphicsContext&, CanvasFilterContextSwitcher*, const CompositeOperator&, const BlendMode&);
+#if ENABLE(OFFSCREEN_CANVAS)
+    void drawImage(OffscreenCanvas&, ImageUsabilityGood<RefPtr<OffscreenCanvas>, ImageUse::Immediate>&&, const FloatRect& srcRect, const FloatRect& dstRect, GraphicsContext&, CanvasFilterContextSwitcher*, const CompositeOperator&, const BlendMode&);
 #endif
-    ExceptionOr<void> drawImage(CSSStyleImageValue&, const FloatRect& srcRect, const FloatRect& dstRect);
-    ExceptionOr<void> drawImage(ImageBitmap&, const FloatRect& srcRect, const FloatRect& dstRect);
+#if ENABLE(VIDEO)
+    void drawImage(HTMLVideoElement&, ImageUsabilityGood<RefPtr<HTMLVideoElement>, ImageUse::Immediate>&&, const FloatRect& srcRect, const FloatRect& dstRect, GraphicsContext&, CanvasFilterContextSwitcher*, const CompositeOperator&, const BlendMode&);
+#endif
 #if ENABLE(WEB_CODECS)
-    ExceptionOr<void> drawImage(WebCodecsVideoFrame&, const FloatRect& srcRect, const FloatRect& dstRect);
+    void drawImage(WebCodecsVideoFrame&, ImageUsabilityGood<RefPtr<WebCodecsVideoFrame>, ImageUse::Immediate>&&, const FloatRect& srcRect, const FloatRect& dstRect, GraphicsContext&, CanvasFilterContextSwitcher*, const CompositeOperator&, const BlendMode&);
 #endif
 
     void beginCompositeLayer();

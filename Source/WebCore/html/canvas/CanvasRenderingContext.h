@@ -123,22 +123,37 @@ public:
 
 protected:
     explicit CanvasRenderingContext(CanvasBase&);
-    bool taintsOrigin(const CanvasPattern*);
-    bool taintsOrigin(const CanvasBase*);
-    bool taintsOrigin(const CachedImage*);
-    bool taintsOrigin(const HTMLImageElement*);
-    bool taintsOrigin(const SVGImageElement*);
-    bool taintsOrigin(const HTMLVideoElement*);
-    bool taintsOrigin(const ImageBitmap*);
+
+    bool taintsOrigin(const CanvasPattern&);
     bool taintsOrigin(const URL&);
 
+    // CanvasImageSource types.
+    bool taintsOrigin(const HTMLImageElement&);
+    bool taintsOrigin(const SVGImageElement&);
+    bool taintsOrigin(const CSSStyleImageValue&);
+    bool taintsOrigin(const ImageBitmap&);
+    bool taintsOrigin(const HTMLCanvasElement&);
+#if ENABLE(OFFSCREEN_CANVAS)
+    bool taintsOrigin(const OffscreenCanvas&);
+#endif
+#if ENABLE(VIDEO)
+    bool taintsOrigin(const HTMLVideoElement&);
+#endif
+#if ENABLE(WEB_CODECS)
+    bool taintsOrigin(const WebCodecsVideoFrame&);
+#endif
+
     template<class T> void checkOrigin(const T* arg)
+    {
+        if (m_canvas.originClean() && arg && taintsOrigin(*arg))
+            m_canvas.setOriginTainted();
+    }
+
+    template<class T> void checkOrigin(const T& arg)
     {
         if (m_canvas.originClean() && taintsOrigin(arg))
             m_canvas.setOriginTainted();
     }
-    void checkOrigin(const URL&);
-    void checkOrigin(const CSSStyleImageValue&);
 
     bool m_isInPreparationForDisplayOrFlush { false };
     bool m_hasActiveInspectorCanvasCallTracer { false };

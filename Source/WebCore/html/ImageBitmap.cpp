@@ -383,15 +383,19 @@ void ImageBitmap::createCompletionHandler(ScriptExecutionContext& scriptExecutio
         return;
     }
 
+    RefPtr image = cachedImage->rawImage();
+    if (!image) {
+        completionHandler(Exception { ExceptionCode::InvalidStateError, "Cannot create ImageBitmap that is not completely available"_s });
+        return;
+    }
+
     // 3. If image's media data has no intrinsic dimensions (e.g. it's a vector graphic
     //    with no specified content size), and both or either of the resizeWidth and
     //    resizeHeight options are not specified, then return a promise rejected with
     //    an "InvalidStateError" DOMException and abort these steps.
 
-    // FIXME: This sucks.
-    auto styleImage = StyleCachedImage::create(*cachedImage);
-    auto imageSize = styleImage->imageSizeForRenderer(renderer, 1.0f);
-    if ((!imageSize.width() || !imageSize.height()) && (!options.resizeWidth || !options.resizeHeight)) {
+    auto naturalDimensions = image->naturalDimensions();
+    if ((!naturalDimensions.width || !naturalDimensions.height) && (!options.resizeWidth || !options.resizeHeight)) {
         completionHandler(Exception { ExceptionCode::InvalidStateError, "Cannot create ImageBitmap from a source with no intrinsic size without providing resize dimensions"_s });
         return;
     }
@@ -400,10 +404,17 @@ void ImageBitmap::createCompletionHandler(ScriptExecutionContext& scriptExecutio
     //    with no specified content size), it should be rendered to a bitmap of the size
     //    specified by the resizeWidth and the resizeHeight options.
 
-    if (!imageSize.width() && !imageSize.height()) {
-        imageSize.setWidth(options.resizeWidth.value());
-        imageSize.setHeight(options.resizeHeight.value());
+    LayoutSize imageSize;
+    if (!naturalDimensions.width && !naturalDimensions.height) {
+        imageSize.setWidth(*options.resizeWidth);
+        imageSize.setHeight(*options.resizeHeight);
+    } else {
+        imageSize.setWidth(*naturalDimensions.width);
+        imageSize.setHeight(*naturalDimensions.height);
     }
+
+    if (RefPtr svgImage = dynamicDowncast<SVGImage>(image))
+        image = SVGImageForContainer::create(svgImage.get(), imageSize, 1, cachedImage->url());
 
     // 5. If the sw and sh arguments are not specified and image's media data has both or
     //    either of its intrinsic width and intrinsic height values equal to 0, then return
@@ -411,9 +422,6 @@ void ImageBitmap::createCompletionHandler(ScriptExecutionContext& scriptExecutio
     // 6. If the sh argument is not specified and image's media data has an intrinsic height
     //    of 0, then return a promise rejected with an "InvalidStateError" DOMException and
     //    abort these steps.
-
-    // FIXME: It's unclear how these steps can happen, since step 4 required setting a
-    // width and height for the image.
 
     if (!rect && (!imageSize.width() || !imageSize.height())) {
         completionHandler(Exception { ExceptionCode::InvalidStateError, "Cannot create ImageBitmap from a source with no intrinsic size without providing dimensions"_s });
@@ -432,26 +440,20 @@ void ImageBitmap::createCompletionHandler(ScriptExecutionContext& scriptExecutio
         return;
     }
 
-    RefPtr imageForRenderer = styleImage->imageForRenderer(renderer);
-    if (!imageForRenderer) {
-        completionHandler(Exception { ExceptionCode::InvalidStateError, "Cannot create ImageBitmap from image that can't be rendered"_s });
-        return;
-    }
-
     auto outputSize = outputSizeForSourceRectangle(sourceRectangle.returnValue(), options);
-    auto bitmapData = createImageBuffer(scriptExecutionContext, outputSize, bufferRenderingMode(scriptExecutionContext), imageForRenderer->colorSpace());
+    auto bitmapData = createImageBuffer(scriptExecutionContext, outputSize, bufferRenderingMode(scriptExecutionContext), image->colorSpace());
     const bool originClean = !taintsOrigin(*cachedImage);
     if (!bitmapData) {
         completionHandler(createBlankImageBuffer(scriptExecutionContext, originClean));
         return;
     }
 
-    auto orientation = imageForRenderer->orientation();
+    auto orientation = image->orientation();
     if (orientation == ImageOrientation::Orientation::FromImage)
         orientation = ImageOrientation::Orientation::None;
 
     FloatRect destRect(FloatPoint(), outputSize);
-    bitmapData->context().drawImage(*imageForRenderer, destRect, sourceRectangle.releaseReturnValue(), { interpolationQualityForResizeQuality(options.resizeQuality), options.resolvedImageOrientation(orientation) });
+    bitmapData->context().drawImage(*image, destRect, sourceRectangle.releaseReturnValue(), { interpolationQualityForResizeQuality(options.resizeQuality), options.resolvedImageOrientation(orientation) });
 
     // 7. Create a new ImageBitmap object.
     // 9. If the origin of image's image is not the same origin as the origin specified by the

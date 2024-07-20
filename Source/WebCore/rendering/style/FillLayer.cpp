@@ -367,7 +367,7 @@ bool FillLayer::hasOpaqueImage(const RenderElement& renderer) const
     if (static_cast<CompositeOperator>(m_composite) == CompositeOperator::Clear || static_cast<CompositeOperator>(m_composite) == CompositeOperator::Copy)
         return true;
 
-    return static_cast<BlendMode>(m_blendMode) == BlendMode::Normal && static_cast<CompositeOperator>(m_composite) == CompositeOperator::SourceOver && m_image->knownToBeOpaqueForRenderer(renderer);
+    return static_cast<BlendMode>(m_blendMode) == BlendMode::Normal && static_cast<CompositeOperator>(m_composite) == CompositeOperator::SourceOver && m_image->knownToBeOpaque();
 }
 
 bool FillLayer::hasRepeatXY() const

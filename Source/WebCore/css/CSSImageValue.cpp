@@ -33,6 +33,7 @@
 #include "Element.h"
 #include "StyleBuilderState.h"
 #include "StyleCachedImage.h"
+#include "StyleLocalSVGResourceImage.h"
 
 namespace WebCore {
 
@@ -93,8 +94,8 @@ bool CSSImageValue::isPending() const
 
 URL CSSImageValue::reresolvedURL(const Document& document) const
 {
-    if (isCSSLocalURL(m_location.resolvedURL.string()))
-        return m_location.resolvedURL;
+    //    if (isCSSLocalURL(m_location.resolvedURL.string()))
+    //        return m_location.resolvedURL;
 
     // Re-resolving the URL is important for cases where resolvedURL is still not an absolute URL.
     // This can happen if there was no absolute base URL when the value was created, like a style from a document without a base URL.
@@ -106,9 +107,14 @@ URL CSSImageValue::reresolvedURL(const Document& document) const
 
 RefPtr<StyleImage> CSSImageValue::createStyleImage(Style::BuilderState& state) const
 {
+    // FIXME: What about the empty string case?
+    if (isCSSLocalURL(m_location.resolvedURL.string()))
+        return StyleLocalSVGResourceImage::create(state.document(), const_cast<CSSImageValue&>(*this));
+
     auto location = makeResolvedURL(reresolvedURL(state.document()));
-    if (m_location == location)
+    if (m_location == location) {
         return StyleCachedImage::create(const_cast<CSSImageValue&>(*this));
+    }
     auto result = create(WTFMove(location), m_loadedFromOpaqueSource);
     result->m_cachedImage = m_cachedImage;
     result->m_initiatorType = m_initiatorType;
@@ -118,6 +124,9 @@ RefPtr<StyleImage> CSSImageValue::createStyleImage(Style::BuilderState& state) c
 
 CachedImage* CSSImageValue::loadImage(CachedResourceLoader& loader, const ResourceLoaderOptions& options)
 {
+    if (isCSSLocalURL(m_location.resolvedURL.string()))
+        return nullptr;
+
     if (!m_cachedImage) {
         ResourceLoaderOptions loadOptions = options;
         loadOptions.loadedFromOpaqueSource = m_loadedFromOpaqueSource;
@@ -186,10 +195,14 @@ Ref<DeprecatedCSSOMValue> CSSImageValue::createDeprecatedCSSOMWrapper(CSSStyleDe
     return DeprecatedCSSOMPrimitiveValue::create(CSSPrimitiveValue::createURI(m_location.resolvedURL.string()), styleDeclaration);
 }
 
-bool CSSImageValue::knownToBeOpaque(const RenderElement&) const
+bool CSSImageValue::knownToBeOpaque() const
 {
-    // FIXME: MAKE THIS WORK.
-    return false; // m_cachedImage.value_or(nullptr) && (**m_cachedImage).currentFrameKnownToBeOpaque(&renderer);
+    if (!m_cachedImage)
+        return false;
+    RefPtr image = m_cachedImage->rawImage();
+    if (!image)
+        return false;
+    return image->currentFrameKnownToBeOpaque();
 }
 
 } // namespace WebCore

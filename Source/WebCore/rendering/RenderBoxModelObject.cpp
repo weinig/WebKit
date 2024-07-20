@@ -776,10 +776,10 @@ static inline LayoutSize resolveAgainstIntrinsicRatio(const LayoutSize& size, co
     return LayoutSize(size.width(), solutionHeight);
 }
 
-LayoutSize RenderBoxModelObject::calculateImageIntrinsicDimensions(StyleImage* image, const LayoutSize& positioningAreaSize, ScaleByUsedZoom scaleByUsedZoom) const
+LayoutSize RenderBoxModelObject::calculateImageIntrinsicDimensions(StyleImage& image, const LayoutSize& positioningAreaSize, ScaleByUsedZoom scaleByUsedZoom) const
 {
     // A generated image without a fixed size, will always return the container size as intrinsic size.
-    if (!image->imageHasNaturalDimensions())
+    if (!image.imageHasNaturalDimensions())
         return LayoutSize(positioningAreaSize.width(), positioningAreaSize.height());
 
     Length intrinsicWidth;

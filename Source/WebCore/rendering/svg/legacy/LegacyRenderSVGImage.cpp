@@ -119,6 +119,7 @@ bool LegacyRenderSVGImage::updateImageViewport()
     // by setting the image's container size to its intrinsic size.
     // See: http://www.w3.org/TR/SVG/single-page.html, 7.8 The ‘preserveAspectRatio’ attribute.
     if (imageElement().preserveAspectRatio().align() == SVGPreserveAspectRatioValue::SVG_PRESERVEASPECTRATIO_NONE) {
+
         if (StyleImage* styleImage = imageResource().styleImage()) {
             LayoutSize intrinsicSize = styleImage->imageSizeForRenderer(nullptr, style().usedZoom());
             if (intrinsicSize != imageResource().imageSize(style().usedZoom())) {
@@ -126,6 +127,7 @@ bool LegacyRenderSVGImage::updateImageViewport()
                 updatedViewport = true;
             }
         }
+
     }
 
     if (oldBoundaries != m_objectBoundingBox) {

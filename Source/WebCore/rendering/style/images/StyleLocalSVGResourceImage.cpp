@@ -141,11 +141,6 @@ bool StyleLocalSVGResourceImage::knownToBeOpaque() const
     return false;
 }
 
-LayoutSize StyleLocalSVGResourceImage::imageSizeForRenderer(const RenderElement* client, float multiplier, StyleImageSizeType) const
-{
-    return m_containerSize;
-}
-
 NaturalDimensions StyleLocalSVGResourceImage::naturalDimensions() const
 {
     return NaturalDimensions::none();
@@ -175,8 +170,8 @@ bool StyleLocalSVGResourceImage::usesImageContainerSize() const
     return false; // FIXME: Needs checking.
 }
 
-void StyleLocalSVGResourceImage::setContainerContextForRenderer(const RenderElement& client, const LayoutSize& containerSize, float containerZoom, const URL&)
-{
+//void StyleLocalSVGResourceImage::setContainerContextForRenderer(const RenderElement& client, const LayoutSize& containerSize, float containerZoom, const URL&)
+//{
 //    m_containerSize = containerSize;
 //
 //    if (containerSize.isEmpty())
@@ -193,7 +188,7 @@ void StyleLocalSVGResourceImage::setContainerContextForRenderer(const RenderElem
 //        m_cachedImage->svgImageCache()->setContainerContextForRenderer(client, containerSize, containerZoom, imageURL());
 //    else
 //        image->setContainerSize(containerSize);
-}
+//}
 
 void StyleLocalSVGResourceImage::addClient(StyleImageClient& client)
 {

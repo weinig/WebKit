@@ -48,6 +48,29 @@
 
 namespace WebCore {
 
+class RenderSVGImageSizingContext final : StyleImageSizingContext {
+public:
+    explicit RenderSVGImageSizingContext(RenderSVGImage& renderSVGImage)
+        : m_renderSVGImage { renderSVGImage }
+    {
+    }
+
+    virtual LayoutSize negotiateObjectSize(StyleImage& styleImage)
+    {
+        auto naturalDimensions = styleImage.naturalDimensionsForContext(*this);
+        /// ...
+        return { };
+    }
+
+    virtual Document& document() final { return m_renderSVGImage.document(); }
+    virtual TreeScope& treeScopeForSVGReferences() final { return m_renderSVGImage.treeScopeForSVGReferences(); }
+    virtual const RenderStyle& style() final { return m_renderSVGImage.style(); }
+    virtual const RenderElement* renderer() final { return &m_renderSVGImage; }
+
+private:
+    RenderSVGImage& m_renderSVGImage;
+};
+
 WTF_MAKE_ISO_ALLOCATED_IMPL(RenderSVGImage);
 
 RenderSVGImage::RenderSVGImage(SVGImageElement& element, RenderStyle&& style)
@@ -83,33 +106,35 @@ Ref<SVGImageElement> RenderSVGImage::protectedImageElement() const
 
 FloatRect RenderSVGImage::calculateObjectBoundingBox() const
 {
-    LayoutSize intrinsicSize;
-    if (StyleImage* styleImage = imageResource().styleImage())
-        intrinsicSize = styleImage->imageSizeForRenderer(nullptr, style().usedZoom());
+    // auto concreteSize = RenderSVGImageSizingContext(*this).negotiateImageSize(*styleImage);
 
-    Ref imageElement = this->imageElement();
-    SVGLengthContext lengthContext(imageElement.ptr());
-
-    Length width = style().width();
-    Length height = style().height();
-
-    float concreteWidth;
-    if (!width.isAuto())
-        concreteWidth = lengthContext.valueForLength(width, SVGLengthMode::Width);
-    else if (!height.isAuto() && !intrinsicSize.isEmpty())
-        concreteWidth = lengthContext.valueForLength(height, SVGLengthMode::Height) * intrinsicSize.width() / intrinsicSize.height();
-    else
-        concreteWidth = intrinsicSize.width();
-
-    float concreteHeight;
-    if (!height.isAuto())
-        concreteHeight = lengthContext.valueForLength(height, SVGLengthMode::Height);
-    else if (!width.isAuto() && !intrinsicSize.isEmpty())
-        concreteHeight = lengthContext.valueForLength(width, SVGLengthMode::Width) * intrinsicSize.height() / intrinsicSize.width();
-    else
-        concreteHeight = intrinsicSize.height();
-
-    return { imageElement->x().value(lengthContext), imageElement->y().value(lengthContext), concreteWidth, concreteHeight };
+//    auto naturalDimensions = NaturalDimensions::none();
+//    if (StyleImage* styleImage = imageResource().styleImage())
+//        naturalDimensions = styleImage->naturalDimensionsForContext(RenderSVGImageSizingContext(*this)); // (nullptr, style().usedZoom());
+//
+//    Ref imageElement = this->imageElement();
+//    SVGLengthContext lengthContext(imageElement.ptr());
+//
+//    Length width = style().width();
+//    Length height = style().height();
+//
+//    float concreteWidth;
+//    if (!width.isAuto())
+//        concreteWidth = lengthContext.valueForLength(width, SVGLengthMode::Width);
+//    else if (!height.isAuto() && !naturalDimensions.isEmpty())
+//        concreteWidth = lengthContext.valueForLength(height, SVGLengthMode::Height) * *naturalDimensions.width / *naturalDimensions.height;
+//    else
+//        concreteWidth = naturalDimensions.width ? *naturalDimensions.width : 0;
+//
+//    float concreteHeight;
+//    if (!height.isAuto())
+//        concreteHeight = lengthContext.valueForLength(height, SVGLengthMode::Height);
+//    else if (!width.isAuto() && !naturalDimensions.isEmpty())
+//        concreteHeight = lengthContext.valueForLength(width, SVGLengthMode::Width) * *naturalDimensions.height / *naturalDimensions.width;
+//    else
+//        concreteHeight = naturalDimensions.height ? *naturalDimensions.height : 0;
+//
+//    return { imageElement->x().value(lengthContext), imageElement->y().value(lengthContext), concreteWidth, concreteHeight };
 }
 
 void RenderSVGImage::layout()
@@ -286,6 +311,7 @@ bool RenderSVGImage::updateImageViewport()
     // See: http://www.w3.org/TR/SVG/single-page.html, 7.8 The ‘preserveAspectRatio’ attribute.
     if (imageElement->preserveAspectRatio().align() == SVGPreserveAspectRatioValue::SVG_PRESERVEASPECTRATIO_NONE) {
         if (StyleImage* styleImage = imageResource().styleImage()) {
+
             LayoutSize intrinsicSize = styleImage->imageSizeForRenderer(nullptr, style().usedZoom());
             if (intrinsicSize != imageResource().imageSize(style().usedZoom())) {
                 imageResource().setContainerContext(roundedIntSize(intrinsicSize), imageSourceURL);

@@ -34,7 +34,7 @@
 namespace WebCore {
 
 StyleCanvasImage::StyleCanvasImage(const Document* document, String&& name)
-    : StyleGeneratedImage { Type::CanvasImage, StyleCanvasImage::isFixedSize }
+    : StyleGeneratedImage { Type::CanvasImage }
     , m_name { WTFMove(name) }
     , m_document { document }
     , m_element { nullptr }
@@ -72,12 +72,18 @@ void StyleCanvasImage::load(CachedResourceLoader&, const ResourceLoaderOptions&)
 {
 }
 
-RefPtr<Image> StyleCanvasImage::imageForRenderer(const RenderElement* client, const FloatSize&, bool) const
+NaturalDimensions StyleCanvasImage::naturalDimensionsForContext(const StyleImageSizingContext&) const
 {
-    if (!client)
-        return &Image::nullImage();
+    if (RefPtr element = this->element())
+        return NaturalDimensions::fixed(element->size());
+    return NaturalDimensions::none();
+}
 
-    ASSERT(clients().contains(const_cast<RenderElement&>(*client)));
+RefPtr<Image> StyleCanvasImage::imageForContext(const StyleImageSizingContext&) const
+{
+    // FIXME: Figure out how important this assert is?
+    // ASSERT(clients().contains(const_cast<RenderElement&>(*client)));
+
     if (RefPtr element = this->element())
         return element->copiedImage();
     return nullptr;
@@ -87,13 +93,6 @@ bool StyleCanvasImage::knownToBeOpaque() const
 {
     // FIXME: When CanvasRenderingContext2DSettings.alpha is implemented, this can be improved to check for it.
     return false;
-}
-
-LayoutSize StyleCanvasImage::fixedSizeForRenderer(const RenderElement&) const
-{
-    if (RefPtr element = this->element())
-        return LayoutSize { element->size() };
-    return { };
 }
 
 void StyleCanvasImage::didAddClient(StyleImageClient&)

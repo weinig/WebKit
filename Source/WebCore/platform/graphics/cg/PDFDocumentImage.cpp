@@ -51,6 +51,13 @@ String PDFDocumentImage::filenameExtension() const
     return "pdf"_s;
 }
 
+NaturalDimensions PDFDocumentImage::naturalDimensions(ImageOrientation) const
+{
+    // FIXME: If we want size negotiation with PDF documents as-image, this is the place to implement it (https://bugs.webkit.org/show_bug.cgi?id=12095).
+
+    return NaturalDimensions::none();
+}
+
 FloatSize PDFDocumentImage::size(ImageOrientation) const
 {
     FloatSize expandedCropBoxSize = FloatSize(expandedIntSize(m_cropBox.size()));
@@ -60,12 +67,12 @@ FloatSize PDFDocumentImage::size(ImageOrientation) const
     return expandedCropBoxSize;
 }
 
-void PDFDocumentImage::computeIntrinsicDimensions(Length& intrinsicWidth, Length& intrinsicHeight, FloatSize& intrinsicRatio)
-{
-    // FIXME: If we want size negotiation with PDF documents as-image, this is the place to implement it (https://bugs.webkit.org/show_bug.cgi?id=12095).
-    Image::computeIntrinsicDimensions(intrinsicWidth, intrinsicHeight, intrinsicRatio);
-    intrinsicRatio = FloatSize();
-}
+//void PDFDocumentImage::computeIntrinsicDimensions(Length& intrinsicWidth, Length& intrinsicHeight, FloatSize& intrinsicRatio)
+//{
+//    // FIXME: If we want size negotiation with PDF documents as-image, this is the place to implement it (https://bugs.webkit.org/show_bug.cgi?id=12095).
+//    Image::computeIntrinsicDimensions(intrinsicWidth, intrinsicHeight, intrinsicRatio);
+//    intrinsicRatio = FloatSize();
+//}
 
 EncodedDataStatus PDFDocumentImage::dataChanged(bool allDataReceived)
 {

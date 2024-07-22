@@ -131,7 +131,8 @@ static RefPtr<Image> imageFromImageElementNode(Node& node)
     auto image = renderer->styleImage();
     if (!image || image->errorOccurred())
         return nullptr;
-    return image->imageForRenderer(renderer.get());
+
+    return image->rawImage();
 }
 
 bool handleEvent(HTMLElement& element, Event& event)

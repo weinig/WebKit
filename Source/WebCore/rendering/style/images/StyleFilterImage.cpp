@@ -45,11 +45,10 @@ namespace WebCore {
 
 // MARK: - StyleFilterImage
 
-StyleFilterImage::StyleFilterImage(const Document* document, RefPtr<StyleImage>&& inputImage, FilterOperations&& filterOperations)
-    : StyleGeneratedImage { Type::FilterImage, StyleFilterImage::isFixedSize }
+StyleFilterImage::StyleFilterImage(RefPtr<StyleImage>&& inputImage, FilterOperations&& filterOperations)
+    : StyleGeneratedImage { Type::FilterImage }
     , m_inputImage { WTFMove(inputImage) }
     , m_filterOperations { WTFMove(filterOperations) }
-    , m_document { document }
     , m_inputImageIsReady { false }
 {
     if (m_inputImage)
@@ -80,7 +79,10 @@ bool StyleFilterImage::equalInputImages(const StyleFilterImage& other) const
 
 Ref<CSSValue> StyleFilterImage::computedStyleValue(const RenderStyle& style) const
 {
-    return CSSFilterImageValue::create(m_inputImage ? m_inputImage->computedStyleValue(style) : static_reference_cast<CSSValue>(CSSPrimitiveValue::create(CSSValueNone)), ComputedStyleExtractor::valueForFilter(style, m_filterOperations));
+    return CSSFilterImageValue::create(
+        m_inputImage ? m_inputImage->computedStyleValue(style) : static_reference_cast<CSSValue>(CSSPrimitiveValue::create(CSSValueNone)),
+        ComputedStyleExtractor::valueForFilter(style, m_filterOperations)
+    );
 }
 
 bool StyleFilterImage::isPending() const
@@ -102,24 +104,26 @@ void StyleFilterImage::load(CachedResourceLoader& cachedResourceLoader, const Re
     m_inputImageIsReady = true;
 }
 
-RefPtr<Image> StyleFilterImage::imageForRenderer(const RenderElement* client, const FloatSize& size, bool isForFirstLine) const
+NaturalDimensions StyleFilterImage::naturalDimensionsForContext(const StyleImageSizingContext& context) const
 {
-    if (!client)
+    if (!m_inputImage)
+        return NaturalDimensions::none();
+    return m_inputImage->naturalDimensionsForContext(context);
+}
+
+RefPtr<Image> StyleFilterImage::imageForContext(const StyleImageSizingContext& context) const
+{
+    if (!m_inputImage)
         return &Image::nullImage();
 
-    if (size.isEmpty())
-        return nullptr;
-
-    if (!m_inputImage || !m_document)
-        return &Image::nullImage();
-
-    auto image = m_inputImage->imageForRenderer(client, size, isForFirstLine);
+    auto image = m_inputImage->imageForContext(context);
     if (!image || image->isNull())
         return &Image::nullImage();
 
-    auto& treeScopeForSVGReferences = const_cast<RenderElement*>(client)->treeScopeForSVGReferences();
-    auto preferredFilterRenderingModes = m_document->preferredFilterRenderingModes();
-    auto sourceImageRect = FloatRect { { }, size };
+    auto& document = context.document();
+    auto& treeScopeForSVGReferences = context.treeScopeForSVGReferences();
+    auto preferredFilterRenderingModes = document.preferredFilterRenderingModes();
+    auto sourceImageRect = FloatRect { { }, image->size() };
 
     auto cssFilter = CSSFilter::create(treeScopeForSVGReferences, m_filterOperations, preferredFilterRenderingModes, FloatSize { 1, 1 }, sourceImageRect, NullGraphicsContext());
     if (!cssFilter)
@@ -127,7 +131,7 @@ RefPtr<Image> StyleFilterImage::imageForRenderer(const RenderElement* client, co
 
     cssFilter->setFilterRegion(sourceImageRect);
 
-    auto hostWindow = (m_document->view() && m_document->view()->root()) ? m_document->view()->root()->hostWindow() : nullptr;
+    auto hostWindow = (document->view() && document->view()->root()) ? document->view()->root()->hostWindow() : nullptr;
 
     auto sourceImage = ImageBuffer::create(size, RenderingPurpose::DOM, 1, DestinationColorSpace::SRGB(), ImageBufferPixelFormat::BGRA8, bufferOptionsForRendingMode(cssFilter->renderingMode()), hostWindow);
     if (!sourceImage)
@@ -144,14 +148,6 @@ RefPtr<Image> StyleFilterImage::imageForRenderer(const RenderElement* client, co
 bool StyleFilterImage::knownToBeOpaque() const
 {
     return false;
-}
-
-LayoutSize StyleFilterImage::fixedSizeForRenderer(const RenderElement& client) const
-{
-    if (!m_inputImage)
-        return { };
-
-    return m_inputImage->imageSizeForRenderer(&client, 1);
 }
 
 // MARK: - StyleImageClient
@@ -255,20 +251,5 @@ HashSet<Element*> StyleFilterImage::styleImageReferencingElements(StyleImage& im
     return result;
 }
 
-ImageOrientation StyleFilterImage::styleImageOrientation(StyleImage& image) const
-{
-    ASSERT_UNUSED(image, &image == m_inputImage.get());
-
-    // FIXME: Implement.
-    return StyleImageClient::styleImageOrientation(const_cast<StyleFilterImage&>(*this));
-}
-
-std::optional<LayoutSize> StyleFilterImage::styleImageOverrideImageSize(StyleImage& image) const
-{
-    ASSERT_UNUSED(image, &image == m_inputImage.get());
-
-    // FIXME: Implement.
-    return StyleImageClient::styleImageOverrideImageSize(const_cast<StyleFilterImage&>(*this));
-}
 
 } // namespace WebCore

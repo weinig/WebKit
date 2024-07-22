@@ -34,14 +34,20 @@ enum class ShadowStyle : uint8_t;
 
 class BackgroundImageSizingContext final : public StyleImageSizingContext {
 public:
-    explicit BackgroundImageSizingContext(const RenderBoxModelObject&, const FillLayer&, LayoutSize);
+    explicit BackgroundImageSizingContext(const RenderBoxModelObject&, const FillLayer&, LayoutSize positioningAreaSize, bool firstLine);
 
     LayoutSize negotiateObjectSize(StyleImage&) final;
 
+    virtual Document& document() final { return m_renderer.document(); }
+    virtual TreeScope& treeScopeForSVGReferences() final { return m_renderer.treeScopeForSVGReferences(); }
+    virtual const RenderStyle& style() final { return m_firstLine ? m_renderer.firstLineStyle() : m_renderer.style(); }
+    virtual const RenderElement* renderer() final { return &m_renderer; }
+
 private:
-    const RenderBoxModelObject& renderer;
-    const FillLayer& fillLayer;
-    LayoutSize positioningAreaSize;
+    const RenderBoxModelObject& m_renderer;
+    const FillLayer& m_fillLayer;
+    LayoutSize m_positioningAreaSize;
+    bool m_firstLine;
 };
 
 struct BackgroundImageGeometry {

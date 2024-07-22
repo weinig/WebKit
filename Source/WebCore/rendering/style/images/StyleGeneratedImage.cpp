@@ -67,9 +67,8 @@ void StyleGeneratedImage::CachedGeneratedImage::evictionTimerFired()
 
 // MARK: - StyleGeneratedImage.
 
-StyleGeneratedImage::StyleGeneratedImage(StyleImage::Type type, bool fixedSize)
+StyleGeneratedImage::StyleGeneratedImage(StyleImage::Type type)
     : StyleImage { type }
-    , m_fixedSize { fixedSize }
 {
 }
 
@@ -99,40 +98,6 @@ void StyleGeneratedImage::evictCachedGeneratedImage(FloatSize size)
     ASSERT(m_images.contains(size));
     m_images.remove(size);
 }
-
-LayoutSize StyleGeneratedImage::imageSizeForContext(const StyleImageContext& context, float multiplier, StyleImageSizeType) const
-{
-    if (!m_fixedSize)
-        return m_containerSize;
-
-    if (!renderer)
-        return { };
-
-    LayoutSize fixedSize = this->fixedSizeForContext(context);
-    if (multiplier == 1.0f)
-        return fixedSize;
-
-    float width = fixedSize.width() * multiplier;
-    float height = fixedSize.height() * multiplier;
-
-    // Don't let images that have a width/height >= 1 shrink below 1 device pixel when zoomed.
-    float deviceScaleFactor = context.deviceScaleFactor;
-    if (fixedSize.width() > 0)
-        width = std::max<float>(1 / deviceScaleFactor, width);
-    if (fixedSize.height() > 0)
-        height = std::max<float>(1 / deviceScaleFactor, height);
-
-    return { width, height };
-}
-
-//void StyleGeneratedImage::computeIntrinsicDimensionsForRenderer(const RenderElement* renderer, Length& intrinsicWidth, Length& intrinsicHeight, FloatSize& intrinsicRatio)
-//{
-//    // At a zoom level of 1 the image is guaranteed to have a device pixel size.
-//    FloatSize size = floorSizeToDevicePixels(this->imageSizeForRenderer(renderer, 1, StyleImageSizeType::Used), renderer ? renderer->document().deviceScaleFactor() : 1);
-//    intrinsicWidth = Length(size.width(), LengthType::Fixed);
-//    intrinsicHeight = Length(size.height(), LengthType::Fixed);
-//    intrinsicRatio = size;
-//}
 
 void StyleGeneratedImage::addClient(StyleImageClient& client)
 {

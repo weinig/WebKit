@@ -168,7 +168,15 @@ static void getImage(Element& imageElement, RefPtr<Image>& image, CachedImage*& 
     if (!tentativeCachedImage || tentativeCachedImage->errorOccurred())
         return;
 
-    image = styleImage->imageForRenderer(renderImage.get());
+    // USE CASE: IMAGE FOR PASTEBOARD
+    //   - Resource buffer
+    //   - MIME Type
+    //   - Raw Image
+
+    // PROPOSED:
+    //   - For SVG Image without container, use RenderImage sizing.
+
+    image = styleImage->imageForContext(RenderImageSizingContext { *renderImage });
     if (!image)
         return;
 

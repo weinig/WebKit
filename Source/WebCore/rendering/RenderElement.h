@@ -317,7 +317,6 @@ public:
     bool styleImageAnimationAllowed(StyleImage&) const final;
     VisibleInViewportState styleImageFrameAvailable(StyleImage&, ImageAnimatingState, const IntRect* changeRect) final;
     VisibleInViewportState styleImageVisibleInViewport(StyleImage&, const Document&) const final;
-    ImageOrientation styleImageOrientation(StyleImage&) const final;
     HashSet<Element*> styleImageReferencingElements(StyleImage&) const final;
 
 protected:

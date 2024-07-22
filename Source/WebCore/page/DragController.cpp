@@ -778,12 +778,9 @@ static bool imageElementIsDraggable(const HTMLImageElement& image, const LocalFr
     if (!renderImage)
         return false;
 
-    auto styleImage = renderImage->styleImage();
-    if (!styleImage)
-        return false;
+    // USE CASE: HAS A RENDERABLE IMAGE.
 
-    CachedResourceHandle cachedImage = styleImage->cachedImage();
-    return cachedImage && !cachedImage->errorOccurred() && styleImage->imageForRenderer(renderImage.get());
+    return renderImage->image({ });
 }
 
 #if ENABLE(MODEL_ELEMENT)
@@ -886,17 +883,23 @@ Element* DragController::draggableElement(const LocalFrame* sourceFrame, Element
 static CachedImage* getCachedImage(Element& element)
 {
     CheckedPtr renderImage = dynamicDowncast<RenderImage>(element.renderer());
-    return renderImage ? renderImage->cachedImage() : nullptr;
+    if (!renderImage)
+        return nullptr;
+    return renderImage->cachedImage();
 }
 
-static Image* getImage(Element& element)
+static RefPtr<Image> getImage(Element& element)
 {
-    CachedResourceHandle cachedImage = getCachedImage(element);
-    // Don't use cachedImage->imageForRenderer() here as that may return BitmapImages for cached SVG Images.
-    // Users of getImage() want access to the SVGImage, in order to figure out the filename extensions,
-    // which would be empty when asking the cached BitmapImages.
-    return (cachedImage && !cachedImage->errorOccurred()) ?
-        cachedImage->image() : nullptr;
+    // USE CASE: ACCESS TO IMAGE URL.
+    //   - Maybe just return cachedImage?
+
+    CheckedPtr renderImage = dynamicDowncast<RenderImage>(element.renderer());
+    if (!renderImage)
+        return nullptr;
+    CachedResourceHandle cachedImage = renderImage->cachedImage();
+    if (!cachedImage || cachedImage->errorOccurred())
+        return nullptr;
+    return cachedImage->rawImage();
 }
 
 static void selectElement(Element& element)

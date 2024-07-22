@@ -39,7 +39,7 @@
 namespace WebCore {
 
 StyleCrossfadeImage::StyleCrossfadeImage(RefPtr<StyleImage>&& from, RefPtr<StyleImage>&& to, double percentage, bool isPrefixed)
-    : StyleGeneratedImage { Type::CrossfadeImage, StyleCrossfadeImage::isFixedSize }
+    : StyleGeneratedImage { Type::CrossfadeImage }
     , m_from { WTFMove(from) }
     , m_to { WTFMove(to) }
     , m_percentage { percentage }
@@ -118,57 +118,25 @@ void StyleCrossfadeImage::load(CachedResourceLoader& loader, const ResourceLoade
     m_inputImagesAreReady = true;
 }
 
-RefPtr<Image> StyleCrossfadeImage::imageForRenderer(const RenderElement* client, const FloatSize& size, bool isForFirstLine) const
-{
-    if (!client)
-        return &Image::nullImage();
-
-    if (size.isEmpty())
-        return nullptr;
-
-    if (!m_from || !m_to)
-        return &Image::nullImage();
-
-    auto fromImage = m_from->imageForRenderer(client, size, isForFirstLine);
-    auto toImage = m_to->imageForRenderer(client, size, isForFirstLine);
-
-    if (!fromImage || !toImage)
-        return &Image::nullImage();
-
-    return CrossfadeGeneratedImage::create(*fromImage, *toImage, m_percentage, fixedSizeForRenderer(*client), size);
-}
-
-bool StyleCrossfadeImage::knownToBeOpaque() const
-{
-    if (m_from && !m_from->knownToBeOpaque())
-        return false;
-    if (m_to && !m_to->knownToBeOpaque())
-        return false;
-    return true;
-}
-
-LayoutSize StyleCrossfadeImage::fixedSizeForRenderer(const RenderElement& client) const
-{
-    if (!m_from || !m_to)
-        return { };
-
-    auto fromImageSize = m_from->imageSizeForRenderer(&client, 1);
-    auto toImageSize = m_to->imageSizeForRenderer(&client, 1);
-
-    // Rounding issues can cause transitions between images of equal size to return
-    // a different fixed size; avoid performing the interpolation if the images are the same size.
-    if (fromImageSize == toImageSize)
-        return fromImageSize;
-
-    float percentage = m_percentage;
-    float inversePercentage = 1 - percentage;
-
-    return LayoutSize(fromImageSize * inversePercentage + toImageSize * percentage);
-}
-
-NaturalDimensions StyleCrossfadeImage::naturalDimensions(StyleImageSizingContex& context) const
+NaturalDimensions StyleCrossfadeImage::naturalDimensionsForContext(const StyleImageSizingContext& context) const
 {
     // https://drafts.csswg.org/css-images-4/#natural-dimensions-of-a-cross-fade
+
+    if (!m_from || !m_to)
+        return NaturalDimensions::none();
+
+//    auto fromImageSize = m_from->imageSizeForRenderer(context, 1);
+//    auto toImageSize = m_to->imageSizeForRenderer(context, 1);
+//
+//    // Rounding issues can cause transitions between images of equal size to return
+//    // a different fixed size; avoid performing the interpolation if the images are the same size.
+//    if (fromImageSize == toImageSize)
+//        return fromImageSize;
+//
+//    float percentage = m_percentage;
+//    float inversePercentage = 1 - percentage;
+//
+//    return LayoutSize(fromImageSize * inversePercentage + toImageSize * percentage);
 
     struct Item {
         LayoutUnit width;
@@ -241,6 +209,29 @@ NaturalDimensions StyleCrossfadeImage::naturalDimensions(StyleImageSizingContex&
 
     // 8. Return a natural width of final width and a natural height of final height.
     return NaturalDimensions::fixed(finalWidth, finalHeight);
+}
+
+RefPtr<Image> StyleCrossfadeImage::imageForContext(const StyleImageSizingContext& context) const
+{
+    if (!m_from || !m_to)
+        return &Image::nullImage();
+
+    auto fromImage = m_from->imageForContext(context);
+    auto toImage = m_to->imageForContext(context);
+
+    if (!fromImage || !toImage)
+        return &Image::nullImage();
+
+    return CrossfadeGeneratedImage::create(*fromImage, *toImage, m_percentage, size, size);
+}
+
+bool StyleCrossfadeImage::knownToBeOpaque() const
+{
+    if (m_from && !m_from->knownToBeOpaque())
+        return false;
+    if (m_to && !m_to->knownToBeOpaque())
+        return false;
+    return true;
 }
 
 // MARK: - StyleImageClient
@@ -324,22 +315,6 @@ HashSet<Element*> StyleCrossfadeImage::styleImageReferencingElements(StyleImage&
     for (auto entry : clients())
         result.formUnion(entry.key.styleImageReferencingElements(const_cast<StyleCrossfadeImage&>(*this)));
     return result;
-}
-
-ImageOrientation StyleCrossfadeImage::styleImageOrientation(StyleImage& image) const
-{
-    ASSERT_UNUSED(image, &image == m_from.get() || &image == m_to.get());
-
-    // FIXME: Implement.
-    return StyleImageClient::styleImageOrientation(const_cast<StyleCrossfadeImage&>(*this));
-}
-
-std::optional<LayoutSize> StyleCrossfadeImage::styleImageOverrideImageSize(StyleImage& image) const
-{
-    ASSERT_UNUSED(image, &image == m_from.get() || &image == m_to.get());
-
-    // FIXME: Implement.
-    return StyleImageClient::styleImageOverrideImageSize(const_cast<StyleCrossfadeImage&>(*this));
 }
 
 } // namespace WebCore

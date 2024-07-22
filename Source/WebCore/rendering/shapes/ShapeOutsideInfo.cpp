@@ -155,23 +155,15 @@ Ref<const Shape> makeShapeForShapeOutside(const RenderBox& renderer)
 
         auto* styleImage = shapeValue.image();
 
-//        auto imageSize = renderer.calculateImageIntrinsicDimensions(styleImage, boxSize, RenderImage::ScaleByUsedZoom::Yes);
-//        styleImage->setContainerContextForRenderer(renderer, imageSize, style.usedZoom());
+        // auto imageSize = renderer.calculateImageIntrinsicDimensions(styleImage, boxSize, RenderImage::ScaleByUsedZoom::Yes);
+        // styleImage->setContainerContextForRenderer(renderer, imageSize, style.usedZoom());
 
-        auto marginRect = getShapeImageMarginRect(renderer, boxSize);
-
-        auto* renderImage = dynamicDowncast<RenderImage>(renderer);
-        auto imageRect = renderImage ? renderImage->replacedContentRect() : LayoutRect { { }, imageSize };
+        // auto marginRect = getShapeImageMarginRect(renderer, boxSize);
+        // auto* renderImage = dynamicDowncast<RenderImage>(renderer);
+        // auto imageRect = renderImage ? renderImage->replacedContentRect() : LayoutRect { { }, imageSize };
 
         ASSERT(!styleImage->isPending());
-
-        StyleImageContext imageContext {
-            .specifiedSize = ,
-            .defaultObjectSize =
-            .style = renderer.style(),
-            .deviceScaleFactor = renderer.document().deviceScaleFactor()
-        };
-        RefPtr image = styleImage->imageForRenderer(&imageContext);
+        RefPtr image = styleImage->imageForContext(ShapeImageSizingContext { renderer });
 
         return Shape::createRasterShape(image.get(), shapeImageThreshold, imageRect, marginRect, writingMode, margin);
     }

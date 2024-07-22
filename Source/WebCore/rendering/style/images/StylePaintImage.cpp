@@ -37,7 +37,7 @@
 namespace WebCore {
 
 StylePaintImage::StylePaintImage(String&& name, Ref<CSSVariableData>&& arguments)
-    : StyleGeneratedImage { Type::PaintImage, StylePaintImage::isFixedSize }
+    : StyleGeneratedImage { Type::PaintImage }
     , m_name { WTFMove(name) }
     , m_arguments { WTFMove(arguments) }
 {
@@ -66,15 +66,22 @@ void StylePaintImage::load(CachedResourceLoader&, const ResourceLoaderOptions&)
 {
 }
 
-RefPtr<Image> StylePaintImage::imageForRenderer(const RenderElement* client, const FloatSize& size, bool) const
+NaturalDimensions naturalDimensionsForContext(const StyleImageSizingContext&) const
 {
-    if (!client)
-        return &Image::nullImage();
+    return NaturalDimensions::none();
+}
 
+RefPtr<Image> StylePaintImage::imageForContext(const StyleImageSizingContext& context) const
+{
+    auto* renderer = context.renderer();
+    if (!renderer)
+        return nullptr;
+
+    auto size = context.negotiateObjectSize(*this);
     if (size.isEmpty())
         return nullptr;
 
-    auto* selectedGlobalScope = client->document().paintWorkletGlobalScopeForName(m_name);
+    auto* selectedGlobalScope = context.document().paintWorkletGlobalScopeForName(m_name);
     if (!selectedGlobalScope)
         return nullptr;
 
@@ -110,11 +117,6 @@ RefPtr<Image> StylePaintImage::imageForRenderer(const RenderElement* client, con
 bool StylePaintImage::knownToBeOpaque() const
 {
     return false;
-}
-
-LayoutSize StylePaintImage::fixedSizeForRenderer(const RenderElement&) const
-{
-    return { };
 }
 
 } // namespace WebCore

@@ -33,7 +33,7 @@
 namespace WebCore {
 
 StyleNamedImage::StyleNamedImage(String&& name)
-    : StyleGeneratedImage { Type::NamedImage, StyleNamedImage::isFixedSize }
+    : StyleGeneratedImage { Type::NamedImage }
     , m_name { WTFMove(name) }
 {
 }
@@ -65,11 +65,14 @@ void StyleNamedImage::load(CachedResourceLoader&, const ResourceLoaderOptions&)
 {
 }
 
-RefPtr<Image> StyleNamedImage::imageForRenderer(const RenderElement* client, const FloatSize& size, bool) const
+NaturalDimensions StyleNamedImage::naturalDimensionsForContext(const StyleImageSizingContext&) const
 {
-    if (!client)
-        return &Image::nullImage();
+    return NaturalDimensions::none();
+}
 
+RefPtr<Image> StyleNamedImage::imageForContext(const StyleImageSizingContext& context) const
+{
+    auto size = context.negotiateObjectSize(*this);
     if (size.isEmpty())
         return nullptr;
 
@@ -79,11 +82,6 @@ RefPtr<Image> StyleNamedImage::imageForRenderer(const RenderElement* client, con
 bool StyleNamedImage::knownToBeOpaque() const
 {
     return false;
-}
-
-LayoutSize StyleNamedImage::fixedSizeForRenderer(const RenderElement&) const
-{
-    return { };
 }
 
 } // namespace WebCore

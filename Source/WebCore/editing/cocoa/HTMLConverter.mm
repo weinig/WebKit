@@ -2374,6 +2374,8 @@ static String preferredFilenameForElement(const HTMLImageElement& element)
 
 static RetainPtr<NSFileWrapper> fileWrapperForElement(const HTMLImageElement& element)
 {
+    // USE CASE: GET ORIGINAL BYTES OF IMAGE RESOURCE IF POSSIBLE
+
     if (CachedImage* cachedImage = element.cachedImage()) {
         if (RefPtr sharedBuffer = cachedImage->resourceBuffer()) {
             RetainPtr wrapper = adoptNS([[NSFileWrapper alloc] initRegularFileWithContents:sharedBuffer->makeContiguous()->createNSData().get()]);
@@ -2382,11 +2384,12 @@ static RetainPtr<NSFileWrapper> fileWrapperForElement(const HTMLImageElement& el
         }
     }
 
+    // USE CASE: GENERATE BITMAP MATCHING RENDERER
+
     auto* renderer = element.renderer();
     if (auto* renderImage = dynamicDowncast<RenderImage>(renderer)) {
-        auto image = renderImage->styleImage();
-        if (image && !image->errorOccurred()) {
-            RetainPtr<NSFileWrapper> wrapper = adoptNS([[NSFileWrapper alloc] initRegularFileWithContents:(__bridge NSData *)image->imageForRenderer(renderer)->adapter().tiffRepresentation()]);
+        if (auto image = renderImage->image({ })) {
+            RetainPtr<NSFileWrapper> wrapper = adoptNS([[NSFileWrapper alloc] initRegularFileWithContents:(__bridge NSData *)image->adapter().tiffRepresentation()]);
             [wrapper setPreferredFilename:@"image.tiff"];
             return wrapper;
         }

@@ -51,7 +51,6 @@ public:
     void shutdown();
 
     StyleImage* styleImage() const { return m_styleImage.get(); }
-
     WrappedImagePtr imagePtr() const { return m_styleImage ? m_styleImage->data() : nullptr; }
 
     void setCachedImage(CachedResourceHandle<CachedImage>&&);
@@ -59,16 +58,15 @@ public:
 
     void resetAnimation();
 
-    RefPtr<Image> image(const IntSize& size = { }) const;
+    RefPtr<Image> image(const StyleImageSizingContext&) const;
     bool errorOccurred() const { return m_styleImage && m_styleImage->errorOccurred(); }
 
-    void setContainerContext(const IntSize&, const URL&);
+    //    void setContainerContext(const IntSize&, const URL&);
+    //    bool imageHasRelativeWidth() const { return m_styleImage && m_styleImage->imageHasRelativeWidth(); }
+    //    bool imageHasRelativeHeight() const { return m_styleImage && m_styleImage->imageHasRelativeHeight(); }
 
-    bool imageHasRelativeWidth() const { return m_styleImage && m_styleImage->imageHasRelativeWidth(); }
-    bool imageHasRelativeHeight() const { return m_styleImage && m_styleImage->imageHasRelativeHeight(); }
-
-    LayoutSize imageSize(float multiplier) const { return imageSize(multiplier, StyleImageSizeType::Used); }
-    LayoutSize intrinsicSize(float multiplier) const { return imageSize(multiplier, StyleImageSizeType::Intrinsic); }
+    //    LayoutSize imageSize(float multiplier) const { return imageSize(multiplier, StyleImageSizeType::Used); }
+    //    LayoutSize intrinsicSize(float multiplier) const { return imageSize(multiplier, StyleImageSizeType::Intrinsic); }
 
     bool isClientWaitingForAsyncDecoding(const StyleImageClient& client) const { return m_styleImage && m_styleImage->isClientWaitingForAsyncDecoding(client); }
     void addClientWaitingForAsyncDecoding(StyleImageClient& client) { if (!m_styleImage) return; m_styleImage->addClientWaitingForAsyncDecoding(client); }

@@ -37,6 +37,10 @@ enum ImageSizeChangeType {
     ImageSizeChangeForAltText
 };
 
+enum class RenderImageOptions : bool {
+    IncludeBrokenImage
+};
+
 class RenderImage : public RenderReplaced {
     WTF_MAKE_ISO_ALLOCATED(RenderImage);
     WTF_OVERRIDE_DELETE_FOR_CHECKED_PTR(RenderImage);
@@ -50,6 +54,8 @@ public:
     CheckedRef<RenderImageResource> checkedImageResource() const;
     CachedImage* cachedImage() const { return imageResource().cachedImage(); }
     StyleImage* styleImage() const { return imageResource().styleImage(); }
+
+    RefPtr<Image> image(OptionSet<RenderImageOptions> = { RenderImageOptions::IncludeBrokenImage }) const;
 
     ImageSizeChangeType setImageSizeForAltText(StyleImage* newImage = nullptr);
 

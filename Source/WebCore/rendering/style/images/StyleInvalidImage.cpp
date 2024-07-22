@@ -46,7 +46,12 @@ void StyleInvalidImage::load(CachedResourceLoader&, const ResourceLoaderOptions&
 {
 }
 
-RefPtr<Image> StyleInvalidImage::imageForRenderer(const RenderElement*, const FloatSize&, bool) const
+NaturalDimensions StyleInvalidImage::naturalDimensionsForContext(const StyleImageSizingContext&) const
+{
+    return NaturalDimensions::none();
+}
+
+RefPtr<Image> StyleInvalidImage::imageForContext(const StyleImageSizingContext&) const
 {
     return &Image::nullImage();
 }

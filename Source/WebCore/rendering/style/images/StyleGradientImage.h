@@ -204,18 +204,15 @@ public:
     bool operator==(const StyleImage&) const final;
     bool equals(const StyleGradientImage&) const;
 
-    static constexpr bool isFixedSize = false;
-
 private:
     explicit StyleGradientImage(Data&&, CSSGradientColorInterpolationMethod);
 
     Ref<CSSValue> computedStyleValue(const RenderStyle&) const final;
     bool isPending() const final;
     void load(CachedResourceLoader&, const ResourceLoaderOptions&) final;
-    RefPtr<Image> imageForContext(const StyleImageContext&, const FloatSize&, bool isForFirstLine) const final;
-    bool knownToBeOpaqueForContext(const StyleImageContext&) const final;
-    LayoutSize fixedSizeForContext(const StyleImageContext&) const final;
-    NaturalDimensions naturalDimensions() const final;
+    NaturalDimensions naturalDimensionsForContext(const StyleImageSizingContext&) const final;
+    RefPtr<Image> imageForContext(const StyleImageSizingContext&) const final;
+    bool knownToBeOpaqueForContext(const StyleImageSizingContext&) const final;
 
     Ref<Gradient> createGradient(const LinearData&, const FloatSize&, const RenderStyle&) const;
     Ref<Gradient> createGradient(const PrefixedLinearData&, const FloatSize&, const RenderStyle&) const;

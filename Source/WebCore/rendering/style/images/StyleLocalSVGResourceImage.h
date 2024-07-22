@@ -52,8 +52,9 @@ public:
     bool hasImage() const final;
     Image* image() const final;
 
-    RefPtr<Image> imageForRenderer(const RenderElement*, const FloatSize& = { }, bool isForFirstLine = false) const final;
-    LayoutSize imageSizeForRenderer(const RenderElement*, float multiplier, StyleImageSizeType = StyleImageSizeType::Used) const final;
+    NaturalDimensions naturalDimensionsForContext(const StyleImageSizingContext&) const final;
+    RefPtr<Image> imageForContext(const StyleImageSizingContext&) const final;
+
     float imageScaleFactor() const final;
 
 private:
@@ -63,25 +64,25 @@ private:
     WrappedImagePtr data() const final { return this; }
     Ref<CSSValue> computedStyleValue(const RenderStyle&) const final;
 
-    bool canRenderForRenderer(const RenderElement*, float multiplier) const final;
-    void setContainerContextForRenderer(const RenderElement&, const LayoutSize&, float, const URL&) final;
+    bool canRender() const final;
     bool knownToBeOpaque() const final;
-    void computeIntrinsicDimensionsForRenderer(const RenderElement*, Length& intrinsicWidth, Length& intrinsicHeight, FloatSize& intrinsicRatio) final;
+
+    //    void setContainerContextForRenderer(const RenderElement&, const LayoutSize&, float, const URL&) final;
+    // void computeIntrinsicDimensionsForRenderer(const RenderElement*, Length& intrinsicWidth, Length& intrinsicHeight, FloatSize& intrinsicRatio) final;
+    // bool imageHasRelativeWidth() const final;
+    // bool imageHasRelativeHeight() const final;
+    // bool usesImageContainerSize() const final;
 
     bool isPending() const final;
     void load(CachedResourceLoader&, const ResourceLoaderOptions&) final;
-    bool isLoadedForRenderer(const RenderElement*) const final;
+    bool isLoaded() const final;
     bool errorOccurred() const final;
+    bool usesDataProtocol() const final;
 
-    NaturalDimensions naturalDimensions() const final;
-
-    bool imageHasRelativeWidth() const final;
-    bool imageHasRelativeHeight() const final;
-    bool usesImageContainerSize() const final;
     void addClient(StyleImageClient&) final;
     void removeClient(StyleImageClient&) final;
     bool hasClient(StyleImageClient&) const final;
-    bool usesDataProtocol() const final;
+
     bool isClientWaitingForAsyncDecoding(const StyleImageClient&) const final;
     void addClientWaitingForAsyncDecoding(StyleImageClient&) final;
     void removeAllClientsWaitingForAsyncDecoding() final;

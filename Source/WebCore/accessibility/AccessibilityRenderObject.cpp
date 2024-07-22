@@ -1258,10 +1258,14 @@ bool AccessibilityRenderObject::computeAccessibilityIsIgnored() const
                 return true;
 
             // check whether rendered image was stretched from one-dimensional file image
-            if (image->styleImage()) {
-                LayoutSize imageSize = image->styleImage()->imageSizeForRenderer(image.get(), image->view().zoomFactor());
-                return imageSize.height() <= 1 || imageSize.width() <= 1;
-            }
+
+            // USECASE: Check for image with 1px natural width or natural height.
+            //    - SVGImage/no natural width/height case: Ok to return false.
+            //    - Crossfade case: ???
+
+            auto imageNaturalDimensions = image->naturalDimensions();
+            return (imageNaturalDimensions.width && *imageNaturalDimensions.width <= 1)
+                || (imageNaturalDimensions.height && *imageNaturalDimensions.height <= 1);
         }
         return false;
     }

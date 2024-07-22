@@ -66,19 +66,22 @@ private:
 
     bool isPending() const final;
     void load(CachedResourceLoader&, const ResourceLoaderOptions&) final;
-    bool isLoadedForRenderer(const RenderElement*) const final;
+    bool isLoaded() const final;
     bool errorOccurred() const final;
-    bool imageHasRelativeWidth() const final;
-    bool imageHasRelativeHeight() const final;
-    void computeIntrinsicDimensionsForRenderer(const RenderElement*, Length& intrinsicWidth, Length& intrinsicHeight, FloatSize& intrinsicRatio) final;
-    bool usesImageContainerSize() const final;
     bool hasImage() const final;
 
-    bool canRenderForRenderer(const RenderElement*, float multiplier) const final;
-    LayoutSize imageSizeForRenderer(const RenderElement*, float multiplier, StyleImageSizeType = StyleImageSizeType::Used) const final;
-    RefPtr<Image> imageForRenderer(const RenderElement*, const FloatSize& = { }, bool isForFirstLine = false) const final;
-    void setContainerContextForRenderer(const RenderElement&, const LayoutSize&, float, const URL&);
+    // bool imageHasRelativeWidth() const final;
+    // bool imageHasRelativeHeight() const final;
+    // void computeIntrinsicDimensionsForRenderer(const RenderElement*, Length& intrinsicWidth, Length& intrinsicHeight, FloatSize& intrinsicRatio) final;
+    // bool usesImageContainerSize() const final;
+    // void setContainerContextForRenderer(const RenderElement&, const LayoutSize&, float, const URL&);
+
+    bool canRender() const final;
     bool knownToBeOpaque() const final;
+
+    // LayoutSize imageSizeForContext(const StyleImageSizingContext&) const final;
+    NaturalDimensions naturalDimensionsForContext(const StyleImageSizingContext&) const final;
+    RefPtr<Image> imageForContext(const StyleImageSizingContext&) const final;
 
     void addClient(StyleImageClient&) final;
     void removeClient(StyleImageClient&) final;

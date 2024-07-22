@@ -41,6 +41,40 @@
 
 namespace WebCore {
 
+class BorderImageSizingContext : public StyleImageSizingContext {
+public:
+    explicit BorderImageSizingContext(const RenderBoxModelObject& renderer, LayoutSize borderImageAreaSize)
+        : m_renderer { renderer }
+        , m_borderImageAreaSize { borderImageAreaSize }
+    {
+    }
+
+    LayoutSize negotiateObjectSize(StyleImage& image) final
+    {
+        // https://www.w3.org/TR/css-backgrounds-3/#border-image-slice
+        //
+        // If the image must be sized to determine the slices (for example, for SVG
+        // images with no natural dimensions), then it is sized using the default
+        // sizing algorithm with no specified size and the border image area as
+        // the default object size.
+
+        auto naturalDimensions = image.naturalDimensionsForContext(*this);
+        auto specifiedSize = ObjectSizeNegotiation::SpecifiedSize { std::nullopt, std::nullopt };
+        auto defaultObjectSize = m_borderImageAreaSize;
+
+        return ObjectSizeNegotiation::defaultSizingAlgorithm(naturalDimensions, specifiedSize, defaultObjectSize);
+    }
+
+    virtual Document& document() final { return m_renderer.document(); }
+    virtual TreeScope& treeScopeForSVGReferences() final { return m_renderer.treeScopeForSVGReferences(); }
+    virtual const RenderStyle& style() final { return m_renderer.style(); }
+    virtual const RenderElement* renderer() final { return &m_renderer; }
+
+private:
+    const RenderBoxModelObject& m_renderer;
+    LayoutSize m_borderImageAreaSize;
+};
+
 struct BorderPainter::Sides {
     RoundedRect outerBorder;
     RoundedRect innerBorder;
@@ -480,14 +514,15 @@ void BorderPainter::paintSides(const Sides& sides)
 
 bool BorderPainter::paintNinePieceImage(const LayoutRect& rect, const RenderStyle& style, const NinePieceImage& ninePieceImage, CompositeOperator op)
 {
-    StyleImage* styleImage = ninePieceImage.image();
+    auto* styleImage = ninePieceImage.image();
     if (!styleImage)
         return false;
 
-    if (!styleImage->isLoadedForRenderer(&m_renderer))
-        return true; // Never paint a nine-piece image incrementally, but don't paint the fallback borders either.
+    // // Never paint a nine-piece image incrementally, but don't paint the fallback borders either.
+    if (!styleImage->isLoaded())
+        return true;
 
-    if (!styleImage->canRenderForRenderer(&m_renderer, style.usedZoom()))
+    if (!styleImage->canRender())
         return false;
 
     CheckedPtr modelObject = dynamicDowncast<RenderBoxModelObject>(m_renderer);
@@ -501,6 +536,9 @@ bool BorderPainter::paintNinePieceImage(const LayoutRect& rect, const RenderStyl
     LayoutRect rectWithOutsets = rect;
     rectWithOutsets.expand(style.imageOutsets(ninePieceImage));
     LayoutRect destination = LayoutRect(snapRectToDevicePixels(rectWithOutsets, deviceScaleFactor));
+
+
+    auto concreteObjectSize = ObjectSizeNegotiation::defaultSizingAlgorithm(
 
     auto source = modelObject->calculateImageIntrinsicDimensions(styleImage, destination.size(), RenderBoxModelObject::ScaleByUsedZoom::No);
 

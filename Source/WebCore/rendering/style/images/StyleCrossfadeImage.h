@@ -48,19 +48,15 @@ public:
     bool equals(const StyleCrossfadeImage&) const;
     bool equalInputImages(const StyleCrossfadeImage&) const;
 
-    static constexpr bool isFixedSize = true;
-
 private:
     explicit StyleCrossfadeImage(RefPtr<StyleImage>&&, RefPtr<StyleImage>&&, double, bool);
 
     Ref<CSSValue> computedStyleValue(const RenderStyle&) const final;
     bool isPending() const final;
     void load(CachedResourceLoader&, const ResourceLoaderOptions&) final;
-
-    RefPtr<Image> imageForRenderer(const RenderElement*, const FloatSize&, bool isForFirstLine) const final;
+    NaturalDimensions naturalDimensionsForContext(const StyleImageSizingContext&) const final;
+    RefPtr<Image> imageForContext(const StyleImageSizingContext&) const final;
     bool knownToBeOpaque() const final;
-    LayoutSize fixedSizeForRenderer(const RenderElement&) const final;
-    NaturalDimensions naturalDimensions() const final;
 
     // MARK: - StyleImageClient
     void styleImageChanged(StyleImage&, const IntRect*) final;
@@ -72,7 +68,6 @@ private:
     VisibleInViewportState styleImageFrameAvailable(StyleImage&, ImageAnimatingState, const IntRect*) final;
     VisibleInViewportState styleImageVisibleInViewport(StyleImage&, const Document&) const final;
     HashSet<Element*> styleImageReferencingElements(StyleImage&) const final;
-    ImageOrientation styleImageOrientation(StyleImage&) const final;
     std::optional<LayoutSize> styleImageOverrideImageSize(StyleImage&) const final;
 
     RefPtr<StyleImage> m_from;

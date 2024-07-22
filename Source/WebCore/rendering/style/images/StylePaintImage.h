@@ -41,8 +41,6 @@ public:
     }
     virtual ~StylePaintImage();
 
-    static constexpr bool isFixedSize = false;
-
 private:
     explicit StylePaintImage(String&&, Ref<CSSVariableData>&&);
 
@@ -51,9 +49,9 @@ private:
     Ref<CSSValue> computedStyleValue(const RenderStyle&) const final;
     bool isPending() const final;
     void load(CachedResourceLoader&, const ResourceLoaderOptions&) final;
-    RefPtr<Image> imageForRenderer(const RenderElement*, const FloatSize&, bool isForFirstLine) const final;
+    NaturalDimensions naturalDimensionsForContext(const StyleImageSizingContext&) const final;
+    RefPtr<Image> imageForContext(const StyleImageSizingContext&) const final;
     bool knownToBeOpaque() const final;
-    LayoutSize fixedSizeForRenderer(const RenderElement&) const final;
 
     String m_name;
     Ref<CSSVariableData> m_arguments;

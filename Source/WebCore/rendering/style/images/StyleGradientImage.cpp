@@ -101,7 +101,7 @@ static std::optional<float> resolveColorStopPosition(const StyleGradientImageAng
 }
 
 StyleGradientImage::StyleGradientImage(Data&& data, CSSGradientColorInterpolationMethod colorInterpolationMethod)
-    : StyleGeneratedImage { Type::GradientImage, StyleGradientImage::isFixedSize }
+    : StyleGeneratedImage { Type::GradientImage }
     , m_data { WTFMove(data) }
     , m_colorInterpolationMethod { colorInterpolationMethod }
     , m_knownCacheableBarringFilter { stopsAreCacheable(m_data) }
@@ -421,17 +421,21 @@ void StyleGradientImage::load(CachedResourceLoader&, const ResourceLoaderOptions
 {
 }
 
-RefPtr<Image> StyleGradientImage::imageForContext(const StyleImageContext& context, const FloatSize& size, bool isForFirstLine) const
+NaturalDimensions StyleGradientImage::naturalDimensionsForContext(const StyleImageSizingContext&) const
 {
+    return NaturalDimensions::none();
+}
+
+RefPtr<Image> StyleGradientImage::imageForContext(const StyleImageSizingContext& context) const
+{
+    auto size = context.negotiateObjectSize(*this);
     if (size.isEmpty())
         return nullptr;
 
-    auto& style = context.style; // isForFirstLine ? renderer->firstLineStyle() : renderer->style();
+    auto& style = context.style(); // isForFirstLine ? renderer->firstLineStyle() : renderer->style();
 
     bool cacheable = m_knownCacheableBarringFilter && !style.hasAppleColorFilter();
     if (cacheable) {
-        //        if (!clients().contains(const_cast<RenderElement&>(*renderer)))
-        //            return nullptr;
         if (auto* result = const_cast<StyleGradientImage&>(*this).cachedImageForSize(size))
             return result;
     }
@@ -448,9 +452,9 @@ RefPtr<Image> StyleGradientImage::imageForContext(const StyleImageContext& conte
     return newImage;
 }
 
-template<typename Stops> static bool knownToBeOpaqueForContext(const StyleImageContext& context, const Stops& stops)
+template<typename Stops> static bool knownToBeOpaqueForContext(const StyleImageSizingContext& context, const Stops& stops)
 {
-    auto& style = context.style;
+    auto& style = context.style();
     bool hasColorFilter = style.hasAppleColorFilter();
     for (auto& stop : stops) {
         if (!resolveColorStopColor(stop.color, style, hasColorFilter).isOpaque())
@@ -459,19 +463,9 @@ template<typename Stops> static bool knownToBeOpaqueForContext(const StyleImageC
     return true;
 }
 
-bool StyleGradientImage::knownToBeOpaqueForContext(const StyleImageContext& context) const
+bool StyleGradientImage::knownToBeOpaqueForContext(const StyleImageSizingContext& context) const
 {
     return WTF::switchOn(m_data, [&](auto& data) { return WebCore::knownToBeOpaqueForContext(context, data.stops); } );
-}
-
-LayoutSize StyleGradientImage::fixedSizeForContext(const StyleImageContext&) const
-{
-    return { };
-}
-
-NaturalDimensions StyleGradientImage::naturalDimensions() const
-{
-    return NaturalDimensions::none();
 }
 
 // MARK: Gradient creation.

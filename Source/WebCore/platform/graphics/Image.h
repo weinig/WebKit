@@ -36,6 +36,7 @@
 #include "ImagePaintingOptions.h"
 #include "ImageTypes.h"
 #include "NativeImage.h"
+#include "NaturalDimensions.h"
 #include "Timer.h"
 #include <wtf/RefCounted.h>
 #include <wtf/RefPtr.h>
@@ -93,11 +94,14 @@ public:
     WEBCORE_EXPORT static Image& nullImage();
     bool isNull() const { return size().isEmpty(); }
 
+
     virtual void setContainerSize(const FloatSize&) { }
     virtual bool usesContainerSize() const { return false; }
     virtual bool hasRelativeWidth() const { return false; }
     virtual bool hasRelativeHeight() const { return false; }
     virtual void computeIntrinsicDimensions(Length& intrinsicWidth, Length& intrinsicHeight, FloatSize& intrinsicRatio);
+
+    virtual NaturalDimensions naturalDimensions(ImageOrientation = ImageOrientation::Orientation::FromImage) const = 0;
 
     virtual FloatSize size(ImageOrientation = ImageOrientation::Orientation::FromImage) const = 0;
     virtual FloatSize sourceSize(ImageOrientation orientation = ImageOrientation::Orientation::FromImage) const { return size(orientation); }

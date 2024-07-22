@@ -68,7 +68,9 @@ private:
 
     void destroyDecodedData(bool destroyAll = true) override;
 
-    void computeIntrinsicDimensions(Length& intrinsicWidth, Length& intrinsicHeight, FloatSize& intrinsicRatio) override;
+    // void computeIntrinsicDimensions(Length& intrinsicWidth, Length& intrinsicHeight, FloatSize& intrinsicRatio) override;
+
+    NaturalDimensions naturalDimensions(ImageOrientation = ImageOrientation::Orientation::FromImage) const override;
     FloatSize size(ImageOrientation = ImageOrientation::Orientation::FromImage) const override;
 
     bool shouldDrawFromCachedSubimage(GraphicsContext&) const override;

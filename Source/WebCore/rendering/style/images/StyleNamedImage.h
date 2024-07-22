@@ -42,18 +42,15 @@ public:
     bool operator==(const StyleImage&) const final;
     bool equals(const StyleNamedImage&) const;
 
-    static constexpr bool isFixedSize = false;
-
 private:
     explicit StyleNamedImage(String&&);
 
     Ref<CSSValue> computedStyleValue(const RenderStyle&) const final;
     bool isPending() const final;
     void load(CachedResourceLoader&, const ResourceLoaderOptions&) final;
-    RefPtr<Image> imageForRenderer(const RenderElement*, const FloatSize&, bool isForFirstLine) const final;
+    NaturalDimensions naturalDimensionsForContext(const StyleImageSizingContext&) const final;
+    RefPtr<Image> imageForContext(const StyleImageSizingContext&) const final;
     bool knownToBeOpaque() const final;
-
-    LayoutSize fixedSizeForRenderer(const RenderElement&) const final;
 
     String m_name;
 };

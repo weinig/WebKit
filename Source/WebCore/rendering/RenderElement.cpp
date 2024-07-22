@@ -2547,11 +2547,6 @@ VisibleInViewportState RenderElement::styleImageVisibleInViewport(StyleImage&, c
     return isVisibleInViewport() ? VisibleInViewportState::Yes : VisibleInViewportState::No;
 }
 
-ImageOrientation RenderElement::styleImageOrientation(StyleImage&) const
-{
-    return imageOrientation();
-}
-
 HashSet<Element*> RenderElement::styleImageReferencingElements(StyleImage&) const
 {
     if (auto* element = this->element())

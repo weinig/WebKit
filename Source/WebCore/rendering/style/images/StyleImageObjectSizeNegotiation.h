@@ -25,25 +25,8 @@
 #pragma once
 
 #include "LayoutSize.h"
+#include "NaturalDimensions.h"
 #include <optional>
-
-namespace WebCore {
-
-struct NaturalDimensions {
-    std::optional<LayoutUnit> width;
-    std::optional<LayoutUnit> height;
-    std::optional<LayoutSize> aspectRatio;
-
-    static NaturalDimensions none() { return { std::nullopt, std::nullopt, std::nullopt }; }
-    static NaturalDimensions fixed(LayoutSize size) { return { size.width(), size.height(), { size.width(), size.height() } }; }
-    static NaturalDimensions fixed(FloatSize size) { return fixed(LayoutSize(size)); }
-    static NaturalDimensions fixed(IntSize size) { return fixed(LayoutSize(size)); }
-    static NaturalDimensions fixed(LayoutUnit width, LayoutUnit height) { return fixed(LayoutSize(width, height)); }
-
-    bool operator==(const NaturalDimensions&) const = default;
-};
-
-} // namespace WebCore
 
 // https://drafts.csswg.org/css-images-3/#object-negotiation
 

@@ -48,6 +48,62 @@ WTF_MAKE_ISO_ALLOCATED_IMPL(RenderListMarker);
 
 constexpr int cMarkerPadding = 7;
 
+class RenderListMarkerSizingContext final : public StyleImageSizingContext {
+public:
+    explicit RenderListMarkerSizingContext(RenderListMarker& renderer)
+        : m_renderer { renderer }
+    {
+    }
+
+    virtual LayoutSize negotiateObjectSize(StyleImage& image) final
+    {
+        // https://drafts.csswg.org/css-lists/#image-markers
+        //
+        // The marker image is sized using the default sizing algorithm with no specified
+        // size and a default object size of 1em square.
+
+        auto naturalDimensions = image.naturalDimensionsForContext(*this);
+        auto specifiedSize = ObjectSizeNegotiation::SpecifiedSize { std::nullopt, std::nullopt };
+
+        auto em = m_renderer.style().fontDescription().computedSize();
+        auto defaultObjectSize = LayoutSize { em, em };
+
+        return ObjectSizeNegotiation::defaultSizingAlgorithm(naturalDimensions, specifiedSize, defaultObjectSize);
+    }
+
+    virtual Document& document() final { return m_renderer.document(); }
+    virtual TreeScope& treeScopeForSVGReferences() final { return m_renderer.treeScopeForSVGReferences(); }
+    virtual const RenderStyle& style() final { return m_renderer.style(); }
+    virtual const RenderElement* renderer() final { return &m_renderer; }
+
+private:
+    RenderListMarker& m_renderer;
+};
+
+class RenderListMarkerPrecomputedSizingContext final : StyleImageSizingContext {
+public:
+    explicit RenderListMarkerPrecomputedSizingContext(RenderListMarker& renderer, LayoutSize size)
+        : m_renderer { renderer }
+        , m_size { size }
+    {
+    }
+
+    virtual LayoutSize negotiateObjectSize(StyleImage& image) final
+    {
+        ASSERT_UNUSED(image, RenderListMarkerSizingContext(m_renderer).negotiateObjectSize(image));
+        return m_size;
+    }
+
+    virtual Document& document() final { return m_renderer.document(); }
+    virtual TreeScope& treeScopeForSVGReferences() final { return m_renderer.treeScopeForSVGReferences(); }
+    virtual const RenderStyle& style() final { return m_renderer.style(); }
+    virtual const RenderElement* renderer() final { return &m_renderer; }
+
+private:
+    RenderListMarker& m_renderer;
+    LayoutSize m_size;
+};
+
 RenderListMarker::RenderListMarker(RenderListItem& listItem, RenderStyle&& style)
     : RenderBox(Type::ListMarker, listItem.document(), WTFMove(style))
     , m_listItem(listItem)
@@ -168,8 +224,9 @@ void RenderListMarker::paint(PaintInfo& paintInfo, const LayoutPoint& paintOffse
     GraphicsContext& context = paintInfo.context();
 
     if (isImage()) {
-        if (RefPtr<Image> markerImage = m_image->imageForRenderer(this, markerRect.size()))
+        if (RefPtr markerImage = m_image->imageForContext(RenderListMarkerPrecomputedSizingContext { *this, markerRect.size() }))
             context.drawImage(*markerImage, markerRect);
+
         if (selectionState() != HighlightState::None) {
             LayoutRect selRect = localSelectionRect();
             selRect.moveBy(boxOrigin);
@@ -246,7 +303,7 @@ void RenderListMarker::layout()
 
     if (isImage()) {
         updateMarginsAndContent();
-        auto imageSize = m_image->imageSizeForRenderer(this, style().usedZoom());
+        auto imageSize = RenderListMarkerSizingContext { *this }.negotiateImageSize(*m_image);
         setWidth(imageSize.width());
         setHeight(imageSize.height());
     } else {
@@ -271,7 +328,7 @@ void RenderListMarker::imageChanged(WrappedImagePtr o, const IntRect* rect)
 {
     if (parent()) {
         if (m_image && o == m_image->data()) {
-            auto imageSize = m_image->imageSizeForRenderer(this, style().usedZoom());
+            auto imageSize = m_image->imageSizeFoContext(RenderListMarkerSizingContext { *this });
             if (width() != imageSize.width() || height() != imageSize.height() || m_image->errorOccurred())
                 setNeedsLayoutAndPrefWidthsRecalc();
             else
@@ -335,7 +392,7 @@ void RenderListMarker::computePreferredLogicalWidths()
     updateContent();
 
     if (isImage()) {
-        auto imageSize = m_image->imageSizeForRenderer(this, style().usedZoom());
+        auto imageSize = RenderListMarkerSizingContext(*this).negotiateObjectSize(*m_image);
         m_minPreferredLogicalWidth = m_maxPreferredLogicalWidth = style().isHorizontalWritingMode() ? imageSize.width() : imageSize.height();
         setPreferredLogicalWidthsDirty(false);
         updateMargins();
@@ -348,7 +405,7 @@ void RenderListMarker::computePreferredLogicalWidths()
     if (widthUsesMetricsOfPrimaryFont())
         logicalWidth = (font.metricsOfPrimaryFont().intAscent() * 2 / 3 + 1) / 2 + 2;
     else if (!m_textWithSuffix.isEmpty())
-            logicalWidth = font.width(textRun());
+        logicalWidth = font.width(textRun());
 
     m_minPreferredLogicalWidth = logicalWidth;
     m_maxPreferredLogicalWidth = logicalWidth;
@@ -422,7 +479,7 @@ const RenderListItem* RenderListMarker::listItem() const
 FloatRect RenderListMarker::relativeMarkerRect()
 {
     if (isImage()) {
-        auto imageSize = m_image->imageSizeForRenderer(this, style().usedZoom());
+        auto imageSize = RenderListMarkerSizingContext { *this }.negotiateImageSize(*m_image);
         return FloatRect(0, 0, imageSize.width(), imageSize.height());
     }
 

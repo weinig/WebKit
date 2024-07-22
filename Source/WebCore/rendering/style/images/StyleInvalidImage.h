@@ -40,17 +40,15 @@ public:
     bool operator==(const StyleImage&) const final { return false; }
     bool equals(const StyleInvalidImage&) const { return false; }
 
-    static constexpr bool isFixedSize = true;
-
 private:
     StyleInvalidImage();
 
     bool isPending() const final { return false; }
     void load(CachedResourceLoader&, const ResourceLoaderOptions&) final;
     bool knownToBeOpaque() const final { return false; }
-    bool canRenderForRenderer(const RenderElement*, float) const final { return false; }
-    RefPtr<Image> imageForRenderer(const RenderElement*, const FloatSize&, bool isForFirstLine) const final;
-    LayoutSize fixedSizeForRenderer(const RenderElement&) const final { return { }; }
+    bool canRender() const final { return false; }
+    NaturalDimensions naturalDimensionsForContext(const StyleImageSizingContext&) const final;
+    RefPtr<Image> imageForContext(const StyleImageSizingContext&) const final;
     Ref<CSSValue> computedStyleValue(const RenderStyle&) const final;
 };
 

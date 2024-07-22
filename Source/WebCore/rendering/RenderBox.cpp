@@ -2035,7 +2035,7 @@ void RenderBox::imageChanged(WrappedImagePtr image, const IntRect*)
     
     if (auto* styleImage = findLayerUsedImage(image, style().backgroundLayers())) {
         layer()->contentChanged(BackgroundImageChanged);
-        incrementVisuallyNonEmptyPixelCountIfNeeded(flooredIntSize(styleImage->imageSizeForRenderer(this, style().usedZoom())));
+        incrementVisuallyNonEmptyPixelCountIfNeeded(flooredIntSize(BackgroundImageSizingContext(*this).negotiateObjectSize(*styleImage)));
     }
 }
 

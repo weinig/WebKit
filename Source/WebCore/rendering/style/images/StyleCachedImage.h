@@ -55,11 +55,14 @@ public:
     bool hasImage() const final;
     Image* image() const final;
 
-    RefPtr<Image> imageForRenderer(const RenderElement*, const FloatSize& = { }, bool isForFirstLine = false) const final;
-    LayoutSize imageSizeForRenderer(const RenderElement*, float multiplier, StyleImageSizeType = StyleImageSizeType::Used) const final;
+    RefPtr<Image> imageForContext(const StyleImageSizingContext&) const final;
+    NaturalDimensions naturalDimensionsForContext(const StyleImageSizingContext&) const final;
+    // LayoutSize imageSizeForContext(const StyleImageSizingContext&) const final;
+
     float imageScaleFactor() const final;
 
-    LayoutSize unclampedImageSizeForRenderer(const RenderElement*, float multiplier, StyleImageSizeType = StyleImageSizeType::Used) const;
+    // FIXME: Figure out what this is for?
+    LayoutSize unclampedImageSizeForContext(const StyleImageSizingContext&) const;
 
 private:
     StyleCachedImage(Ref<CSSImageValue>&&, float);
@@ -104,11 +107,16 @@ private:
     VisibleInViewportState imageVisibleInViewport(CachedImage&, const Document&) const final;
 
     // MARK: - Internal
-    LegacyRenderSVGResourceContainer* uncheckedRenderSVGResource(TreeScope&, const AtomString& fragment) const;
-    LegacyRenderSVGResourceContainer* uncheckedRenderSVGResource(const RenderElement*) const;
-    LegacyRenderSVGResourceContainer* legacyRenderSVGResource(const RenderElement*) const;
-    RenderSVGResourceContainer* renderSVGResource(const RenderElement*) const;
-    bool isRenderSVGResource(const RenderElement*) const;
+    struct SVGResourceDescriptor {
+        Ref<SVGSVGElement> root;
+        AtomString id;
+    };
+    std::optional<SVGResourceDescriptor> descriptorForSVGResource() const;
+    LegacyRenderSVGResourceContainer* legacyRenderSVGResource() const;
+    LegacyRenderSVGResourceContainer* legacyRenderSVGResource(const SVGResourceDescriptor&) const;
+    RenderSVGResourceContainer* renderSVGResource() const;
+    RenderSVGResourceContainer* renderSVGResource(const SVGResourceDescriptor&) const;
+    bool isRenderSVGResource() const;
 
     struct ContainerContext {
         LayoutSize containerSize;

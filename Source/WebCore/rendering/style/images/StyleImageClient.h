@@ -78,12 +78,6 @@ public:
 
     // Called to determine the set of Elements referencing this StyleImage.
     virtual HashSet<Element*> styleImageReferencingElements(StyleImage&) const = 0;
-
-    // Called to determine what orientation to draw the image in.
-    virtual ImageOrientation styleImageOrientation(StyleImage&) const { return ImageOrientation::Orientation::FromImage; }
-
-    // Called to determine an override size from the client.
-    virtual std::optional<LayoutSize> styleImageOverrideImageSize(StyleImage&) const { return std::nullopt; }
 };
 
 } // namespace WebCore

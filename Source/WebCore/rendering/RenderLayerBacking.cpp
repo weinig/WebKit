@@ -3144,7 +3144,7 @@ bool RenderLayerBacking::isDirectlyCompositedImage() const
     if (!cachedImage || !cachedImage->hasImage())
         return false;
 
-    RefPtr image = dynamicDowncast<BitmapImage>(styleImage->imageForRenderer(imageRenderer.get()));
+    RefPtr image = dynamicDowncast<BitmapImage>(cachedImage->rawImage());
     if (!image)
         return false;
 
@@ -3184,15 +3184,11 @@ bool RenderLayerBacking::isUnscaledBitmapOnly() const
         return false;
 
     if (CheckedPtr imageRenderer = dynamicDowncast<RenderImage>(renderer())) {
-        auto styleImage = imageRenderer->styleImage();
-        if (!styleImage)
-            return false;
-
-        auto* cachedImage = styleImage->cachedImage();
+        auto cachedImage = imageRenderer->cachedImage();
         if (!cachedImage || !cachedImage->hasImage())
             return false;
 
-        RefPtr image = dynamicDowncast<BitmapImage>(styleImage->imageForRenderer(imageRenderer.get()));
+        RefPtr image = dynamicDowncast<BitmapImage>(cachedImage->rawImage());
         if (!image)
             return false;
 
@@ -3258,20 +3254,12 @@ void RenderLayerBacking::updateImageContents(PaintedContentsInfo& contentsInfo)
 {
     auto& imageRenderer = downcast<RenderImage>(renderer());
 
-    auto styleImage = imageRenderer.styleImage();
-    if (!styleImage)
+    auto cachedImage = imageRenderer.cachedImage();
+    if (!cachedImage && cachedImage->isLoaded())
         return;
 
-    auto* cachedImage = styleImage->cachedImage();
-    if (!cachedImage)
-        return;
-
-    RefPtr image = styleImage->imageForRenderer(&imageRenderer);
+    RefPtr image = cachedImage->rawImage();
     if (!image)
-        return;
-
-    // We have to wait until the image is fully loaded before setting it on the layer.
-    if (!cachedImage->isLoaded())
         return;
 
     updateContentsRects();

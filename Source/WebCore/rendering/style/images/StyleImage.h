@@ -82,6 +82,14 @@ public:
 
     virtual Document& document() = 0;
     virtual TreeScope& treeScopeForSVGReferences() = 0;
+
+    virtual const RenderStyle& style() = 0;
+    virtual const RenderElement* renderer() = 0;
+
+    // Called to determine what orientation to draw the image in.
+    // virtual ImageOrientation orientation(StyleImage&) const { return ImageOrientation::Orientation::FromImage; }
+    // Called to determine an override size from the client.
+    // virtual std::optional<LayoutSize> overrideImageSize(StyleImage&) const { return std::nullopt; }
 };
 
 enum class StyleImageSizeType : bool { Used, Intrinsic };
@@ -114,7 +122,7 @@ public:
     // Loading
     virtual bool isPending() const = 0;
     virtual void load(CachedResourceLoader&, const ResourceLoaderOptions&) = 0;
-    virtual bool isLoadedForRenderer(const RenderElement*) const { return true; }
+    virtual bool isLoaded() const { return true; }
     virtual bool errorOccurred() const { return false; }
     virtual bool usesDataProtocol() const { return false; }
     virtual URL reresolvedURL(const Document&) const { return { }; }
@@ -123,28 +131,26 @@ public:
     virtual StyleImage* selectedImage() { return this; }
     virtual const StyleImage* selectedImage() const { return this; }
 
-    // Natural Dimensions
-    virtual NaturalDimensions naturalDimensions() const = 0;
+    // Size
 
     // Size
-    virtual bool usesImageContainerSize() const = 0;
-    virtual bool imageHasRelativeWidth() const = 0;
-    virtual bool imageHasRelativeHeight() const = 0;
-    virtual bool imageHasNaturalDimensions() const { return true; }
+    //    virtual bool usesImageContainerSize() const = 0;
+    //    virtual bool imageHasRelativeWidth() const = 0;
+    //    virtual bool imageHasRelativeHeight() const = 0;
+    //    virtual bool imageHasNaturalDimensions() const { return true; }
 
     // Scale
     virtual float imageScaleFactor() const { return 1; }
 
     // Rendering
+    virtual NaturalDimensions naturalDimensionsForContext(const StyleImageSizingContext&) const = 0;
+    // virtual LayoutSize imageSizeForContext(const StyleImageSizingContext&) const = 0;
+    virtual RefPtr<Image> imageForContext(const StyleImageSizingContext&) const = 0;
 
-    virtual LayoutSize imageSizeForContext(StyleImageContext&, float multiplier, StyleImageSizeType = StyleImageSizeType::Used) const = 0;
-    virtual LayoutSize imageSizeForRenderer(const RenderElement*, float multiplier, StyleImageSizeType = StyleImageSizeType::Used) const = 0;
-    virtual RefPtr<Image> imageForContext(StyleImageContext&, const FloatSize& = { }, bool isForFirstLine = false) const = 0;
-    virtual RefPtr<Image> imageForRenderer(const RenderElement*, const FloatSize& = { }, bool isForFirstLine = false) const = 0;
+    // virtual void computeIntrinsicDimensionsForRenderer(const RenderElement*, Length& intrinsicWidth, Length& intrinsicHeight, FloatSize& intrinsicRatio) = 0;
+    // virtual void setContainerContextForRenderer(const RenderElement&, const LayoutSize&, float, const URL& = { }) = 0;
 
-    virtual void computeIntrinsicDimensionsForRenderer(const RenderElement*, Length& intrinsicWidth, Length& intrinsicHeight, FloatSize& intrinsicRatio) = 0;
-    virtual bool canRenderForRenderer(const RenderElement*, float) const { return true; }
-    virtual void setContainerContextForRenderer(const RenderElement&, const LayoutSize&, float, const URL& = { }) = 0;
+    virtual bool canRender() const { return true; }
     virtual bool knownToBeOpaque() const = 0;
 
     // Animation

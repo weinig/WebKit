@@ -214,6 +214,50 @@ const int maximumCursorSize = 128;
 const double minimumCursorScale = 0.001;
 #endif
 
+class CursorImageSizingContext final : StyleImageSizingContext {
+public:
+    explicit CursorImageSizingContext(RenderObject& renderer)
+        : m_renderer { renderer }
+    {
+    }
+
+    virtual LayoutSize negotiateObjectSize(StyleImage& image) final
+    {
+        // https://drafts.csswg.org/css-ui-4/#cursor
+        //
+        // The default object size for cursor images is a UA-defined size
+        // that should be based on the size of a typical cursor on the UA’s
+        // operating system.
+        //
+        // The concrete object size is determined using the default sizing
+        // algorithm. If an operating system is incapable of rendering a
+        // cursor above a given size, cursors larger than that size must be
+        // shrunk to within the OS-supported size bounds, while maintaining
+        // the cursor image’s natural aspect ratio, if any.
+
+        auto naturalDimensions = image.naturalDimensionsForContext(*this);
+        auto specifiedSize = ObjectSizeNegotiation::SpecifiedSize { std::nullopt, std::nullopt };
+
+        // FIXME: maximumCursorSize is probably not the same as "typical cursor".
+        auto defaultObjectSize = LayoutSize { maximumCursorSize, maximumCursorSize };
+
+        auto concreteObjectSize = ObjectSizeNegotiation::defaultSizingAlgorithm(naturalDimensions, specifiedSize, defaultObjectSize);
+
+        if (concreteObjectSize.width() > maximumCursorSize || concreteObjectSize.height() > maximumCursorSize)
+            return ObjectSizeNegotiation::resolveContainConstraint(naturalDimensions, { maximumCursorSize, maximumCursorSize });
+
+        return concreteObjectSize;
+    }
+
+    virtual Document& document() final { return m_renderer.document(); }
+    virtual TreeScope& treeScopeForSVGReferences() final { return m_renderer.treeScopeForSVGReferences(); }
+    virtual const RenderStyle& style() final { return m_renderer.style(); }
+    virtual const RenderElement* renderer() final { return nullptr; }
+
+private:
+    RenderObject& m_renderer;
+};
+
 class MaximumDurationTracker {
 public:
     explicit MaximumDurationTracker(double *maxDuration)
@@ -1587,36 +1631,35 @@ std::optional<Cursor> EventHandler::selectCursor(const HitTestResult& result, bo
             StyleImage* styleImage = (*cursors)[i].image();
             if (!styleImage)
                 continue;
-            CachedImage* cachedImage = styleImage->cachedImage();
-            if (!cachedImage)
-                continue;
+
             float scale = styleImage->imageScaleFactor();
-            // Get hotspot and convert from logical pixels to physical pixels.
-            IntPoint hotSpot = (*cursors)[i].hotSpot();
-
-            // FIXME: Cursors should be passing in their own resolver.
-
-            // FIXME: MAKE WORK.
-            FloatSize size = { }; // styleImage->imageForRenderer(renderer)->size();
-            if (cachedImage->errorOccurred())
+            auto image = styleImage->imageForContext(CursorImageSizingContext { *renderer });
+            if (!image)
                 continue;
+
+            auto imageSize = image->size();
+
             // Limit the size of cursors (in UI pixels) so that they cannot be
             // used to cover UI elements in chrome.
-            size.scale(1 / scale);
-            if (size.width() > maximumCursorSize || size.height() > maximumCursorSize)
+            imageSize.scale(1 / scale);
+            if (imageSize.width() > maximumCursorSize || imageSize.height() > maximumCursorSize)
                 continue;
 
-            // FIXME: Cursors should be passing in their own resolver.
-
-            // FIXME: MAKE WORK.
-            RefPtr<Image> image = nullptr; // styleImage->imageForRenderer(renderer);
 #if ENABLE(MOUSE_CURSOR_SCALE)
             // Ensure no overflow possible in calculations above.
             if (scale < minimumCursorScale)
                 continue;
+
+            // Get hotspot and convert from logical pixels to physical pixels.
+            IntPoint hotSpot = (*cursors)[i].hotSpot();
+
             return Cursor(image.get(), hotSpot, scale);
 #else
             ASSERT(scale == 1);
+
+            // Get hotspot and convert from logical pixels to physical pixels.
+            IntPoint hotSpot = (*cursors)[i].hotSpot();
+
             return Cursor(image.get(), hotSpot);
 #endif // ENABLE(MOUSE_CURSOR_SCALE)
         }

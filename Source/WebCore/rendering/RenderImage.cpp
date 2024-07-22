@@ -965,4 +965,13 @@ CheckedRef<RenderImageResource> RenderImage::checkedImageResource() const
     return *m_imageResource;
 }
 
+RefPtr<Image> RenderImage::image(OptionSet<RenderImageOptions> /*options*/) const
+{
+    // if (options.contains(RenderImageOptions::IncludeBrokenImage) {
+    // }
+
+
+    return m_imageResource->image(RenderImageSizingContext { *this });
+}
+
 } // namespace WebCore

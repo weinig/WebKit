@@ -120,14 +120,14 @@ void RenderImageResource::setContainerContext(const IntSize& imageContainerSize,
     m_styleImage->setContainerContextForRenderer(*m_renderer, imageContainerSize, m_renderer->style().usedZoom(), url);
 }
 
-LayoutSize RenderImageResource::imageSize(float multiplier, StyleImageSizeType type) const
-{
-    if (!m_styleImage)
-        return { };
-    auto size = LayoutSize(m_styleImage->imageSizeForRenderer(m_renderer.get(), multiplier, type));
-    if (auto* renderImage = dynamicDowncast<RenderImage>(m_renderer.get()))
-        size.scale(renderImage->imageDevicePixelRatio());
-    return size;
-}
+//LayoutSize RenderImageResource::imageSize(float multiplier, StyleImageSizeType type) const
+//{
+//    if (!m_styleImage)
+//        return { };
+//    auto size = LayoutSize(m_styleImage->imageSizeForRenderer(m_renderer.get(), multiplier, type));
+//    if (auto* renderImage = dynamicDowncast<RenderImage>(m_renderer.get()))
+//        size.scale(renderImage->imageDevicePixelRatio());
+//    return size;
+//}
 
 } // namespace WebCore

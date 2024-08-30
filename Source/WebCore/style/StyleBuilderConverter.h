@@ -51,6 +51,7 @@
 #include "CSSRayValue.h"
 #include "CSSReflectValue.h"
 #include "CSSSubgridValue.h"
+#include "CSSTimingFunctionValue.h"
 #include "CSSValuePair.h"
 #include "CalculationValue.h"
 #include "FontPalette.h"
@@ -225,6 +226,8 @@ public:
     static Vector<ViewTimelineInsets> convertViewTimelineInset(BuilderState&, const CSSValue&);
 
     static Vector<AtomString> convertAnchorName(BuilderState&, const CSSValue&);
+
+    static RefPtr<TimingFunction> convertTimingFunction(BuilderState&, const CSSValue&);
 
 private:
     friend class BuilderCustom;
@@ -2231,6 +2234,11 @@ inline Vector<AtomString> BuilderConverter::convertAnchorName(BuilderState&, con
     return WTF::map(*list, [&](auto& item) {
         return AtomString { downcast<CSSPrimitiveValue>(item).stringValue() };
     });
+}
+
+inline RefPtr<TimingFunction> BuilderConverter::convertTimingFunction(BuilderState&, const CSSValue& value)
+{
+    return createTimingFunction(value);
 }
 
 } // namespace Style

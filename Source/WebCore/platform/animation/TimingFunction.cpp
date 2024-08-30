@@ -26,11 +26,6 @@
 #include "config.h"
 #include "TimingFunction.h"
 
-#include "CSSParserContext.h"
-#include "CSSPrimitiveValue.h"
-#include "CSSTimingFunctionValue.h"
-#include "CSSValueKeywords.h"
-#include "MutableStyleProperties.h"
 #include "SpringSolver.h"
 #include "UnitBezier.h"
 #include <wtf/text/MakeString.h>
@@ -172,52 +167,6 @@ double TimingFunction::transformProgress(double progress, double duration, Befor
 
     ASSERT_NOT_REACHED();
     return 0;
-}
-
-ExceptionOr<RefPtr<TimingFunction>> TimingFunction::createFromCSSText(const String& cssText)
-{
-    auto properties = MutableStyleProperties::create();
-    properties->parseDeclaration(makeString("animation-timing-function:"_s, cssText), CSSParserContext(HTMLStandardMode));
-    if (auto value = properties->getPropertyCSSValue(CSSPropertyAnimationTimingFunction)) {
-        if (auto function = createFromCSSValue(*value))
-            return function;
-    }
-    return Exception { ExceptionCode::TypeError };
-}
-
-RefPtr<TimingFunction> TimingFunction::createFromCSSValue(const CSSValue& value)
-{
-    if (is<CSSPrimitiveValue>(value)) {
-        switch (value.valueID()) {
-        case CSSValueLinear:
-            return LinearTimingFunction::create();
-        case CSSValueEase:
-            return CubicBezierTimingFunction::create();
-        case CSSValueEaseIn:
-            return CubicBezierTimingFunction::create(CubicBezierTimingFunction::TimingFunctionPreset::EaseIn);
-        case CSSValueEaseOut:
-            return CubicBezierTimingFunction::create(CubicBezierTimingFunction::TimingFunctionPreset::EaseOut);
-        case CSSValueEaseInOut:
-            return CubicBezierTimingFunction::create(CubicBezierTimingFunction::TimingFunctionPreset::EaseInOut);
-        case CSSValueStepStart:
-            return StepsTimingFunction::create(1, StepsTimingFunction::StepPosition::Start);
-        case CSSValueStepEnd:
-            return StepsTimingFunction::create(1, StepsTimingFunction::StepPosition::End);
-        default:
-            return nullptr;
-        }
-    }
-
-    if (auto* linearTimingFunction = dynamicDowncast<CSSLinearTimingFunctionValue>(value))
-        return LinearTimingFunction::create(linearTimingFunction->points());
-    if (auto* cubicTimingFunction = dynamicDowncast<CSSCubicBezierTimingFunctionValue>(value))
-        return CubicBezierTimingFunction::create(CubicBezierTimingFunction::TimingFunctionPreset::Custom, cubicTimingFunction->x1(), cubicTimingFunction->y1(), cubicTimingFunction->x2(), cubicTimingFunction->y2());
-    if (auto* stepsTimingFunction = dynamicDowncast<CSSStepsTimingFunctionValue>(value))
-        return StepsTimingFunction::create(stepsTimingFunction->numberOfSteps(), stepsTimingFunction->stepPosition());
-    if (auto* springTimingFunction = dynamicDowncast<CSSSpringTimingFunctionValue>(value))
-        return SpringTimingFunction::create(springTimingFunction->mass(), springTimingFunction->stiffness(), springTimingFunction->damping(), springTimingFunction->initialVelocity());
-
-    return nullptr;
 }
 
 String TimingFunction::cssText() const

@@ -70,7 +70,7 @@ template<typename F, typename Op> void forAllChildren(const Op& root, const F& f
 
 template<typename F> void forAllChildren(const Child& root, const F& functor)
 {
-    WTF::switchOn(root, [&](const auto& root) { forAllChildren(*root, functor); });
+    calcSwitchOn(root, [&](const auto& root) { forAllChildren(*root, functor); });
 }
 
 // MARK: - forAllChildNodes
@@ -99,7 +99,7 @@ template<typename F, typename Op> void forAllChildNodes(const Op& root, const F&
         }
         void operator()(const ChildOrNone& root)
         {
-            WTF::switchOn(root,
+            calcSwitchOn(root,
                 [&](const Child& root) { functor(root); },
                 [&](const NoneRaw&) { }
             );
@@ -115,7 +115,7 @@ template<typename F, typename Op> void forAllChildNodes(const Op& root, const F&
 
 template<typename F> void forAllChildNodes(const Child& root, const F& functor)
 {
-    WTF::switchOn(root, [&](const auto& root) { forAllChildNodes(*root, functor); });
+    calcSwitchOn(root, [&](const auto& root) { forAllChildNodes(*root, functor); });
 }
 
 } // namespace CSSCalc

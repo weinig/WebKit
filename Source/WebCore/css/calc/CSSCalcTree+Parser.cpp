@@ -452,8 +452,8 @@ static std::optional<TypedChild> consumeClamp(CSSParserTokenRange& tokens, int d
     }
 
     auto computeType = [&] -> std::optional<Type> {
-        bool minIsNone = std::holds_alternative<NoneRaw>(min->child);
-        bool maxIsNone = std::holds_alternative<NoneRaw>(max->child);
+        bool minIsNone = mpark::holds_alternative<NoneRaw>(min->child);
+        bool maxIsNone = mpark::holds_alternative<NoneRaw>(max->child);
 
         if (minIsNone && maxIsNone)
             return val->type;

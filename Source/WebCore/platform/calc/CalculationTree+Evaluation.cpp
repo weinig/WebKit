@@ -33,7 +33,7 @@ namespace WebCore {
 namespace Calculation {
 
 static auto evaluate(const None&, NumericValue percentResolutionLength) -> None;
-static auto evaluate(const ChildOrNone&, NumericValue percentResolutionLength) -> std::variant<NumericValue, None>;
+static auto evaluate(const ChildOrNone&, NumericValue percentResolutionLength) -> mpark::variant<NumericValue, None>;
 static auto evaluate(const std::optional<Child>&, NumericValue percentResolutionLength) -> std::optional<double>;
 static auto evaluate(const Child&, NumericValue percentResolutionLength) -> NumericValue;
 static auto evaluate(const Number&, NumericValue percentResolutionLength) -> NumericValue;
@@ -55,14 +55,14 @@ None evaluate(const None& root, NumericValue)
     return root;
 }
 
-std::variant<NumericValue, None> evaluate(const ChildOrNone& root, NumericValue percentResolutionLength)
+mpark::variant<NumericValue, None> evaluate(const ChildOrNone& root, NumericValue percentResolutionLength)
 {
-    return WTF::switchOn(root, [&](const auto& root) { return std::variant<NumericValue, None> { evaluate(root, percentResolutionLength) }; });
+    return calculationSwitchOn(root, [&](const auto& root) { return mpark::variant<NumericValue, None> { evaluate(root, percentResolutionLength) }; });
 }
 
 NumericValue evaluate(const Child& root, NumericValue percentResolutionLength)
 {
-    return WTF::switchOn(root, [&](const auto& root) { return evaluate(root, percentResolutionLength); });
+    return calculationSwitchOn(root, [&](const auto& root) { return evaluate(root, percentResolutionLength); });
 }
 
 std::optional<double> evaluate(const std::optional<Child>& root, NumericValue percentResolutionLength)

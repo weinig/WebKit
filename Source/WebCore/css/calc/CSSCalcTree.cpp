@@ -191,7 +191,7 @@ Type getType(const Symbol& root)
 
 Type getType(const Child& child)
 {
-    return WTF::switchOn(child, [&](const auto& root) { return getType(root); });
+    return calcSwitchOn(child, [&](const auto& root) { return getType(root); });
 }
 
 std::optional<Type> toType(const Sum& root)
@@ -259,10 +259,10 @@ std::optional<Type> toType(const Max& root)
 std::optional<Type> toType(const Clamp& root)
 {
     auto type = getValidatedTypeFor(root, root.val);
-    if (std::holds_alternative<Child>(root.min))
-        type = mergeTypesFor(root, type, getValidatedTypeFor(root, std::get<Child>(root.min)));
-    if (std::holds_alternative<Child>(root.max))
-        type = mergeTypesFor(root, type, getValidatedTypeFor(root, std::get<Child>(root.max)));
+    if (mpark::holds_alternative<Child>(root.min))
+        type = mergeTypesFor(root, type, getValidatedTypeFor(root, mpark::get<Child>(root.min)));
+    if (mpark::holds_alternative<Child>(root.max))
+        type = mergeTypesFor(root, type, getValidatedTypeFor(root, mpark::get<Child>(root.max)));
     return transformTypeFor(root, type);
 }
 

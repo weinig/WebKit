@@ -29,6 +29,7 @@
 #include <numeric>
 #include <wtf/Forward.h>
 #include <wtf/MathExtras.h>
+#include <wtf/variant/variant.h>
 
 namespace WebCore {
 namespace Calculation {
@@ -229,10 +230,10 @@ template<> struct OperatorExecutor<Clamp> {
         return std::max(min, std::min(val, max));
     }
 
-    template<std::floating_point T> T operator()(std::variant<T, None> min, T val, std::variant<T, None> max)
+    template<std::floating_point T> T operator()(mpark::variant<T, None> min, T val, mpark::variant<T, None> max)
     {
-        bool minIsNone = std::holds_alternative<None>(min);
-        bool maxIsNone = std::holds_alternative<None>(max);
+        bool minIsNone = mpark::holds_alternative<None>(min);
+        bool maxIsNone = mpark::holds_alternative<None>(max);
 
         // - clamp(none, VAL, none) is equivalent to just calc(VAL).
         if (minIsNone && maxIsNone)
@@ -240,13 +241,13 @@ template<> struct OperatorExecutor<Clamp> {
 
         // - clamp(none, VAL, MAX) is equivalent to min(VAL, MAX)
         if (minIsNone)
-            return executeOperation<Min>(val, std::get<T>(max));
+            return executeOperation<Min>(val, mpark::get<T>(max));
 
         // - clamp(MIN, VAL, none) is equivalent to max(MIN, VAL)
         if (maxIsNone)
-            return executeOperation<Max>(std::get<T>(min), val);
+            return executeOperation<Max>(mpark::get<T>(min), val);
 
-        return executeOperation<Clamp>(std::get<T>(min), val, std::get<T>(max));
+        return executeOperation<Clamp>(mpark::get<T>(min), val, mpark::get<T>(max));
     }
 };
 

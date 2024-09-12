@@ -154,12 +154,12 @@ ExceptionOr<Ref<CSSNumericValue>> CSSNumericValue::reifyMathExpression(const CSS
 
 ExceptionOr<Ref<CSSNumericValue>> CSSNumericValue::reifyMathExpression(const CSSCalc::Child& root)
 {
-    return WTF::switchOn(root, [](const auto& child) { return WebCore::reifyMathExpression(child); });
+    return CSSCalc::calcSwitchOn(root, [](const auto& child) { return WebCore::reifyMathExpression(child); });
 }
 
 ExceptionOr<Ref<CSSNumericValue>> CSSNumericValue::reifyMathExpression(const CSSCalc::ChildOrNone& root)
 {
-    return WTF::switchOn(root,
+    return CSSCalc::calcSwitchOn(root,
         [](const CSSCalc::Child& child) -> ExceptionOr<Ref<CSSNumericValue>> { return CSSNumericValue::reifyMathExpression(child); },
         [](const NoneRaw&) -> ExceptionOr<Ref<CSSNumericValue>> { return Exception { ExceptionCode::UnknownError }; }
     );

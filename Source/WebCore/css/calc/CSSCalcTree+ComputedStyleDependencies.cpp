@@ -138,7 +138,7 @@ static void collectComputedStyleDependencies(CSSUnitType unit, ComputedStyleDepe
 
 static void collectComputedStyleDependencies(const Child& root, ComputedStyleDependencies& dependencies)
 {
-    WTF::switchOn(root,
+    calcSwitchOn(root,
         [&](const Number&) {
             // No potential dependencies.
         },

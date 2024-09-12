@@ -203,7 +203,7 @@ static unsigned sortPriority(const Child& child)
 {
     // https://drafts.csswg.org/css-values-4/#sort-a-calculations-children
 
-    return WTF::switchOn(child,
+    return calcSwitchOn(child,
         []<Numeric T>(const T& root) -> unsigned {
             return sortPriority(toCSSUnit(root));
         },
@@ -247,7 +247,7 @@ static double clampValue(double value, ValueRange range)
 
 void serializeMathFunction(StringBuilder& builder, const Child& fn, SerializationState& state)
 {
-    WTF::switchOn(fn, [&builder, &state](const auto& root) { serializeMathFunction(builder, root, state); });
+    calcSwitchOn(fn, [&builder, &state](const auto& root) { serializeMathFunction(builder, root, state); });
 }
 
 template<Numeric Op> void serializeMathFunction(StringBuilder& builder, const Op& fn, SerializationState& state)
@@ -385,12 +385,12 @@ template<typename Op> void serializeMathFunctionArguments(StringBuilder& builder
 
 void serializeCalculationTree(StringBuilder& builder, const Child& root, SerializationState& state)
 {
-    WTF::switchOn(root, [&builder, &state](const auto& root) { serializeCalculationTree(builder, root, state); });
+    calcSwitchOn(root, [&builder, &state](const auto& root) { serializeCalculationTree(builder, root, state); });
 }
 
 void serializeCalculationTree(StringBuilder& builder, const ChildOrNone& root, SerializationState& state)
 {
-    WTF::switchOn(root, [&builder, &state](const auto& root) { serializeCalculationTree(builder, root, state); });
+    calcSwitchOn(root, [&builder, &state](const auto& root) { serializeCalculationTree(builder, root, state); });
 }
 
 void serializeCalculationTree(StringBuilder& builder, const NoneRaw& root, SerializationState&)
@@ -436,7 +436,7 @@ void serializeCalculationTree(StringBuilder& builder, const IndirectNode<Sum>& r
 
         // - For each child of root beyond the first:
         for (size_t i = 1; i < root->children.size(); ++i) {
-            WTF::switchOn(root->children[sortedChildrenMap[i].index],
+            calcSwitchOn(root->children[sortedChildrenMap[i].index],
                 [&builder, &state](const IndirectNode<Negate>& child) {
                     // 1. If child is a Negate node, append " - " to s, then serialize the Negate’s child and append the result to s.
                     builder.append(" - "_s);
@@ -491,7 +491,7 @@ void serializeCalculationTree(StringBuilder& builder, const IndirectNode<Product
 
         // - For each child of root beyond the first:
         for (size_t i = 1; i < root->children.size(); ++i) {
-            WTF::switchOn(root->children[sortedChildrenMap[i].index],
+            calcSwitchOn(root->children[sortedChildrenMap[i].index],
                 [&builder, &state](const IndirectNode<Invert>& child) {
                     // 1. If child is an Invert node, append " / " to s, then serialize the Invert’s child and append the result to s.
                     builder.append(" / "_s);

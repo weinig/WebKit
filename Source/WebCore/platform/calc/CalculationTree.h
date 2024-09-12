@@ -29,12 +29,19 @@
 #include <tuple>
 #include <variant>
 #include <wtf/Vector.h>
+#include <wtf/variant/variant.h>
 
 namespace WebCore {
 
 enum class ValueRange : uint8_t;
 
 namespace Calculation {
+
+template<class V, class... F>
+auto calculationSwitchOn(V&& v, F&&... f) -> decltype(mpark::visit(WTF::makeVisitor(std::forward<F>(f)...), std::forward<V>(v)))
+{
+    return mpark::visit(WTF::makeVisitor(std::forward<F>(f)...), std::forward<V>(v));
+}
 
 // `Calculation::Tree` is a reduced representation of `CSSCalc::Tree` used in cases where everything else (e.g all non-canonical dimensions) has been resolved except percentages, which can't be resolved until they are used as they need some value to resolve against. Currently, these are only used by the `Length` type to represent <length-percentage> values, but are implemented generically so can be used for any <*-percentage> type if the need ever arises.
 
@@ -132,7 +139,7 @@ template<typename Op> struct IndirectNode {
     bool operator==(const IndirectNode<Op>& other) const { return op.get() == other.op.get(); }
 };
 
-using Child = std::variant<
+using Child = mpark::variant<
     Number,
     Percent,
     Dimension,
@@ -170,7 +177,7 @@ struct None {
     bool operator==(const None&) const = default;
 };
 
-using ChildOrNone = std::variant<Child, None>;
+using ChildOrNone = mpark::variant<Child, None>;
 using Children = Vector<Child>;
 
 struct Tree {

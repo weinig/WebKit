@@ -89,12 +89,12 @@ TextStream& operator<<(TextStream& ts, const None&)
 
 TextStream& operator<<(TextStream& ts, const ChildOrNone& root)
 {
-    return WTF::switchOn(root, [&](const auto& root) -> TextStream& { return ts << root; });
+    return calculationSwitchOn(root, [&](const auto& root) -> TextStream& { return ts << root; });
 }
 
 TextStream& operator<<(TextStream& ts, const Child& root)
 {
-    return WTF::switchOn(root, [&](const auto& root) -> TextStream& { return ts << root; });
+    return calculationSwitchOn(root, [&](const auto& root) -> TextStream& { return ts << root; });
 }
 
 TextStream& operator<<(TextStream& ts, const Number& root)

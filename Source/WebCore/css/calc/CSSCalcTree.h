@@ -29,15 +29,21 @@
 #include "CSSUnits.h"
 #include "CSSValueKeywords.h"
 #include "CalculationTree.h"
-#include <variant>
 #include <wtf/StdLibExtras.h>
 #include <wtf/Vector.h>
+#include <wtf/variant/variant.h>
 
 namespace WebCore {
 
 enum class CSSUnitType : uint8_t;
 
 namespace CSSCalc {
+
+template<class V, class... F>
+auto calcSwitchOn(V&& v, F&&... f) -> decltype(mpark::visit(WTF::makeVisitor(std::forward<F>(f)...), std::forward<V>(v)))
+{
+    return mpark::visit(WTF::makeVisitor(std::forward<F>(f)...), std::forward<V>(v));
+}
 
 // Math Operators.
 struct Sum;
@@ -153,7 +159,7 @@ template<typename Op> struct IndirectNode {
     bool operator==(const IndirectNode<Op>& other) const { return type == other.type && op.get() == other.op.get(); }
 };
 
-using Node = std::variant<
+using Node = mpark::variant<
     Number,
     Percent,
     CanonicalDimension,
@@ -189,7 +195,7 @@ using Node = std::variant<
 >;
 
 using Child = Node;
-using ChildOrNone = std::variant<Child, NoneRaw>;
+using ChildOrNone = mpark::variant<Child, NoneRaw>;
 using Children = Vector<Child>;
 
 enum class Stage : bool { Specified, Computed };
@@ -867,7 +873,7 @@ constexpr CSSUnitType toCSSUnit(const NonCanonicalDimension& dimension) { return
 
 inline bool isNumeric(const Child& root)
 {
-    return WTF::switchOn(root,
+    return calcSwitchOn(root,
         []<Numeric T>(const T&) { return true; },
         [](const auto&) { return false; }
     );

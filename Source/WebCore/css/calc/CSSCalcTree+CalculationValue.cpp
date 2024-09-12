@@ -108,7 +108,7 @@ NoneRaw fromCalculationValue(const Calculation::None&, const FromConversionOptio
 
 ChildOrNone fromCalculationValue(const Calculation::ChildOrNone& root, const FromConversionOptions& options)
 {
-    return WTF::switchOn(root, [&](const auto& root) { return ChildOrNone { fromCalculationValue(root, options) }; });
+    return Calculation::calculationSwitchOn(root, [&](const auto& root) { return ChildOrNone { fromCalculationValue(root, options) }; });
 }
 
 Children fromCalculationValue(const Vector<Calculation::Child>& children, const FromConversionOptions& options)
@@ -125,7 +125,7 @@ std::optional<Child> fromCalculationValue(const std::optional<Calculation::Child
 
 Child fromCalculationValue(const Calculation::Child& root, const FromConversionOptions& options)
 {
-    return WTF::switchOn(root, [&](const auto& root) { return fromCalculationValue(root, options); });
+    return Calculation::calculationSwitchOn(root, [&](const auto& root) { return fromCalculationValue(root, options); });
 }
 
 Child fromCalculationValue(const Calculation::Number& number, const FromConversionOptions&)
@@ -201,7 +201,7 @@ Calculation::None toCalculationValue(const NoneRaw&, const ToConversionOptions&)
 
 Calculation::ChildOrNone toCalculationValue(const ChildOrNone& root, const ToConversionOptions& options)
 {
-    return WTF::switchOn(root, [&](const auto& root) { return Calculation::ChildOrNone { toCalculationValue(root, options) }; });
+    return calcSwitchOn(root, [&](const auto& root) { return Calculation::ChildOrNone { toCalculationValue(root, options) }; });
 }
 
 Calculation::Children toCalculationValue(const Children& children, const ToConversionOptions& options)
@@ -211,7 +211,7 @@ Calculation::Children toCalculationValue(const Children& children, const ToConve
 
 Calculation::Child toCalculationValue(const Child& root, const ToConversionOptions& options)
 {
-    return WTF::switchOn(root, [&](const auto& root) { return toCalculationValue(root, options); });
+    return calcSwitchOn(root, [&](const auto& root) { return toCalculationValue(root, options); });
 }
 
 Calculation::Child toCalculationValue(const Number& root, const ToConversionOptions&)

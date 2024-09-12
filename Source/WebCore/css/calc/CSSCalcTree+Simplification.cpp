@@ -276,9 +276,9 @@ template<typename Op> static std::optional<Child> simplifyForOperation(Child& a,
     if (a.index() != b.index())
         return std::nullopt;
 
-    return WTF::switchOn(a,
+    return calcSwitchOn(a,
         [&]<Numeric T>(T& numericA) -> std::optional<Child> {
-            auto& numericB = std::get<T>(b);
+            auto& numericB = mpark::get<T>(b);
             if (!unitsMatch(numericA, numericB, options) || !fullyResolved(numericA, options))
                 return std::nullopt;
 
@@ -295,9 +295,9 @@ template<typename Op, typename Completion> static std::optional<Child> simplifyF
     if (a.index() != b.index())
         return std::nullopt;
 
-    return WTF::switchOn(a,
+    return calcSwitchOn(a,
         [&]<Numeric T>(T& numericA) -> std::optional<Child> {
-            auto& numericB = std::get<T>(b);
+            auto& numericB = mpark::get<T>(b);
             if (!unitsMatch(numericA, numericB, options) || !fullyResolved(numericA, options))
                 return std::nullopt;
 
@@ -314,7 +314,7 @@ template<typename Op> static std::optional<Child> simplifyForRound(Op& root, con
     if (root.b)
         return simplifyForOperation<Op>(root.a, *root.b, options);
 
-    if (auto* numberA = std::get_if<Number>(&root.a))
+    if (auto* numberA = mpark::get_if<Number>(&root.a))
         return makeChild(Number { .value = executeMathOperation<Op>(numberA->value, 1.0) });
 
     return std::nullopt;
@@ -326,7 +326,7 @@ template<typename Op> static std::optional<Child> simplifyForTrig(Op& root, cons
     // be able to be fully resolved yet. If its an `<angle>`, it is also already been converted to canonical
     // units via earlier simplification.
 
-    return WTF::switchOn(root.a,
+    return calcSwitchOn(root.a,
         [&](Number& a) -> std::optional<Child> {
             return makeChild(Number { .value = executeMathOperation<Op>(a.value) });
         },
@@ -345,7 +345,7 @@ template<typename Op> static std::optional<Child> simplifyForArcTrig(Op& root, c
     // NOTE: `a` has been type checked by this point to be `<number>`, though they may not
     // be able to be fully resolved yet.
 
-    return WTF::switchOn(root.a,
+    return calcSwitchOn(root.a,
         [&](Number& a) -> std::optional<Child> {
             return makeChild(CanonicalDimension { .value = executeMathOperation<Op>(a.value), .dimension = CanonicalDimension::Dimension::Angle });
         },
@@ -379,10 +379,10 @@ template<typename Op> static std::optional<Child> simplifyForMinMax(Op& root, co
     auto evaluate = [](const Child& a, const Child& b) -> Child {
         ASSERT(a.index() == b.index());
 
-        return WTF::switchOn(a,
+        return calcSwitchOn(a,
             [&]<Numeric T>(const T& aNumeric) -> Child {
-                ASSERT(toNumericIdentity(aNumeric) == toNumericIdentity(std::get<T>(b)));
-                return makeChildWithValueBasedOn(executeMathOperation<Op>(aNumeric.value, std::get<T>(b).value), aNumeric);
+                ASSERT(toNumericIdentity(aNumeric) == toNumericIdentity(mpark::get<T>(b)));
+                return makeChildWithValueBasedOn(executeMathOperation<Op>(aNumeric.value, mpark::get<T>(b).value), aNumeric);
             },
             [](const auto&) -> Child {
                 ASSERT_NOT_REACHED();
@@ -404,7 +404,7 @@ template<typename Op> static std::optional<Child> simplifyForMinMax(Op& root, co
 
     unsigned numberOfMergeOpportunities = 0;
     for (size_t i = 0; i < root.children.size(); ++i) {
-        numberOfMergeOpportunities += WTF::switchOn(root.children[i],
+        numberOfMergeOpportunities += calcSwitchOn(root.children[i],
             [&]<Numeric T>(const T& child) {
                 auto id = toNumericIdentity(child);
                 if (id == NumericIdentity::Percent && !canMergePercentages)
@@ -446,7 +446,7 @@ template<typename Op> static std::optional<Child> simplifyForMinMax(Op& root, co
     combinedChildren.reserveInitialCapacity(combinedChildrenSize);
 
     for (size_t i = 0; i < root.children.size(); ++i) {
-        WTF::switchOn(root.children[i],
+        calcSwitchOn(root.children[i],
             [&]<Numeric T>(const T& child) {
                 auto offset = offsetOfFirstInstance[std::to_underlying(toNumericIdentity(child))];
 
@@ -518,10 +518,10 @@ std::optional<Child> simplify(Sum& root, const SimplificationOptions& options)
     // 8. If root is a Sum node:
 
     // 8.1. For each of root’s children that are Sum nodes, replace them with their children.
-    if (std::ranges::any_of(root.children, [](auto& child) { return std::holds_alternative<IndirectNode<Sum>>(child); })) {
+    if (std::ranges::any_of(root.children, [](auto& child) { return mpark::holds_alternative<IndirectNode<Sum>>(child); })) {
         Children newChildren;
         for (auto& child : root.children) {
-            if (auto* childSum = std::get_if<IndirectNode<Sum>>(&child))
+            if (auto* childSum = mpark::get_if<IndirectNode<Sum>>(&child))
                 newChildren.appendVector(WTFMove((*childSum)->children));
             else
                 newChildren.append(WTFMove(child));
@@ -544,10 +544,10 @@ std::optional<Child> simplify(Sum& root, const SimplificationOptions& options)
     auto evaluate = [](const Child& a, const Child& b) -> std::pair<Child, double> {
         ASSERT(a.index() == b.index());
 
-        return WTF::switchOn(a,
+        return calcSwitchOn(a,
             [&]<Numeric T>(const T& aNumeric) -> std::pair<Child, double> {
-                ASSERT(toNumericIdentity(aNumeric) == toNumericIdentity(std::get<T>(b)));
-                auto result = executeMathOperation<Sum>(aNumeric.value, std::get<T>(b).value);
+                ASSERT(toNumericIdentity(aNumeric) == toNumericIdentity(mpark::get<T>(b)));
+                auto result = executeMathOperation<Sum>(aNumeric.value, mpark::get<T>(b).value);
                 return { makeChildWithValueBasedOn(result, aNumeric), result };
             },
             [](const auto&) -> std::pair<Child, double> {
@@ -572,7 +572,7 @@ std::optional<Child> simplify(Sum& root, const SimplificationOptions& options)
     std::array<FirstInstance, numberOfNumericIdentityTypes> firstInstances { };
 
     for (size_t i = 0; i < root.children.size(); ++i) {
-        WTF::switchOn(root.children[i],
+        calcSwitchOn(root.children[i],
             [&]<Numeric T>(const T& child) {
                 auto id = toNumericIdentity(child);
                 bool canRemoveIfZero = isLength(id) && options.allowZeroValueLengthRemovalFromSum;
@@ -632,7 +632,7 @@ std::optional<Child> simplify(Sum& root, const SimplificationOptions& options)
     // If the new size is 1, we know there is one child, we just don't know which one yet.
     if (combinedChildrenSize == 1) {
         for (size_t i = 0; i < root.children.size(); ++i) {
-            auto replacement = WTF::switchOn(root.children[i],
+            auto replacement = calcSwitchOn(root.children[i],
                 [&]<Numeric T>(const T& child) -> std::optional<Child> {
                     auto& firstInstance = firstInstances[std::to_underlying(toNumericIdentity(child))];
                     ASSERT(firstInstance.offset);
@@ -657,7 +657,7 @@ std::optional<Child> simplify(Sum& root, const SimplificationOptions& options)
     combinedChildren.reserveInitialCapacity(combinedChildrenSize);
 
     for (size_t i = 0; i < root.children.size(); ++i) {
-        WTF::switchOn(root.children[i],
+        calcSwitchOn(root.children[i],
             [&]<Numeric T>(const T& child) {
                 auto& firstInstance = firstInstances[std::to_underlying(toNumericIdentity(child))];
                 ASSERT(firstInstance.offset);
@@ -698,7 +698,7 @@ std::optional<Child> simplify(Product& root, const SimplificationOptions& option
     std::optional<Number> numericProduct;
 
     auto processChild = [&newChildren, &numericProduct](Child& child) {
-        if (auto* childValue = std::get_if<Number>(&child)) {
+        if (auto* childValue = mpark::get_if<Number>(&child)) {
             if (numericProduct)
                 numericProduct = Number { .value = childValue->value * numericProduct->value };
             else
@@ -708,7 +708,7 @@ std::optional<Child> simplify(Product& root, const SimplificationOptions& option
     };
 
     for (auto& child : root.children) {
-        if (auto* childProduct = std::get_if<IndirectNode<Product>>(&child)) {
+        if (auto* childProduct = mpark::get_if<IndirectNode<Product>>(&child)) {
             for (auto& childProductChild : (*childProduct)->children)
                 processChild(childProductChild);
         } else
@@ -727,7 +727,7 @@ std::optional<Child> simplify(Product& root, const SimplificationOptions& option
         // NOTE: Since we just merged all numeric values into `numericProduct`, we know that if `numericProduct` is not std::nullopt the last child is a singular `number` child. Therefore, we only need to check if there is one child and is a Sum (or Numeric or Invert).
 
         if (newChildren.size() == 1) {
-            auto replacement = WTF::switchOn(newChildren[0],
+            auto replacement = calcSwitchOn(newChildren[0],
                 [&]<Numeric T>(T& numeric) -> std::optional<Child> {
                     return makeChildWithValueBasedOn(numeric.value * numericProduct->value, numeric);
                 },
@@ -736,7 +736,7 @@ std::optional<Child> simplify(Product& root, const SimplificationOptions& option
                         return std::nullopt;
 
                     for (auto& child : sum->children) {
-                        WTF::switchOn(child,
+                        calcSwitchOn(child,
                             [&]<Numeric T>(T& child) { child.value *= numericProduct->value; },
                             [](auto&) { }
                         );
@@ -745,7 +745,7 @@ std::optional<Child> simplify(Product& root, const SimplificationOptions& option
                     return { Child { WTFMove(sum) } };
                 },
                 [&](IndirectNode<Invert>& invert) -> std::optional<Child> {
-                    return WTF::switchOn(invert->a,
+                    return calcSwitchOn(invert->a,
                         [&]<Numeric T>(T& child) -> std::optional<Child> {
                             return makeChildWithValueBasedOn(child.value * numericProduct->value, child);
                         },
@@ -779,7 +779,7 @@ std::optional<Child> simplify(Product& root, const SimplificationOptions& option
 
     bool success = false;
     for (auto& child : root.children) {
-        success = WTF::switchOn(child,
+        success = calcSwitchOn(child,
             [&](const Number& number) -> bool {
                 // <number> is the identity type, so multiplying by it has no effect.
                 productResult.value *= number.value;
@@ -802,7 +802,7 @@ std::optional<Child> simplify(Product& root, const SimplificationOptions& option
                 return true;
             },
             [&](IndirectNode<Invert>& invertChild) -> bool {
-                return WTF::switchOn(invertChild->a,
+                return calcSwitchOn(invertChild->a,
                     [&](const Number& number) -> bool {
                         // <number> is the identity type, so multiplying / inverting by it has no effect.
                         productResult.value /= number.value;
@@ -871,7 +871,7 @@ std::optional<Child> simplify(Negate& root, const SimplificationOptions&)
 {
     // 6. If root is a Negate node:
 
-    return WTF::switchOn(root.a,
+    return calcSwitchOn(root.a,
         [&]<Numeric T>(T& a) -> std::optional<Child> {
             // 6.1. If root’s child is a numeric value, return an equivalent numeric value, but with the value negated (0 - value).
             return makeChildWithValueBasedOn(0.0 - a.value, a);
@@ -887,7 +887,7 @@ std::optional<Child> simplify(Negate& root, const SimplificationOptions&)
                 return std::nullopt;
 
             for (auto& child : a->children) {
-                WTF::switchOn(child,
+                calcSwitchOn(child,
                     [&]<Numeric T>(T& child) { child.value = -child.value; },
                     [](auto&) { }
                 );
@@ -902,7 +902,7 @@ std::optional<Child> simplify(Negate& root, const SimplificationOptions&)
                 return std::nullopt;
 
             for (auto& child : a->children) {
-                WTF::switchOn(child,
+                calcSwitchOn(child,
                     [&]<Numeric T>(T& child) { child.value = -child.value; },
                     [](auto&) { }
                 );
@@ -920,7 +920,7 @@ std::optional<Child> simplify(Invert& root, const SimplificationOptions&)
 {
     // 7. If root is an Invert node:
 
-    return WTF::switchOn(root.a,
+    return calcSwitchOn(root.a,
         [&](Number& a) -> std::optional<Child> {
             // 7.1. If root’s child is a number (not a percentage or dimension) return the reciprocal of the child’s value.
             return makeChild(Number { .value = (1.0 / a.value) });
@@ -947,8 +947,8 @@ std::optional<Child> simplify(Max& root, const SimplificationOptions& options)
 
 std::optional<Child> simplify(Clamp& root, const SimplificationOptions& options)
 {
-    auto minIsNone = std::holds_alternative<NoneRaw>(root.min);
-    auto maxIsNone = std::holds_alternative<NoneRaw>(root.max);
+    auto minIsNone = mpark::holds_alternative<NoneRaw>(root.min);
+    auto maxIsNone = mpark::holds_alternative<NoneRaw>(root.max);
 
     if (minIsNone && maxIsNone) {
         // - clamp(none, VAL, none) is equivalent to just calc(VAL).
@@ -959,14 +959,14 @@ std::optional<Child> simplify(Clamp& root, const SimplificationOptions& options)
     // If only MIN and VAL have matching units, we can transform clamp(MIN, VAL, MAX) aka (max(MIN, min(VAL, MAX)) into a min(newVAL, MAX).
     // If only VAL and MAX have matching units, we can transform clamp(MIN, VAL, MAX) aka (max(MIN, min(VAL, MAX)) into a max(MIN, newVAL).
 
-    return WTF::switchOn(root.val,
+    return calcSwitchOn(root.val,
         [&]<Numeric T>(T& val) -> std::optional<Child> {
             if (minIsNone) {
-                auto& maxChild = std::get<Child>(root.max);
-                if (!std::holds_alternative<T>(maxChild))
+                auto& maxChild = mpark::get<Child>(root.max);
+                if (!mpark::holds_alternative<T>(maxChild))
                     return std::nullopt;
 
-                auto& max = std::get<T>(maxChild);
+                auto& max = mpark::get<T>(maxChild);
 
                 if (!unitsMatch(val, max, options))
                     return std::nullopt;
@@ -978,11 +978,11 @@ std::optional<Child> simplify(Clamp& root, const SimplificationOptions& options)
                 // - clamp(none, VAL, MAX) is equivalent to min(VAL, MAX)
                 return makeChildWithValueBasedOn(executeMathOperation<Min>(val.value, max.value), val);
             } else if (maxIsNone) {
-                auto& minChild = std::get<Child>(root.min);
-                if (!std::holds_alternative<T>(minChild))
+                auto& minChild = mpark::get<Child>(root.min);
+                if (!mpark::holds_alternative<T>(minChild))
                     return std::nullopt;
 
-                auto& min = std::get<T>(minChild);
+                auto& min = mpark::get<T>(minChild);
 
                 if (!unitsMatch(min, val, options))
                     return std::nullopt;
@@ -994,15 +994,15 @@ std::optional<Child> simplify(Clamp& root, const SimplificationOptions& options)
                 // - clamp(MIN, VAL, none) is equivalent to max(MIN, VAL)
                 return makeChildWithValueBasedOn(executeMathOperation<Max>(min.value, val.value), val);
             } else {
-                auto& minChild = std::get<Child>(root.min);
-                auto& maxChild = std::get<Child>(root.max);
+                auto& minChild = mpark::get<Child>(root.min);
+                auto& maxChild = mpark::get<Child>(root.max);
 
                 // If all three parameters have the same unit, we can perform the clamp in full.
-                if (!std::holds_alternative<T>(minChild) || !std::holds_alternative<T>(maxChild))
+                if (!mpark::holds_alternative<T>(minChild) || !mpark::holds_alternative<T>(maxChild))
                     return std::nullopt;
 
-                auto& min = std::get<T>(minChild);
-                auto& max = std::get<T>(maxChild);
+                auto& min = mpark::get<T>(minChild);
+                auto& max = mpark::get<T>(maxChild);
 
                 if (!unitsMatch(min, val, options) || !unitsMatch(val, max, options))
                     return std::nullopt;
@@ -1095,9 +1095,9 @@ std::optional<Child> simplify(Pow& root, const SimplificationOptions&)
     if (root.a.index() != root.b.index())
         return std::nullopt;
 
-    return WTF::switchOn(root.a,
+    return calcSwitchOn(root.a,
         [&](const Number& a) -> std::optional<Child> {
-            return makeChild(Number { .value = executeMathOperation<Pow>(a.value, std::get<Number>(root.b).value) });
+            return makeChild(Number { .value = executeMathOperation<Pow>(a.value, mpark::get<Number>(root.b).value) });
         },
         [](const auto&) -> std::optional<Child> {
             return std::nullopt;
@@ -1110,7 +1110,7 @@ std::optional<Child> simplify(Sqrt& root, const SimplificationOptions&)
     // NOTE: `a` has been type checked by this point to be `<number>`, though they may not
     // be able to be fully resolved yet.
 
-    return WTF::switchOn(root.a,
+    return calcSwitchOn(root.a,
         [&](const Number& a) -> std::optional<Child> {
             return makeChild(Number { .value = executeMathOperation<Sqrt>(a.value) });
         },
@@ -1128,13 +1128,13 @@ std::optional<Child> simplify(Hypot& root, const SimplificationOptions& options)
     struct PercentTag { };
     struct DimensionTag { CanonicalDimension::Dimension dimension; };
     struct FailureTag { };
-    std::variant<std::monostate, NumberTag, PercentTag, DimensionTag, FailureTag> result;
+    mpark::variant<mpark::monostate, NumberTag, PercentTag, DimensionTag, FailureTag> result;
 
     double value = executeMathOperation<Hypot>(root.children, [&](const auto& child) {
-        return WTF::switchOn(result,
-            [&](const std::monostate&) -> double {
+        return calcSwitchOn(result,
+            [&](const mpark::monostate&) -> double {
                 // First iteration.
-                return WTF::switchOn(child,
+                return calcSwitchOn(child,
                     [&](const Number& number) -> double {
                         result = NumberTag { };
                         return number.value;
@@ -1158,19 +1158,19 @@ std::optional<Child> simplify(Hypot& root, const SimplificationOptions& options)
                 );
             },
             [&](const NumberTag&) -> double {
-                if (auto* numberChild = std::get_if<Number>(&child))
+                if (auto* numberChild = mpark::get_if<Number>(&child))
                     return numberChild->value;
                 result = FailureTag { };
                 return std::numeric_limits<double>::quiet_NaN();
             },
             [&](const PercentTag&) -> double {
-                if (auto* percentChild = std::get_if<Percent>(&child))
+                if (auto* percentChild = mpark::get_if<Percent>(&child))
                     return percentChild->value;
                 result = FailureTag { };
                 return std::numeric_limits<double>::quiet_NaN();
             },
             [&](const DimensionTag& tag) -> double {
-                if (auto* dimensionChild = std::get_if<CanonicalDimension>(&child); dimensionChild && dimensionChild->dimension == tag.dimension)
+                if (auto* dimensionChild = mpark::get_if<CanonicalDimension>(&child); dimensionChild && dimensionChild->dimension == tag.dimension)
                     return dimensionChild->value;
                 result = FailureTag { };
                 return std::numeric_limits<double>::quiet_NaN();
@@ -1181,7 +1181,7 @@ std::optional<Child> simplify(Hypot& root, const SimplificationOptions& options)
         );
     });
 
-    return WTF::switchOn(result,
+    return calcSwitchOn(result,
         [&](const NumberTag&) -> std::optional<Child> {
             return makeChild(Number { .value = value });
         },
@@ -1206,9 +1206,9 @@ std::optional<Child> simplify(Log& root, const SimplificationOptions&)
         if (root.a.index() != root.b->index())
             return std::nullopt;
 
-        return WTF::switchOn(root.a,
+        return calcSwitchOn(root.a,
             [&](const Number& a) -> std::optional<Child> {
-                return makeChild(Number { .value = executeMathOperation<Log>(a.value, std::get<Number>(*root.b).value) });
+                return makeChild(Number { .value = executeMathOperation<Log>(a.value, mpark::get<Number>(*root.b).value) });
             },
             [](const auto&) -> std::optional<Child> {
                 return std::nullopt;
@@ -1216,7 +1216,7 @@ std::optional<Child> simplify(Log& root, const SimplificationOptions&)
         );
     }
 
-    return WTF::switchOn(root.a,
+    return calcSwitchOn(root.a,
         [](const Number& a) -> std::optional<Child> {
             return makeChild(Number { .value = executeMathOperation<Log>(a.value) });
         },
@@ -1231,7 +1231,7 @@ std::optional<Child> simplify(Exp& root, const SimplificationOptions&)
     // NOTE: `a` has been type checked by this point to be `<number>`, though they may not
     // be able to be fully resolved yet.
 
-    return WTF::switchOn(root.a,
+    return calcSwitchOn(root.a,
         [](const Number& a) -> std::optional<Child> {
             return makeChild(Number { .value = executeMathOperation<Exp>(a.value) });
         },
@@ -1243,7 +1243,7 @@ std::optional<Child> simplify(Exp& root, const SimplificationOptions&)
 
 std::optional<Child> simplify(Abs& root, const SimplificationOptions& options)
 {
-    return WTF::switchOn(root.a,
+    return calcSwitchOn(root.a,
         [&]<Numeric T>(const T& a) -> std::optional<Child> {
             if (!magnitudeComparable(a, options))
                 return std::nullopt;
@@ -1257,7 +1257,7 @@ std::optional<Child> simplify(Abs& root, const SimplificationOptions& options)
 
 std::optional<Child> simplify(Sign& root, const SimplificationOptions& options)
 {
-    return WTF::switchOn(root.a,
+    return calcSwitchOn(root.a,
         [&]<Numeric T>(const T& a) -> std::optional<Child> {
             if (!magnitudeComparable(a, options))
                 return std::nullopt;
@@ -1278,7 +1278,7 @@ NoneRaw copyAndSimplify(const NoneRaw& root, const SimplificationOptions&)
 
 static ChildOrNone copyAndSimplify(const ChildOrNone& root, const SimplificationOptions& options)
 {
-    return WTF::switchOn(root, [&](auto& root) { return ChildOrNone { copyAndSimplify(root, options) }; });
+    return calcSwitchOn(root, [&](auto& root) { return ChildOrNone { copyAndSimplify(root, options) }; });
 }
 
 std::optional<Child> copyAndSimplify(const std::optional<Child>& root, const SimplificationOptions& options)
@@ -1305,7 +1305,7 @@ template<typename Op> static auto copyAndSimplifyChildren(const IndirectNode<Op>
 
 Child copyAndSimplify(const Child& root, const SimplificationOptions& options)
 {
-    return WTF::switchOn(root,
+    return calcSwitchOn(root,
         [&](const auto& root) -> Child {
             // Create a simplified copy by recursively calling simplify on all children.
             auto simplified = copyAndSimplifyChildren(root, options);

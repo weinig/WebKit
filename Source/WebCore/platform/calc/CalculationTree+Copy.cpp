@@ -68,7 +68,7 @@ None copy(const None& none)
 
 ChildOrNone copy(const ChildOrNone& root)
 {
-    return WTF::switchOn(root, [&](const auto& root) { return ChildOrNone { copy(root) }; });
+    return calculationSwitchOn(root, [&](const auto& root) { return ChildOrNone { copy(root) }; });
 }
 
 Children copy(const Children& children)
@@ -78,7 +78,7 @@ Children copy(const Children& children)
 
 Child copy(const Child& root)
 {
-    return WTF::switchOn(root, [&](const auto& root) { return copy(root); });
+    return calculationSwitchOn(root, [&](const auto& root) { return copy(root); });
 }
 
 template<Numeric Op> Child copy(const Op& root)

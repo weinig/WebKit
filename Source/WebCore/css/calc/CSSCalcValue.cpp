@@ -132,7 +132,7 @@ CSSUnitType CSSCalcValue::primitiveType() const
     case Calculation::Category::PercentLength:
         if (!m_tree.type.percentHint)
             return CSSUnitType::CSS_PX;
-        if (std::holds_alternative<CSSCalc::Percent>(m_tree.root))
+        if (mpark::holds_alternative<CSSCalc::Percent>(m_tree.root))
             return CSSUnitType::CSS_PERCENTAGE;
         return CSSUnitType::CSS_CALC_PERCENTAGE_WITH_LENGTH;
     }

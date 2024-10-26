@@ -4038,7 +4038,7 @@ CSSPropertyAnimationWrapperMap::CSSPropertyAnimationWrapperMap()
         new DiscretePropertyWrapper<BlendMode>(CSSPropertyBackgroundBlendMode, &RenderStyle::backgroundBlendMode, &RenderStyle::setBackgroundBlendMode),
         new DiscretePropertyWrapper<StyleAppearance>(CSSPropertyAppearance, &RenderStyle::appearance, &RenderStyle::setAppearance),
 #if ENABLE(DARK_MODE_CSS)
-        new DiscretePropertyWrapper<StyleColorScheme>(CSSPropertyColorScheme, &RenderStyle::colorScheme, &RenderStyle::setColorScheme),
+        new DiscretePropertyWrapper<Style::ColorScheme>(CSSPropertyColorScheme, &RenderStyle::colorScheme, &RenderStyle::setColorScheme),
 #endif
         new PropertyWrapperAspectRatio,
         new DiscretePropertyWrapper<const FontPalette&>(CSSPropertyFontPalette, &RenderStyle::fontPalette, &RenderStyle::setFontPalette),

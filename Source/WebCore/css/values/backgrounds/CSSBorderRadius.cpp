@@ -25,6 +25,7 @@
 #include "config.h"
 #include "CSSBorderRadius.h"
 
+#include "CSSPrimitiveNumericTypes+Serialization.h"
 #include <wtf/text/StringBuilder.h>
 
 namespace WebCore {

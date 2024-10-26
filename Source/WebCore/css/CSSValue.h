@@ -71,6 +71,9 @@ public:
     bool isBorderImageWidthValue() const { return m_classType == ClassType::BorderImageWidth; }
     bool isCalcValue() const { return m_classType == ClassType::Calculation; }
     bool isCanvasValue() const { return m_classType == ClassType::Canvas; }
+#if ENABLE(DARK_MODE_CSS)
+    bool isColorScheme() const { return m_classType == ClassType::ColorScheme; }
+#endif
     bool isContentDistributionValue() const { return m_classType == ClassType::ContentDistribution; }
     bool isCounter() const { return m_classType == ClassType::Counter; }
     bool isCrossfadeValue() const { return m_classType == ClassType::Crossfade; }
@@ -223,6 +226,9 @@ protected:
         BorderImageSlice,
         BorderImageWidth,
         Calculation,
+#if ENABLE(DARK_MODE_CSS)
+        ColorScheme,
+#endif
         ContentDistribution,
         Counter,
         CustomProperty,

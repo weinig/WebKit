@@ -4854,7 +4854,7 @@ void Document::metaElementColorSchemeChanged()
 {
     RefPtr<CSSValue> colorScheme;
     auto colorSchemeString = emptyString();
-    auto cssParserContext = CSSParserContext(document());
+    const auto& cssParserContext = this->cssParserContext();
     for (auto& metaElement : descendantsOfType<HTMLMetaElement>(rootNode())) {
         const AtomString& nameValue = metaElement.attributeWithoutSynchronization(nameAttr);
         if ((equalLettersIgnoringASCIICase(nameValue, "color-scheme"_s) || equalLettersIgnoringASCIICase(nameValue, "supported-color-schemes"_s)) && (colorScheme = CSSParser::parseSingleValue(CSSPropertyColorScheme, metaElement.attributeWithoutSynchronization(contentAttr), cssParserContext))) {
@@ -9103,12 +9103,12 @@ bool Document::useDarkAppearance(const RenderStyle* style) const
 #if ENABLE(DARK_MODE_CSS)
     OptionSet<ColorScheme> colorScheme;
 
-    // Use the style's supported color schemes, if supplied.
-    if (style)
-        colorScheme = style->colorScheme().colorScheme();
-
-    // Fallback to the document's supported color schemes if style was empty (auto).
-    if (colorScheme.isEmpty())
+    if (style) {
+        if (style->colorScheme().schemes.isEmpty())
+            colorScheme = m_colorScheme;
+        else
+            colorScheme = style->colorScheme().colorScheme();
+    } else
         colorScheme = m_colorScheme;
 
     if (colorScheme.contains(ColorScheme::Dark) && !colorScheme.contains(ColorScheme::Light))

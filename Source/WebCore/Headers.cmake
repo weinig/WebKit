@@ -946,11 +946,17 @@ set(WebCore_PRIVATE_FRAMEWORK_HEADERS
 
     css/values/backgrounds/CSSBorderRadius.h
     css/values/backgrounds/CSSMinimallySerializingRectEdges.h
+
+    css/values/color-adjust/CSSColorScheme.h
+
     css/values/images/CSSGradient.h
+
     css/values/motion/CSSRayFunction.h
+
     css/values/primitives/CSSPosition.h
     css/values/primitives/CSSPrimitiveNumericTypes.h
     css/values/primitives/CSSUnevaluatedCalc.h
+
     css/values/shapes/CSSBasicShape.h
     css/values/shapes/CSSCircleFunction.h
     css/values/shapes/CSSEllipseFunction.h
@@ -961,6 +967,7 @@ set(WebCore_PRIVATE_FRAMEWORK_HEADERS
     css/values/shapes/CSSRectFunction.h
     css/values/shapes/CSSShapeFunction.h
     css/values/shapes/CSSXywhFunction.h
+
     css/values/CSSValueTypes.h
 
     cssjit/CompiledSelector.h
@@ -2585,10 +2592,16 @@ set(WebCore_PRIVATE_FRAMEWORK_HEADERS
 
     style/values/backgrounds/StyleBorderRadius.h
     style/values/backgrounds/StyleMinimallySerializingRectEdges.h
+
+    style/values/color-adjust/StyleColorScheme.h
+
     style/values/images/StyleGradient.h
+
     style/values/motion/StyleRayFunction.h
+
     style/values/primitives/StylePosition.h
     style/values/primitives/StylePrimitiveNumericTypes.h
+
     style/values/shapes/StyleBasicShape.h
     style/values/shapes/StyleCircleFunction.h
     style/values/shapes/StyleEllipseFunction.h
@@ -2601,6 +2614,7 @@ set(WebCore_PRIVATE_FRAMEWORK_HEADERS
     style/values/shapes/StyleShapeFunction.h
     style/values/shapes/StyleWindRuleComputation.h
     style/values/shapes/StyleXywhFunction.h
+
     style/values/StyleValueTypes.h
 
     svg/SVGElement.h

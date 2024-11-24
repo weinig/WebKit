@@ -920,7 +920,29 @@ template<StylePercentageDimension PercentageDimension> Calculation::Child copyCa
 // MARK: Additional Common Type and Groupings
 
 // NOTE: This is spelled with an explicit "Or" to distinguish it from types like AnglePercentage/LengthPercentage that have behavior distinctions beyond just being a union of the two types (specifically, calc() has specific behaviors for those types).
-using PercentageOrNumber = std::variant<Percentage<>, Number<>>;
+template<CSS::Range R = CSS::All> using NumberOrPercentage = std::variant<Number<R>, Percentage<R>>;
+
+template<CSS::Range R = CSS::All> struct NumberOrPercentageResolvedToNumber {
+    Number<R> value { 0 };
+
+    constexpr NumberOrPercentageResolvedToNumber(double value)
+        : value { value }
+    {
+    }
+
+    constexpr NumberOrPercentageResolvedToNumber(Number<R> number)
+        : value { number }
+    {
+    }
+
+    constexpr NumberOrPercentageResolvedToNumber(Percentage<R> percentage)
+        : value { percentage.value / 100.0 }
+    {
+    }
+
+    constexpr bool operator==(const NumberOrPercentageResolvedToNumber<R>&) const = default;
+    constexpr bool operator==(double other) const { return value.value == other; };
+};
 
 // Standard Numbers
 using NumberAll = Number<CSS::All>;

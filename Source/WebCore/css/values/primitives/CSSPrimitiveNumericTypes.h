@@ -426,7 +426,38 @@ template<Range R = All> using LengthPercentage = PrimitiveNumeric<LengthPercenta
 // MARK: Additional Common Groupings
 
 // NOTE: This is spelled with an explicit "Or" to distinguish it from types like AnglePercentage/LengthPercentage that have behavior distinctions beyond just being a union of the two types (specifically, calc() has specific behaviors for those types).
-using PercentageOrNumber = std::variant<Percentage<>, Number<>>;
+template<Range R = All> using NumberOrPercentage = std::variant<Number<R>, Percentage<R>>;
+
+template<Range R = All> struct NumberOrPercentageResolvedToNumber {
+    NumberOrPercentage<R> value;
+
+    NumberOrPercentageResolvedToNumber(NumberOrPercentage<R> value)
+        : value { WTFMove(value) }
+    {
+    }
+
+    NumberOrPercentageResolvedToNumber(NumberRaw<R> value)
+        : value { Number<R> { WTFMove(value) } }
+    {
+    }
+
+    NumberOrPercentageResolvedToNumber(Number<R> value)
+        : value { WTFMove(value) }
+    {
+    }
+
+    NumberOrPercentageResolvedToNumber(PercentageRaw<R> value)
+        : value { Percentage<R> { WTFMove(value) } }
+    {
+    }
+
+    NumberOrPercentageResolvedToNumber(Percentage<R> value)
+        : value { WTFMove(value) }
+    {
+    }
+
+    bool operator==(const NumberOrPercentageResolvedToNumber<R>&) const = default;
+};
 
 // MARK: - Type List Modifiers
 

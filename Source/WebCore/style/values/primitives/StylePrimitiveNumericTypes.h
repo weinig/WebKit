@@ -26,7 +26,6 @@
 
 #include "CSSPrimitiveNumericTypes.h"
 #include "CalculationValue.h"
-#include "FloatConversion.h"
 #include "StyleNone.h"
 #include "StyleValueTypes.h"
 #include <variant>
@@ -64,6 +63,8 @@ template<CSS::Range R = CSS::All> struct Number {
 
     ValueType value { 0 };
 
+    constexpr bool isZero() const { return !value; }
+
     constexpr bool operator==(const Number<R>&) const = default;
     constexpr bool operator==(ValueType other) const { return value == other; };
 };
@@ -79,6 +80,8 @@ template<CSS::Range R = CSS::All> struct Percentage {
 
     ValueType value { 0 };
 
+    constexpr bool isZero() const { return !value; }
+
     constexpr bool operator==(const Percentage<R>&) const = default;
     constexpr bool operator==(ValueType other) const { return value == other; };
 };
@@ -93,6 +96,8 @@ template<CSS::Range R = CSS::All> struct Angle {
     using ValueType = double;
 
     ValueType value { 0 };
+
+    constexpr bool isZero() const { return !value; }
 
     constexpr bool operator==(const Angle<R>&) const = default;
     constexpr bool operator==(ValueType other) const { return value == other; };
@@ -110,6 +115,8 @@ template<CSS::Range R = CSS::All> struct Length {
 
     ValueType value { 0 };
 
+    constexpr bool isZero() const { return !value; }
+
     constexpr bool operator==(const Length<R>&) const = default;
     constexpr bool operator==(ValueType other) const { return value == other; };
 };
@@ -123,6 +130,8 @@ template<CSS::Range R = CSS::All> struct Time {
 
     ValueType value { 0 };
 
+    constexpr bool isZero() const { return !value; }
+
     constexpr bool operator==(const Time<R>&) const = default;
     constexpr bool operator==(ValueType other) const { return value == other; };
 };
@@ -135,6 +144,8 @@ template<CSS::Range R = CSS::All> struct Frequency {
     using ValueType = double;
 
     ValueType value { 0 };
+
+    constexpr bool isZero() const { return !value; }
 
     constexpr bool operator==(const Frequency<R>&) const = default;
     constexpr bool operator==(ValueType other) const { return value == other; };
@@ -150,6 +161,8 @@ template<CSS::Range R = CSS::Nonnegative> struct Resolution {
 
     ValueType value { 0 };
 
+    constexpr bool isZero() const { return !value; }
+
     constexpr bool operator==(const Resolution<R>&) const = default;
     constexpr bool operator==(ValueType other) const { return value == other; };
 };
@@ -162,6 +175,8 @@ template<CSS::Range R = CSS::All> struct Flex {
     using ValueType = double;
 
     ValueType value { 0 };
+
+    constexpr bool isZero() const { return !value; }
 
     constexpr bool operator==(const Flex<R>&) const = default;
     constexpr bool operator==(ValueType other) const { return value == other; };
@@ -215,7 +230,7 @@ public:
     PrimitiveDimensionPercentage(const PrimitiveDimensionPercentage<D>& other)
         : m_data { other.m_data }
     {
-        if (tag() == Tag::CalculationValue)
+        if (isCalculationValue())
             refCalculationValue(); // Balanced by deref() in destructor.
     }
 
@@ -229,12 +244,12 @@ public:
         if (*this == other)
             return *this;
 
-        if (tag() == Tag::CalculationValue)
+        if (isCalculationValue())
             derefCalculationValue();
 
         m_data = other.m_data;
 
-        if (tag() == Tag::CalculationValue)
+        if (isCalculationValue())
             refCalculationValue();
 
         return *this;
@@ -245,7 +260,7 @@ public:
         if (*this == other)
             return *this;
 
-        if (tag() == Tag::CalculationValue)
+        if (isCalculationValue())
             derefCalculationValue();
 
         m_data = other.m_data;
@@ -256,7 +271,7 @@ public:
 
     ~PrimitiveDimensionPercentage()
     {
-        if (tag() == Tag::CalculationValue)
+        if (isCalculationValue())
             derefCalculationValue(); // Balanced by leakRef() in encodedCalculationValue.
     }
 
@@ -268,19 +283,19 @@ public:
 
     constexpr D asDimension() const
     {
-        ASSERT(tag() == Tag::Dimension);
+        ASSERT(isDimension());
         return decodedDimension(m_data);
     }
 
     constexpr Percentage<R> asPercentage() const
     {
-        ASSERT(tag() == Tag::Percentage);
+        ASSERT(isPercentage());
         return decodedPercentage(m_data);
     }
 
     Ref<CalculationValue> asCalculationValue() const
     {
-        ASSERT(tag() == Tag::CalculationValue);
+        ASSERT(isCalculationValue());
         return decodedCalculationValue(m_data);
     }
 
@@ -306,9 +321,9 @@ public:
     {
         switch (tag()) {
         case Tag::Dimension:
-            return asDimension().value == 0;
+            return asDimension().isZero();
         case Tag::Percentage:
-            return asPercentage().value == 0;
+            return asPercentage().isZero();
         case Tag::CalculationValue:
             return false;
         }
@@ -407,7 +422,7 @@ private:
 
     void refCalculationValue()
     {
-        ASSERT(tag() == Tag::CalculationValue);
+        ASSERT(isCalculationValue());
 #if CPU(ADDRESS64)
         std::bit_cast<CalculationValue*>(m_data & calculationValueMask)->ref();
 #else
@@ -417,7 +432,7 @@ private:
 
     void derefCalculationValue()
     {
-        ASSERT(tag() == Tag::CalculationValue);
+        ASSERT(isCalculationValue());
 #if CPU(ADDRESS64)
         std::bit_cast<CalculationValue*>(m_data & calculationValueMask)->deref();
 #else
@@ -480,7 +495,7 @@ template<CSS::Range R = CSS::All> struct AnglePercentage {
         return value.switchOn(std::forward<F>(functors)...);
     }
 
-    bool isZero() const { return value.isZero(); }
+    constexpr bool isZero() const { return value.isZero(); }
 
     bool operator==(const AnglePercentage<R>&) const = default;
 };
@@ -547,7 +562,7 @@ template<CSS::Range R = CSS::All> struct LengthPercentage {
         return value.switchOn(std::forward<F>(functors)...);
     }
 
-    bool isZero() const { return value.isZero(); }
+    constexpr bool isZero() const { return value.isZero(); }
 
     bool operator==(const LengthPercentage<R>&) const = default;
 };
@@ -574,6 +589,8 @@ template<CSS::Range R = CSS::All> struct NumberOrPercentageResolvedToNumber {
         : value { percentage.value / 100.0 }
     {
     }
+
+    constexpr bool isZero() const { return value.isZero(); }
 
     constexpr bool operator==(const NumberOrPercentageResolvedToNumber<R>&) const = default;
     constexpr bool operator==(typename Number<R>::ValueType other) const { return value.value == other; };

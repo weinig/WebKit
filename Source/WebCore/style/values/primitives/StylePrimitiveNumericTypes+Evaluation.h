@@ -24,6 +24,7 @@
 
 #pragma once
 
+#include "FloatConversion.h"
 #include "FloatPoint.h"
 #include "FloatSize.h"
 #include "StylePrimitiveNumericTypes+Calculation.h"

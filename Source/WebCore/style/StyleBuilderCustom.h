@@ -46,6 +46,7 @@
 #include "HTMLElement.h"
 #include "LocalFrame.h"
 #include "SVGElement.h"
+#include "ShadowData.h"
 #include "StyleBuilderConverter.h"
 #include "StyleBuilderStateInlines.h"
 #include "StyleCachedImage.h"
@@ -56,6 +57,7 @@
 #include "StyleImageSet.h"
 #include "StyleResolver.h"
 #include "StyleScope.h"
+#include "StyleShadow.h"
 #include "TextSizeAdjustment.h"
 
 namespace WebCore {
@@ -681,22 +683,12 @@ inline void BuilderCustom::applyTextOrBoxShadowValue(BuilderState& builderState,
     bool isFirstEntry = true;
     for (auto& item : downcast<CSSValueList>(value)) {
         auto& shadowValue = downcast<CSSShadowValue>(item);
-        auto& conversionData = builderState.cssToLengthConversionData();
-        auto x = shadowValue.x->resolveAsLength<WebCore::Length>(conversionData);
-        auto y = shadowValue.y->resolveAsLength<WebCore::Length>(conversionData);
-        auto blur = shadowValue.blur ? shadowValue.blur->resolveAsLength<WebCore::Length>(conversionData) : WebCore::Length(0, LengthType::Fixed);
-        auto spread = shadowValue.spread ? shadowValue.spread->resolveAsLength<WebCore::Length>(conversionData) : WebCore::Length(0, LengthType::Fixed);
-        ShadowStyle shadowStyle = shadowValue.style && shadowValue.style->valueID() == CSSValueInset ? ShadowStyle::Inset : ShadowStyle::Normal;
-        // If no color value is specified, the color is currentColor
-        auto color = Color::currentColor();
-        if (shadowValue.color)
-            color = builderState.createStyleColor(*shadowValue.color);
 
-        auto shadowData = makeUnique<ShadowData>(LengthPoint(x, y), blur, spread, shadowStyle, shadowValue.isWebkitBoxShadow, color);
-        if (property == CSSPropertyTextShadow)
-            builderState.style().setTextShadow(WTFMove(shadowData), !isFirstEntry); // add to the list if this is not the first entry
+        if constexpr (property == CSSPropertyTextShadow)
+            builderState.style().setTextShadow(makeUnique<ShadowData>(Style::toStyle(shadowValue.shadow(), builderState)), !isFirstEntry); // add to the list if this is not the first entry
         else
-            builderState.style().setBoxShadow(WTFMove(shadowData), !isFirstEntry); // add to the list if this is not the first entry
+            builderState.style().setBoxShadow(makeUnique<ShadowData>(Style::toStyle(shadowValue.shadow(), builderState)), !isFirstEntry); // add to the list if this is not the first entry
+
         isFirstEntry = false;
     }
 }

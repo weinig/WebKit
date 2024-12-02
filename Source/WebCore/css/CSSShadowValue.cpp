@@ -1,4 +1,4 @@
-/**
+/*
  * (C) 1999-2003 Lars Knoll (knoll@kde.org)
  * Copyright (C) 2004, 2005, 2006, 2009 Apple Inc.
  *
@@ -17,71 +17,29 @@
  * the Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
  * Boston, MA 02110-1301, USA.
  */
+
 #include "config.h"
 #include "CSSShadowValue.h"
 
-#include "CSSPrimitiveValue.h"
-#include <wtf/text/StringBuilder.h>
+#include "CSSPrimitiveNumericTypes+CSSValueVisitation.h"
+#include "CSSPrimitiveNumericTypes+ComputedStyleDependencies.h"
+#include "CSSPrimitiveNumericTypes+Serialization.h"
 
 namespace WebCore {
 
-// Used for text-shadow and box-shadow
-CSSShadowValue::CSSShadowValue(RefPtr<CSSPrimitiveValue>&& x, RefPtr<CSSPrimitiveValue>&& y, RefPtr<CSSPrimitiveValue>&& blur, RefPtr<CSSPrimitiveValue>&& spread, RefPtr<CSSPrimitiveValue>&& style, RefPtr<CSSValue>&& color, bool isWebkitBoxShadow)
-    : CSSValue(ClassType::Shadow)
-    , x(WTFMove(x))
-    , y(WTFMove(y))
-    , blur(WTFMove(blur))
-    , spread(WTFMove(spread))
-    , style(WTFMove(style))
-    , color(WTFMove(color))
-    , isWebkitBoxShadow(isWebkitBoxShadow)
-{
-}
-
 String CSSShadowValue::customCSSText() const
 {
-    StringBuilder text;
-
-    if (color)
-        text.append(color->cssText());
-    if (x) {
-        if (!text.isEmpty())
-            text.append(' ');
-        text.append(x->cssText());
-    }
-    if (y) {
-        if (!text.isEmpty())
-            text.append(' ');
-        text.append(y->cssText());
-    }
-    if (blur) {
-        if (!text.isEmpty())
-            text.append(' ');
-        text.append(blur->cssText());
-    }
-    if (spread) {
-        if (!text.isEmpty())
-            text.append(' ');
-        text.append(spread->cssText());
-    }
-    if (style) {
-        if (!text.isEmpty())
-            text.append(' ');
-        text.append(style->cssText());
-    }
-
-    return text.toString();
+    return CSS::serializationForCSS(m_shadow);
 }
 
 bool CSSShadowValue::equals(const CSSShadowValue& other) const
 {
-    return compareCSSValuePtr(color, other.color)
-        && compareCSSValuePtr(x, other.x)
-        && compareCSSValuePtr(y, other.y)
-        && compareCSSValuePtr(blur, other.blur)
-        && compareCSSValuePtr(spread, other.spread)
-        && compareCSSValuePtr(style, other.style)
-        && isWebkitBoxShadow == other.isWebkitBoxShadow;
+    return m_shadow == other.m_shadow;
 }
 
+IterationStatus CSSShadowValue::customVisitChildren(const Function<IterationStatus(CSSValue&)>& func) const
+{
+    return CSS::visitCSSValueChildren(func, m_shadow);
 }
+
+} // namespace WebCore

@@ -22,6 +22,7 @@
 #include "config.h"
 #include "ShadowData.h"
 
+#include "StylePrimitiveNumericTypes+Logging.h"
 #include <wtf/PointerComparison.h>
 #include <wtf/TZoneMallocInlines.h>
 #include <wtf/text/TextStream.h>
@@ -30,14 +31,9 @@ namespace WebCore {
 
 WTF_MAKE_TZONE_ALLOCATED_IMPL(ShadowData);
 
-ShadowData::ShadowData(const ShadowData& o)
-    : m_location(o.m_location.x, o.m_location.y)
-    , m_spread(o.m_spread)
-    , m_radius(o.m_radius)
-    , m_color(o.m_color)
-    , m_style(o.m_style)
-    , m_isWebkitBoxShadow(o.m_isWebkitBoxShadow)
-    , m_next(o.m_next ? makeUnique<ShadowData>(*o.m_next) : nullptr)
+ShadowData::ShadowData(const ShadowData& other)
+    : m_shadow(other.m_shadow)
+    , m_next(other.m_next ? makeUnique<ShadowData>(*other.m_next) : nullptr)
 {
 }
 
@@ -54,28 +50,19 @@ std::optional<ShadowData> ShadowData::clone(const ShadowData* data)
     return *data;
 }
 
-bool ShadowData::operator==(const ShadowData& o) const
+bool ShadowData::operator==(const ShadowData& other) const
 {
-    auto comparison = [](const auto& a, const auto& b) {
-        return a.m_location == b.m_location
-            && a.m_radius == b.m_radius
-            && a.m_spread == b.m_spread
-            && a.m_style == b.m_style
-            && a.m_color == b.m_color
-            && a.m_isWebkitBoxShadow == b.m_isWebkitBoxShadow;
-    };
-
-    if (!comparison(*this, o))
+    if (m_shadow != other.m_shadow)
         return false;
 
     // Avoid relying on recursion in case the linked list is very long.
     auto* next = m_next.get();
-    auto* oNext = o.m_next.get();
-    while (next || oNext) {
-        if (!next || !oNext || !comparison(*next, *oNext))
+    auto* otherNext = other.m_next.get();
+    while (next || otherNext) {
+        if (!next || !otherNext || next->m_shadow != otherNext->m_shadow)
             return false;
         next = next->m_next.get();
-        oNext = oNext->m_next.get();
+        otherNext = otherNext->m_next.get();
     }
 
     return true;
@@ -89,14 +76,14 @@ LayoutBoxExtent ShadowData::shadowOutsetExtent() const
     LayoutUnit left;
 
     for (auto* shadow = this; shadow; shadow = shadow->next()) {
-        auto extentAndSpread = shadow->paintingExtent() + LayoutUnit(shadow->spread().value());
+        auto extentAndSpread = shadow->paintingExtent() + LayoutUnit(shadow->spread().value);
         if (shadow->style() == ShadowStyle::Inset)
             continue;
 
-        left = std::min(LayoutUnit(shadow->x().value()) - extentAndSpread, left);
-        right = std::max(LayoutUnit(shadow->x().value()) + extentAndSpread, right);
-        top = std::min(LayoutUnit(shadow->y().value()) - extentAndSpread, top);
-        bottom = std::max(LayoutUnit(shadow->y().value()) + extentAndSpread, bottom);
+        left = std::min(LayoutUnit(shadow->x().value) - extentAndSpread, left);
+        right = std::max(LayoutUnit(shadow->x().value) + extentAndSpread, right);
+        top = std::min(LayoutUnit(shadow->y().value) - extentAndSpread, top);
+        bottom = std::max(LayoutUnit(shadow->y().value) + extentAndSpread, bottom);
     }
 
     return { top, right, bottom, left };
@@ -113,11 +100,11 @@ LayoutBoxExtent ShadowData::shadowInsetExtent() const
         if (shadow->style() == ShadowStyle::Normal)
             continue;
 
-        auto extentAndSpread = shadow->paintingExtent() + LayoutUnit(shadow->spread().value());
-        top = std::max<LayoutUnit>(top, LayoutUnit(shadow->y().value()) + extentAndSpread);
-        right = std::min<LayoutUnit>(right, LayoutUnit(shadow->x().value()) - extentAndSpread);
-        bottom = std::min<LayoutUnit>(bottom, LayoutUnit(shadow->y().value()) - extentAndSpread);
-        left = std::max<LayoutUnit>(left, LayoutUnit(shadow->x().value()) + extentAndSpread);
+        auto extentAndSpread = shadow->paintingExtent() + LayoutUnit(shadow->spread().value);
+        top = std::max<LayoutUnit>(top, LayoutUnit(shadow->y().value) + extentAndSpread);
+        right = std::min<LayoutUnit>(right, LayoutUnit(shadow->x().value) - extentAndSpread);
+        bottom = std::min<LayoutUnit>(bottom, LayoutUnit(shadow->y().value) - extentAndSpread);
+        left = std::max<LayoutUnit>(left, LayoutUnit(shadow->x().value) + extentAndSpread);
     }
 
     return { top, right, bottom, left };

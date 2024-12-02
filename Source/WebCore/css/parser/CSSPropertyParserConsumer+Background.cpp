@@ -335,8 +335,8 @@ RefPtr<CSSValue> consumeBorderWidth(CSSParserTokenRange& range, const CSSParserC
 
 RefPtr<CSSValue> consumeBorderColor(CSSParserTokenRange& range, const CSSParserContext& context, CSSPropertyID currentShorthand)
 {
-    // <'border-*-width'> = <line-width>
-    // https://drafts.csswg.org/css-backgrounds/#propdef-border-top-width
+    // <'border-*-color'> = <color>
+    // https://drafts.csswg.org/css-backgrounds/#propdef-border-top-color
 
     bool acceptQuirkyColors = (context.mode == HTMLQuirksMode) && (currentShorthand == CSSPropertyInvalid || currentShorthand == CSSPropertyBorderColor);
     return consumeColor(range, context, { .acceptQuirkyColors = acceptQuirkyColors });
@@ -469,12 +469,17 @@ static RefPtr<CSSValue> consumeSingleShadow(CSSParserTokenRange& range, const CS
     // <shadow> = <color>? && [<length>{2} <length [0,∞]>? <length>?] && inset?
     // https://drafts.csswg.org/css-backgrounds/#propdef-box-shadow
 
-    RefPtr<CSSValue> color;
-    RefPtr<CSSPrimitiveValue> horizontalOffset;
-    RefPtr<CSSPrimitiveValue> verticalOffset;
-    RefPtr<CSSPrimitiveValue> blurRadius;
-    RefPtr<CSSPrimitiveValue> spreadDistance;
-    RefPtr<CSSPrimitiveValue> style;
+    const auto lengthOptions = CSSPropertyParserOptions {
+        .parserMode = context.mode,
+        .unitlessZero = UnitlessZeroQuirk::Allow
+    };
+
+    std::optional<CSS::Color> color;
+    std::optional<CSS::Length<>> x;
+    std::optional<CSS::Length<>> y;
+    std::optional<CSS::Length<CSS::Nonnegative>> blur;
+    std::optional<CSS::Length<>> spread;
+    std::optional<CSS::Keyword::Inset> inset;
 
     for (size_t i = 0; i < 3; i++) {
         if (range.atEnd())
@@ -486,49 +491,64 @@ static RefPtr<CSSValue> consumeSingleShadow(CSSParserTokenRange& range, const CS
             break;
 
         if (nextToken.id() == CSSValueInset) {
-            if (style)
+            if (inset)
                 return nullptr;
-            style = consumeIdent(range);
+            inset = CSS::Keyword::Inset { };
             continue;
         }
 
-        auto maybeColor = consumeColor(range, context);
+        auto maybeColor = consumeUnresolvedColor(range, context);
         if (maybeColor) {
-            // If we just parsed a color but already had one, the given token range is not a valid <shadow>.
+            // If we just parsed a color but already had one, the given token range is
+            // not a valid <shadow>.
             if (color)
                 return nullptr;
-            color = maybeColor;
+            color = WTFMove(*maybeColor);
             continue;
         }
 
-        // If the current token is neither a color nor the `inset` keyword, it must be the lengths component of this value.
-        if (horizontalOffset || verticalOffset || blurRadius || spreadDistance) {
-            // If we've already parsed these lengths, the given value is invalid as there cannot be two lengths components in a single <shadow> value.
+        // If the current token is neither a color nor the `inset` keyword, it must be
+        // the lengths component of this value.
+        if (x || y || blur || spread) {
+            // If we've already parsed these lengths, the given value is invalid as there
+            // cannot be two lengths components in a single <shadow> value.
             return nullptr;
         }
-        horizontalOffset = consumeLength(range, context);
-        if (!horizontalOffset)
+
+        x = MetaConsumer<CSS::Length<>>::consume(range, context, { }, lengthOptions);
+        if (!x)
             return nullptr;
-        verticalOffset = consumeLength(range, context);
-        if (!verticalOffset)
+        y = MetaConsumer<CSS::Length<>>::consume(range, context, { }, lengthOptions);
+        if (!y)
             return nullptr;
 
-        const CSSParserToken& token = range.peek();
-        // The explicit check for calc() is unfortunate. This is ensuring that we only fail parsing if there is a length, but it fails the range check.
+        const auto& token = range.peek();
+
+        // The explicit check for calc() is unfortunate. This is ensuring that we only fail
+        // parsing if there is a length, but it fails the range check.
         if (token.type() == DimensionToken || token.type() == NumberToken || (token.type() == FunctionToken && CSSCalc::isCalcFunction(token.functionId(), context))) {
-            blurRadius = consumeLength(range, context, ValueRange::NonNegative);
-            if (!blurRadius)
+            blur = MetaConsumer<CSS::Length<CSS::Nonnegative>>::consume(range, context, { }, lengthOptions);
+            if (!blur)
                 return nullptr;
         }
 
-        if (blurRadius)
-            spreadDistance = consumeLength(range, context);
+        if (blur)
+            spread = MetaConsumer<CSS::Length<>>::consume(range, context, { }, lengthOptions);
     }
 
-    // In order for this to be a valid <shadow>, at least these lengths must be present.
-    if (!horizontalOffset || !verticalOffset)
+    if (!y)
         return nullptr;
-    return CSSShadowValue::create(WTFMove(horizontalOffset), WTFMove(verticalOffset), WTFMove(blurRadius), WTFMove(spreadDistance), WTFMove(style), WTFMove(color), isWebkitBoxShadow);
+
+    return CSSShadowValue::create(
+        CSS::Shadow {
+            .color = WTFMove(color),
+            .location = CSS::Point { WTFMove(*x), WTFMove(*y) },
+            .blur = WTFMove(blur),
+            .spread = WTFMove(spread),
+            .inset = WTFMove(inset),
+            .isWebkitBoxShadow = isWebkitBoxShadow
+        }
+    );
 }
 
 RefPtr<CSSValue> consumeBoxShadow(CSSParserTokenRange& range, const CSSParserContext& context)

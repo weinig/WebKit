@@ -945,6 +945,7 @@ set(WebCore_PRIVATE_FRAMEWORK_HEADERS
 
     css/values/backgrounds/CSSBorderRadius.h
     css/values/backgrounds/CSSMinimallySerializingRectEdges.h
+    css/values/backgrounds/CSSShadow.h
 
     css/values/color/CSSColor.h
     css/values/color/CSSColorDescriptors.h
@@ -2608,6 +2609,7 @@ set(WebCore_PRIVATE_FRAMEWORK_HEADERS
 
     style/values/backgrounds/StyleBorderRadius.h
     style/values/backgrounds/StyleMinimallySerializingRectEdges.h
+    style/values/backgrounds/StyleShadow.h
 
     style/values/color/StyleColor.h
     style/values/color/StyleColorOptions.h

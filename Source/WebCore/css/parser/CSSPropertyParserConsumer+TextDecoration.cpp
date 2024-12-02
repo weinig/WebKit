@@ -32,7 +32,9 @@
 #include "CSSPropertyParserConsumer+Color.h"
 #include "CSSPropertyParserConsumer+Ident.h"
 #include "CSSPropertyParserConsumer+Length.h"
+#include "CSSPropertyParserConsumer+LengthDefinitions.h"
 #include "CSSPropertyParserConsumer+List.h"
+#include "CSSPropertyParserConsumer+MetaConsumer.h"
 #include "CSSPropertyParserConsumer+String.h"
 #include "CSSShadowValue.h"
 #include "CSSValueList.h"
@@ -46,47 +48,64 @@ static RefPtr<CSSValue> consumeSingleTextShadow(CSSParserTokenRange& range, cons
     // <single-text-shadow> = [ <color>? && <length>{2,3} ]
     // https://drafts.csswg.org/css-text-decor-3/#propdef-text-shadow
 
-    RefPtr<CSSValue> color;
-    RefPtr<CSSPrimitiveValue> horizontalOffset;
-    RefPtr<CSSPrimitiveValue> verticalOffset;
-    RefPtr<CSSPrimitiveValue> blurRadius;
+    // FIXME: CSS Text Decoration 4 has updated text-shadow to use the complete box-shadow grammar:
+    // <shadow> = <color>? && [<length>{2} <length [0,∞]>? <length>?] && inset?
+    // https://drafts.csswg.org/css-text-decor-4/#propdef-text-shadow
 
-    for (size_t i = 0; i < 2; i++) {
-        if (range.atEnd())
-            break;
+    const auto lengthOptions = CSSPropertyParserOptions {
+        .parserMode = context.mode,
+        .unitlessZero = UnitlessZeroQuirk::Allow
+    };
 
-        const CSSParserToken& nextToken = range.peek();
+    std::optional<CSS::Color> color;
+    std::optional<CSS::Length<>> x;
+    std::optional<CSS::Length<>> y;
+    std::optional<CSS::Length<CSS::Nonnegative>> blur;
 
-        // If we have come to a comma (e.g. if this range represents a comma-separated list of <single-text-shadow>s), we are done parsing this <single-text-shadow>.
-        if (nextToken.type() == CommaToken)
-            break;
+    auto consumeOptionalColor = [&] -> bool {
+        if (color)
+            return false;
+        auto maybeColor = consumeUnresolvedColor(range, context);
+        if (!maybeColor)
+            return false;
+        color = CSS::Color(WTFMove(*maybeColor));
+        return !!color;
+    };
 
-        auto maybeColor = consumeColor(range, context);
-        if (maybeColor) {
-            if (color)
-                return nullptr;
-            color = maybeColor;
+    auto consumeLengths = [&] -> bool {
+        if (x)
+            return false;
+        x = MetaConsumer<CSS::Length<>>::consume(range, context, { }, lengthOptions);
+        if (!x)
+            return false;
+        y = MetaConsumer<CSS::Length<>>::consume(range, context, { }, lengthOptions);
+        if (!y)
+            return false;
+
+        blur = MetaConsumer<CSS::Length<CSS::Nonnegative>>::consume(range, context, { }, lengthOptions);
+        return true;
+    };
+
+    while (!range.atEnd()) {
+        if (consumeOptionalColor() || consumeLengths())
             continue;
-        }
-
-        if (horizontalOffset || verticalOffset || blurRadius)
-            return nullptr;
-
-        horizontalOffset = consumeLength(range, context);
-        if (!horizontalOffset)
-            return nullptr;
-        verticalOffset = consumeLength(range, context);
-        if (!verticalOffset)
-            return nullptr;
-        blurRadius = consumeLength(range, context, ValueRange::NonNegative);
+        break;
     }
 
-    // In order for this to be a valid <shadow>, at least these lengths must be present.
-    if (!horizontalOffset || !verticalOffset)
+    if (!y)
         return nullptr;
-    return CSSShadowValue::create(WTFMove(horizontalOffset), WTFMove(verticalOffset), WTFMove(blurRadius), nullptr, nullptr, WTFMove(color));
-}
 
+    return CSSShadowValue::create(
+        CSS::Shadow {
+            .color = WTFMove(color),
+            .location = CSS::Point { WTFMove(*x), WTFMove(*y) },
+            .blur = WTFMove(blur),
+            .spread = std::nullopt,
+            .inset = std::nullopt,
+            .isWebkitBoxShadow = false
+        }
+    );
+}
 
 RefPtr<CSSValue> consumeTextShadow(CSSParserTokenRange& range, const CSSParserContext& context)
 {

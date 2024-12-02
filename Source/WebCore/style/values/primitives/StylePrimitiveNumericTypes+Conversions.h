@@ -27,6 +27,7 @@
 #include "CSSPrimitiveNumericTypes+Canonicalization.h"
 #include "CSSPrimitiveNumericTypes+ComputedStyleDependencies.h"
 #include "CSSToLengthConversionData.h"
+#include "FloatConversion.h"
 #include "StyleBuilderState.h"
 #include "StylePrimitiveNumericTypes.h"
 

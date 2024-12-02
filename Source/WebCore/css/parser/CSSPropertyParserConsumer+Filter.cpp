@@ -36,6 +36,8 @@
 #include "CSSPropertyParserConsumer+Color.h"
 #include "CSSPropertyParserConsumer+Ident.h"
 #include "CSSPropertyParserConsumer+Length.h"
+#include "CSSPropertyParserConsumer+LengthDefinitions.h"
+#include "CSSPropertyParserConsumer+MetaConsumer.h"
 #include "CSSPropertyParserConsumer+Number.h"
 #include "CSSPropertyParserConsumer+Percentage.h"
 #include "CSSPropertyParserConsumer+Primitives.h"
@@ -139,29 +141,38 @@ static RefPtr<CSSValue> consumeDropShadow(CSSParserTokenRange& range, const CSSP
 {
     // <drop-shadow> = [ <color>? && <length>{2,3} ]
 
-    RefPtr<CSSValue> color;
-    RefPtr<CSSPrimitiveValue> horizontalOffset;
-    RefPtr<CSSPrimitiveValue> verticalOffset;
-    RefPtr<CSSPrimitiveValue> standardDeviation;
+    const auto lengthOptions = CSSPropertyParserOptions {
+        .parserMode = context.mode,
+        .unitlessZero = UnitlessZeroQuirk::Allow
+    };
+
+    std::optional<CSS::Color> color;
+    std::optional<CSS::Length<>> x;
+    std::optional<CSS::Length<>> y;
+    std::optional<CSS::Length<CSS::Nonnegative>> blur;
 
     auto consumeOptionalColor = [&] -> bool {
         if (color)
             return false;
-        color = consumeColor(range, context);
-        return !!color;
+        auto maybeColor = consumeUnresolvedColor(range, context);
+        if (!maybeColor)
+            return false;
+        color = WTFMove(*maybeColor);
+        return true;
     };
 
     auto consumeLengths = [&] -> bool {
-        if (horizontalOffset)
+        if (x)
             return false;
-        horizontalOffset = consumeLength(range, context);
-        if (!horizontalOffset)
+        x = MetaConsumer<CSS::Length<>>::consume(range, context, { }, lengthOptions);
+        if (!x)
             return false;
-        verticalOffset = consumeLength(range, context);
-        if (!verticalOffset)
+        y = MetaConsumer<CSS::Length<>>::consume(range, context, { }, lengthOptions);
+        if (!y)
             return false;
-        // FIXME: the CSS filters spec does not say this should be non-negative, but tests currently rely on this.
-        standardDeviation = consumeLength(range, context, ValueRange::NonNegative);
+
+        // FIXME: the CSS filters spec does NOT say this should be non-negative, but tests currently rely on this.
+        blur = MetaConsumer<CSS::Length<CSS::Nonnegative>>::consume(range, context, { }, lengthOptions);
         return true;
     };
 
@@ -171,9 +182,19 @@ static RefPtr<CSSValue> consumeDropShadow(CSSParserTokenRange& range, const CSSP
         break;
     }
 
-    if (!verticalOffset)
+    if (!y)
         return nullptr;
-    return CSSShadowValue::create(WTFMove(horizontalOffset), WTFMove(verticalOffset), WTFMove(standardDeviation), nullptr, nullptr, WTFMove(color));
+
+    return CSSShadowValue::create(
+        CSS::Shadow {
+            .color = WTFMove(color),
+            .location = CSS::Point { WTFMove(*x), WTFMove(*y) },
+            .blur = WTFMove(blur),
+            .spread = std::nullopt,
+            .inset = std::nullopt,
+            .isWebkitBoxShadow = false
+        }
+    );
 }
 
 static RefPtr<CSSFunctionValue> consumeFilterFunctionDropShadow(CSSParserTokenRange& range, const CSSParserContext& context, AllowedFilterFunctions allowedFunctions)

@@ -106,20 +106,12 @@ static Ref<FilterOperation> createFilterFunctionDropShadow(const CSSFunctionValu
 
     ASSERT(filter.length() == 1);
 
-    const auto& shadow = downcast<CSSShadowValue>(*filter.item(0));
+    const auto& shadow = downcast<CSSShadowValue>(*filter.item(0)).shadow();
 
-    int x = shadow.x->resolveAsLength<int>(conversionData);
-    int y = shadow.y->resolveAsLength<int>(conversionData);
-    int blur = shadow.blur ? shadow.blur->resolveAsLength<int>(conversionData) : 0;
-
-    auto color = [&] -> WebCore::Color {
-        if (shadow.color) {
-            if (RefPtr color = dynamicDowncast<CSSColorValue>(*shadow.color))
-                return style.colorResolvingCurrentColor(toStyleColorWithResolvedCurrentColor(color->color(), document, style, conversionData, ForVisitedLink::No));
-            return style.colorResolvingCurrentColor(toStyleColorWithResolvedCurrentColor(CSS::Color { CSS::KeywordColor { shadow.color->valueID() } }, document, style, conversionData, ForVisitedLink::No));
-        }
-        return style.color();
-    }();
+    int x = roundForImpreciseConversion<int>(toStyle(shadow.location.x(), conversionData).value);
+    int y = roundForImpreciseConversion<int>(toStyle(shadow.location.y(), conversionData).value);
+    int blur = shadow.blur ? roundForImpreciseConversion<int>(toStyle(*shadow.blur, conversionData).value) : 0;
+    auto color = shadow.color ? style.colorResolvingCurrentColor(toStyleColorWithResolvedCurrentColor(*shadow.color, document, style, conversionData, ForVisitedLink::No)) : style.color();
 
     return DropShadowFilterOperation::create(IntPoint(x, y), blur, color.isValid() ? color : WebCore::Color::transparentBlack);
 }

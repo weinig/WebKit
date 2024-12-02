@@ -94,11 +94,21 @@ static RefPtr<CSSValueList> cssValueListForShadow(const FontShadow& shadow)
     if (shadow.offset.isZero() && !shadow.blurRadius)
         return nullptr;
 
-    auto width = CSSPrimitiveValue::create(shadow.offset.width(), CSSUnitType::CSS_PX);
-    auto height = CSSPrimitiveValue::create(shadow.offset.height(), CSSUnitType::CSS_PX);
-    auto blurRadius = CSSPrimitiveValue::create(shadow.blurRadius, CSSUnitType::CSS_PX);
-    auto color = CSSValuePool::singleton().createColorValue(shadow.color);
-    return CSSValueList::createCommaSeparated(CSSShadowValue::create(WTFMove(width), WTFMove(height), WTFMove(blurRadius), { }, { }, WTFMove(color)));
+    auto color = CSS::Color { CSS::ResolvedColor { shadow.color } };
+    auto width = CSS::Length<> { CSS::LengthRaw<> { CSSUnitType::CSS_PX, shadow.offset.width() } };
+    auto height = CSS::Length<> { CSS::LengthRaw<> { CSSUnitType::CSS_PX, shadow.offset.height() } };
+    auto blur = CSS::Length<CSS::Nonnegative> { CSS::LengthRaw<CSS::Nonnegative> { CSSUnitType::CSS_PX, shadow.blurRadius } };
+
+    return CSSValueList::createCommaSeparated(
+        CSSShadowValue::create({
+            .color = WTFMove(color),
+            .location = CSS::Point { WTFMove(width), WTFMove(height) },
+            .blur = WTFMove(blur),
+            .spread = std::nullopt,
+            .inset = std::nullopt,
+            .isWebkitBoxShadow = false
+        })
+    );
 }
 
 FontAttributeChanges::FontAttributeChanges(std::optional<VerticalAlignChange>&& verticalAlign, std::optional<Color>&& backgroundColor, std::optional<Color>&& foregroundColor, std::optional<FontShadow>&& shadow, std::optional<bool>&& strikeThrough, std::optional<bool>&& underline, FontChanges&& fontChanges)

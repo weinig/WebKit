@@ -20,76 +20,35 @@
 
 #pragma once
 
-#include "CSSPrimitiveValue.h"
+#include "CSSShadow.h"
 #include "CSSValue.h"
-#include <wtf/Function.h>
-#include <wtf/RefPtr.h>
 
 namespace WebCore {
 
-// Used for text-shadow and box-shadow
+// Used for text-shadow and box-shadow.
+
 class CSSShadowValue final : public CSSValue {
 public:
-    static Ref<CSSShadowValue> create(RefPtr<CSSPrimitiveValue>&& x,
-        RefPtr<CSSPrimitiveValue>&& y,
-        RefPtr<CSSPrimitiveValue>&& blur,
-        RefPtr<CSSPrimitiveValue>&& spread,
-        RefPtr<CSSPrimitiveValue>&& style,
-        RefPtr<CSSValue>&& color,
-        bool isWebkitBoxShadow = false)
+    static Ref<CSSShadowValue> create(CSS::Shadow&& shadow)
     {
-        return adoptRef(*new CSSShadowValue(WTFMove(x), WTFMove(y), WTFMove(blur), WTFMove(spread), WTFMove(style), WTFMove(color), isWebkitBoxShadow));
+        return adoptRef(*new CSSShadowValue(WTFMove(shadow)));
     }
+
+    const CSS::Shadow& shadow() const { return m_shadow; }
 
     String customCSSText() const;
-
     bool equals(const CSSShadowValue&) const;
 
-    IterationStatus customVisitChildren(const Function<IterationStatus(CSSValue&)>& func) const
-    {
-        if (x) {
-            if (func(*x) == IterationStatus::Done)
-                return IterationStatus::Done;
-        }
-        if (y) {
-            if (func(*y) == IterationStatus::Done)
-                return IterationStatus::Done;
-        }
-        if (blur) {
-            if (func(*blur) == IterationStatus::Done)
-                return IterationStatus::Done;
-        }
-        if (spread) {
-            if (func(*spread) == IterationStatus::Done)
-                return IterationStatus::Done;
-        }
-        if (style) {
-            if (func(*style) == IterationStatus::Done)
-                return IterationStatus::Done;
-        }
-        if (color) {
-            if (func(*color) == IterationStatus::Done)
-                return IterationStatus::Done;
-        }
-        return IterationStatus::Continue;
-    }
-
-    RefPtr<CSSPrimitiveValue> x;
-    RefPtr<CSSPrimitiveValue> y;
-    RefPtr<CSSPrimitiveValue> blur;
-    RefPtr<CSSPrimitiveValue> spread;
-    RefPtr<CSSPrimitiveValue> style;
-    RefPtr<CSSValue> color;
-    bool isWebkitBoxShadow { false };
+    IterationStatus customVisitChildren(const Function<IterationStatus(CSSValue&)>&) const;
 
 private:
-    CSSShadowValue(RefPtr<CSSPrimitiveValue>&& x,
-        RefPtr<CSSPrimitiveValue>&& y,
-        RefPtr<CSSPrimitiveValue>&& blur,
-        RefPtr<CSSPrimitiveValue>&& spread,
-        RefPtr<CSSPrimitiveValue>&& style,
-        RefPtr<CSSValue>&& color,
-        bool isWebkitBoxShadow);
+    CSSShadowValue(CSS::Shadow&& shadow)
+        : CSSValue(ClassType::Shadow)
+        , m_shadow(WTFMove(shadow))
+    {
+    }
+
+    CSS::Shadow m_shadow;
 };
 
 } // namespace WebCore

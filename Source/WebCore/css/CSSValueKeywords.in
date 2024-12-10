@@ -1506,6 +1506,9 @@ to-zero
 // progress
 // from
 // to
+random
+per-element
+// by
 infinity
 -infinity id=NegativeInfinity
 NaN

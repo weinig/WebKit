@@ -37,6 +37,7 @@
 #include "CalculationValue.h"
 #include "RenderStyle.h"
 #include "RenderStyleInlines.h"
+#include "StyleBuilderState.h"
 #include <wtf/MathExtras.h>
 #include <wtf/StdLibExtras.h>
 
@@ -53,6 +54,7 @@ struct ToConversionOptions {
     EvaluationOptions evaluation;
 };
 
+static auto fromCalculationValue(const Calculation::Random::CachingOptions&, const FromConversionOptions&) -> Random::CachingOptions;
 static auto fromCalculationValue(const Calculation::None&, const FromConversionOptions&) -> CSS::NoneRaw;
 static auto fromCalculationValue(const Calculation::ChildOrNone&, const FromConversionOptions&) -> ChildOrNone;
 static auto fromCalculationValue(const Vector<Calculation::Child>&, const FromConversionOptions&) -> Children;
@@ -64,6 +66,7 @@ static auto fromCalculationValue(const Calculation::Dimension&, const FromConver
 static auto fromCalculationValue(const Calculation::IndirectNode<Calculation::Blend>&, const FromConversionOptions&) -> Child;
 template<typename CalculationOp> auto fromCalculationValue(const Calculation::IndirectNode<CalculationOp>&, const FromConversionOptions&) -> Child;
 
+static auto toCalculationValue(const Random::CachingOptions&, const ToConversionOptions&) -> Calculation::Random::CachingOptions;
 static auto toCalculationValue(const std::optional<Child>&, const ToConversionOptions&) -> std::optional<Calculation::Child>;
 static auto toCalculationValue(const CSS::NoneRaw&, const ToConversionOptions&) -> Calculation::None;
 static auto toCalculationValue(const ChildOrNone&, const ToConversionOptions&) -> Calculation::ChildOrNone;
@@ -104,6 +107,14 @@ static CanonicalDimension::Dimension determineCanonicalDimension(Calculation::Ca
 }
 
 // MARK: - From
+
+Random::CachingOptions fromCalculationValue(const Calculation::Random::CachingOptions& cachingOptions, const FromConversionOptions&)
+{
+    return Random::CachingOptions {
+        .identifier = cachingOptions.identifier,
+        .perElement = cachingOptions.perElement,
+    };
+}
 
 CSS::NoneRaw fromCalculationValue(const Calculation::None&, const FromConversionOptions&)
 {
@@ -202,6 +213,26 @@ template<typename CalculationOp> Child fromCalculationValue(const Calculation::I
 }
 
 // MARK: - To.
+
+auto toCalculationValue(const Random::CachingOptions& cachingOptions, const ToConversionOptions& options) -> Calculation::Random::CachingOptions
+{
+    ASSERT(options.evaluation.conversionData);
+    ASSERT(options.evaluation.conversionData->styleBuilderState());
+
+    if (cachingOptions.perElement) {
+        ASSERT(options.evaluation.conversionData->styleBuilderState()->element());
+    }
+
+    auto keyMap = options.evaluation.conversionData->styleBuilderState()->randomKeyMap(
+        cachingOptions.perElement
+    );
+
+    return Calculation::Random::CachingOptions {
+        .identifier = cachingOptions.identifier,
+        .perElement = cachingOptions.perElement,
+        .keyMap = WTFMove(keyMap),
+    };
+}
 
 std::optional<Calculation::Child> toCalculationValue(const std::optional<Child>& optionalChild, const ToConversionOptions& options)
 {

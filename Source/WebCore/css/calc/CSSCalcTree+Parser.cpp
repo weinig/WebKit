@@ -31,6 +31,7 @@
 #include "CSSCalcTree+Simplification.h"
 #include "CSSCalcTree.h"
 #include "CSSParserContext.h"
+#include "CSSParserIdioms.h"
 #include "CSSParserTokenRange.h"
 #include "CSSPropertyParserConsumer+Ident.h"
 #include "CSSPropertyParserConsumer+LengthPercentage.h"
@@ -180,6 +181,7 @@ bool isCalcFunction(CSSValueID functionId, const CSSParserContext&)
     case CSSValueMod:
     case CSSValueRem:
     case CSSValueProgress:
+    case CSSValueRandom:
     case CSSValueAnchor:
     case CSSValueAnchorSize:
         return true;
@@ -703,6 +705,174 @@ static std::optional<TypedChild> consumeProgress(CSSParserTokenRange& tokens, in
     return TypedChild { makeChild(WTFMove(op), *outputType), *outputType };
 }
 
+static std::optional<Random::CachingOptions> consumeOptionalRandomCachingOptions(CSSParserTokenRange& tokens)
+{
+    // <random-caching-options> = <dashed-ident> || per-element
+
+    std::optional<AtomString> identifier;
+    std::optional<CSS::Keyword::PerElement> perElement;
+
+    auto consumeIdentifier = [&] -> bool {
+        if (identifier || tokens.peek().type() != IdentToken || !isValidCustomIdentifier(tokens.peek().id()) || !tokens.peek().value().startsWith("--"_s))
+            return false;
+        identifier = tokens.consumeIncludingWhitespace().value().toAtomString();
+        return true;
+    };
+    auto consumePerElement = [&] -> bool {
+        if (perElement || tokens.peek().id() != CSSValuePerElement)
+            return false;
+        tokens.consumeIncludingWhitespace();
+        perElement = CSS::Keyword::PerElement { };
+        return true;
+    };
+
+    for (unsigned i = 0; i < 2; ++i) {
+        if (consumeIdentifier() || consumePerElement())
+            continue;
+        break;
+    }
+
+    if (!identifier && !perElement)
+        return { };
+
+    return Random::CachingOptions {
+        .identifier = identifier.value_or(AtomString { }),
+        .perElement = perElement.has_value()
+    };
+}
+
+static std::optional<TypedChild> consumeRandom(CSSParserTokenRange& tokens, int depth, ParserState& state)
+{
+    // <random()> = random( <random-caching-options>? , <calc-sum>, <calc-sum>, [by <calc-sum>]? )
+
+    if (!state.parserContext.cssRandomFunctionEnabled)
+        return { };
+
+    using Op = Random;
+
+    auto cachingOptions = consumeOptionalRandomCachingOptions(tokens);
+    if (cachingOptions) {
+        if (!CSSPropertyParserHelpers::consumeCommaIncludingWhitespace(tokens)) {
+            LOG_WITH_STREAM(Calc, stream << "Failed '" << nameLiteralForSerialization(Op::id) << "' function - missing comma after <random-caching-options>");
+            return { };
+        }
+    }
+
+    auto min = parseCalcSum(tokens, depth, state);
+    if (!min) {
+        LOG_WITH_STREAM(Calc, stream << "Failed '" << nameLiteralForSerialization(Op::id) << "' function - failed parse of argument `min`");
+        return { };
+    }
+
+    if (!CSSPropertyParserHelpers::consumeCommaIncludingWhitespace(tokens)) {
+        LOG_WITH_STREAM(Calc, stream << "Failed '" << nameLiteralForSerialization(Op::id) << "' function - missing comma after argument `min`");
+        return { };
+    }
+
+    auto max = parseCalcSum(tokens, depth, state);
+    if (!max) {
+        LOG_WITH_STREAM(Calc, stream << "Failed '" << nameLiteralForSerialization(Op::id) << "' function - failed parse of argument `max`");
+        return { };
+    }
+
+    if (tokens.atEnd()) {
+        // - Validate arguments
+
+        if (!validateType<Op::input>(min->type)) {
+            LOG_WITH_STREAM(Calc, stream << "Failed '" << nameLiteralForSerialization(Op::id) << "' function - argument `min` has invalid type: " << min->type);
+            return { };
+        }
+
+        if (!validateType<Op::input>(max->type)) {
+            LOG_WITH_STREAM(Calc, stream << "Failed '" << nameLiteralForSerialization(Op::id) << "' function - argument `max` has invalid type: " << max->type);
+            return { };
+        }
+
+        // - Merge arguments
+
+        auto mergedType = mergeTypes<Op::merge>(min->type, max->type);
+        if (!mergedType) {
+            LOG_WITH_STREAM(Calc, stream << "Failed '" << nameLiteralForSerialization(Op::id) << "' function - failed to merge types");
+            return { };
+        }
+
+        auto outputType = transformType<Op::output>(*mergedType);
+        if (!outputType) {
+            LOG_WITH_STREAM(Calc, stream << "Failed '" << nameLiteralForSerialization(Op::id) << "' function - output transform failed for type: " << *mergedType);
+            return { };
+        }
+
+        Op op { cachingOptions.value_or(Random::CachingOptions { }), WTFMove(min->child), WTFMove(max->child), std::nullopt };
+
+        state.requiresConversionData = true;
+
+        if (auto* simplificationOptions = state.simplificationOptions) {
+            if (auto replacement = simplify(op, *simplificationOptions))
+                return TypedChild { WTFMove(*replacement), *outputType };
+        }
+
+        return TypedChild { makeChild(WTFMove(op), *outputType), *outputType };
+    }
+
+    if (!CSSPropertyParserHelpers::consumeCommaIncludingWhitespace(tokens)) {
+        LOG_WITH_STREAM(Calc, stream << "Failed '" << nameLiteralForSerialization(Op::id) << "' function - missing comma after argument `max`");
+        return { };
+    }
+
+    if (!CSSPropertyParserHelpers::consumeIdentRaw<CSSValueBy>(tokens)) {
+        LOG_WITH_STREAM(Calc, stream << "Failed '" << nameLiteralForSerialization(Op::id) << "' function - missing literal 'by'");
+        return { };
+    }
+
+    auto step = parseCalcSum(tokens, depth, state);
+    if (!step) {
+        LOG_WITH_STREAM(Calc, stream << "Failed '" << nameLiteralForSerialization(Op::id) << "' function - failed parse of argument `step`");
+        return { };
+    }
+
+    if (!tokens.atEnd()) {
+        LOG_WITH_STREAM(Calc, stream << "Failed '" << nameLiteralForSerialization(Op::id) << "' function - extraneous tokens found");
+        return { };
+    }
+
+    // - Validate arguments
+
+    if (!validateType<Op::input>(step->type)) {
+        LOG_WITH_STREAM(Calc, stream << "Failed '" << nameLiteralForSerialization(Op::id) << "' function - argument `step` has invalid type: " << step->type);
+        return { };
+    }
+
+    // - Merge arguments
+
+    auto mergedType = mergeTypes<Op::merge>(min->type, max->type);
+    if (!mergedType) {
+        LOG_WITH_STREAM(Calc, stream << "Failed '" << nameLiteralForSerialization(Op::id) << "' function - failed to merge types");
+        return { };
+    }
+
+    mergedType = mergeTypes<Op::merge>(*mergedType, step->type);
+    if (!mergedType) {
+        LOG_WITH_STREAM(Calc, stream << "Failed '" << nameLiteralForSerialization(Op::id) << "' function - failed to merge types");
+        return { };
+    }
+
+    auto outputType = transformType<Op::output>(*mergedType);
+    if (!outputType) {
+        LOG_WITH_STREAM(Calc, stream << "Failed '" << nameLiteralForSerialization(Op::id) << "' function - output transform failed for type: " << *mergedType);
+        return { };
+    }
+
+    Op op { cachingOptions.value_or(Random::CachingOptions { }), WTFMove(min->child), WTFMove(max->child), WTFMove(step->child) };
+
+    state.requiresConversionData = true;
+
+    if (auto* simplificationOptions = state.simplificationOptions) {
+        if (auto replacement = simplify(op, *simplificationOptions))
+            return TypedChild { WTFMove(*replacement), *outputType };
+    }
+    return TypedChild { makeChild(WTFMove(op), *outputType), *outputType };
+}
+
 static std::optional<TypedChild> consumeValueWithoutSimplifyingCalc(CSSParserTokenRange& tokens, int depth, ParserState& state)
 {
     // Complex arguments need to be surrounded by a math function.
@@ -1034,6 +1204,12 @@ std::optional<TypedChild> parseCalcFunction(CSSParserTokenRange& tokens, CSSValu
         //     - INPUT: "consistent" <number>, <dimension>, or <percentage>
         //     - OUTPUT: <number> "made consistent"
         return consumeProgress(tokens, depth, state);
+
+    case CSSValueRandom:
+        // <random()> = random( <random-caching-options>? , <calc-sum>, <calc-sum>, [by <calc-sum>]? )
+        //     - INPUT: "same" <number>, <dimension>, or <percentage>
+        //     - OUTPUT: same type
+        return consumeRandom(tokens, depth, state);
 
     case CSSValueAnchor:
         return consumeAnchor(tokens, depth, state);

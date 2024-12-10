@@ -337,6 +337,10 @@ using MediaProducerMediaStateFlags = OptionSet<MediaProducerMediaState>;
 using MediaProducerMutedStateFlags = OptionSet<MediaProducerMutedState>;
 using PlatformDisplayID = uint32_t;
 
+namespace Calculation {
+class RandomKeyMap;
+}
+
 namespace Style {
 class CustomPropertyRegistry;
 class Resolver;
@@ -1984,6 +1988,8 @@ public:
 
     unsigned unloadCounter() const { return m_unloadCounter; }
 
+    Ref<Calculation::RandomKeyMap> randomKeyMap() const;
+
 protected:
     enum class ConstructionFlag : uint8_t {
         Synthesized = 1 << 0,
@@ -2689,6 +2695,8 @@ private:
 
     mutable std::unique_ptr<CSSParserContext> m_cachedCSSParserContext;
     mutable std::unique_ptr<PermissionsPolicy> m_permissionsPolicy;
+
+    mutable RefPtr<Calculation::RandomKeyMap> m_randomKeyMap;
 };
 
 Element* eventTargetElementForDocument(Document*);

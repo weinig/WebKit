@@ -1947,6 +1947,8 @@ set(WebCore_PRIVATE_FRAMEWORK_HEADERS
 
     platform/calc/CalculationCategory.h
     platform/calc/CalculationOperator.h
+    platform/calc/CalculationRandomKey.h
+    platform/calc/CalculationRandomKeyMap.h
     platform/calc/CalculationTree.h
     platform/calc/CalculationValue.h
 

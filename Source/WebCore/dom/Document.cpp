@@ -47,6 +47,7 @@
 #include "CachedFontLoadRequest.h"
 #include "CachedFrame.h"
 #include "CachedResourceLoader.h"
+#include "CalculationRandomKeyMap.h"
 #include "CanvasRenderingContext2D.h"
 #include "CaretPosition.h"
 #include "CaretPositionFromPointOptions.h"
@@ -11152,6 +11153,13 @@ PermissionsPolicy Document::permissionsPolicy() const
 void Document::securityOriginDidChange()
 {
     m_permissionsPolicy = nullptr;
+}
+
+Ref<Calculation::RandomKeyMap> Document::randomKeyMap() const
+{
+    if (!m_randomKeyMap)
+        m_randomKeyMap = Calculation::RandomKeyMap::create();
+    return *m_randomKeyMap;
 }
 
 } // namespace WebCore

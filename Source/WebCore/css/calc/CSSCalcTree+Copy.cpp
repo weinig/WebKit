@@ -30,7 +30,9 @@
 namespace WebCore {
 namespace CSSCalc {
 
-static auto copy(const std::optional<Child>& root) -> std::optional<Child>;
+static auto copy(const std::optional<Child>&) -> std::optional<Child>;
+static auto copy(const Random::CachingOptions&) -> Random::CachingOptions;
+static auto copy(const CSSValueID&) -> CSSValueID;
 static auto copy(const CSS::NoneRaw&) -> CSS::NoneRaw;
 static auto copy(const ChildOrNone&) -> ChildOrNone;
 static auto copy(const Children&) -> Children;
@@ -47,6 +49,16 @@ std::optional<Child> copy(const std::optional<Child>& root)
     if (root)
         return copy(*root);
     return std::nullopt;
+}
+
+Random::CachingOptions copy(const Random::CachingOptions& root)
+{
+    return root;
+}
+
+CSSValueID copy(const CSSValueID& root)
+{
+    return root;
 }
 
 CSS::NoneRaw copy(const CSS::NoneRaw& none)
@@ -79,15 +91,9 @@ template<typename Op> Child copy(const IndirectNode<Op>& root)
     return makeChild(WTF::apply([](const auto& ...x) { return Op { copy(x)... }; } , *root), root.type);
 }
 
-Anchor::Side copy(const Anchor::Side& side)
+Anchor::Side copy(const Anchor::Side& root)
 {
-    return WTF::switchOn(side,
-        [](CSSValueID value) -> Anchor::Side {
-            return value;
-        }, [](const Child& percentage) -> Anchor::Side {
-            return copy(percentage);
-        }
-    );
+    return WTF::switchOn(root, [&](const auto& root) { return Anchor::Side { copy(root) }; });
 }
 
 Child copy(const IndirectNode<Anchor>& anchor)

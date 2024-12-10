@@ -80,6 +80,7 @@ struct Exp;
 struct Abs;
 struct Sign;
 struct Progress;
+struct Random;
 
 // CSS Anchor Positioning functions.
 struct Anchor;
@@ -202,6 +203,7 @@ using Node = std::variant<
     IndirectNode<Abs>,
     IndirectNode<Sign>,
     IndirectNode<Progress>,
+    IndirectNode<Random>,
     IndirectNode<Anchor>,
     IndirectNode<AnchorSize>
 >;
@@ -742,6 +744,37 @@ public:
     bool operator==(const Progress&) const = default;
 };
 
+// Random Function - https://drafts.csswg.org/css-values-5/#random
+struct Random {
+    WTF_MAKE_TZONE_ALLOCATED(Random);
+public:
+    using Base = Calculation::Random;
+    static constexpr auto id = CSSValueRandom;
+
+    // <random-caching-options> = <dashed-ident> || per-element
+    struct CachingOptions {
+        AtomString identifier;
+        bool perElement { false };
+
+        bool operator==(const CachingOptions&) const = default;
+    };
+
+    // <random()> = random( <random-caching-options>? , <calc-sum>, <calc-sum>, [by <calc-sum>]? )
+    //     - INPUT: "same" <number>, <dimension>, or <percentage>
+    //     - OUTPUT: same type
+    static constexpr auto input = AllowedTypes::Any;
+    static constexpr auto merge = MergePolicy::Same;
+    static constexpr auto output = OutputTransform::None;
+
+    CachingOptions cachingOptions;
+    Child min;
+    Child max;
+    std::optional<Child> step;
+
+    bool operator==(const Random&) const = default;
+};
+
+// Anchor Positioning Related Functions - https://drafts.csswg.org/css-anchor-position-1/
 struct Anchor {
     WTF_MAKE_TZONE_ALLOCATED(Anchor);
 public:
@@ -813,6 +846,7 @@ template<> struct ReverseMapping<Calculation::Exp> { using Op = Exp; };
 template<> struct ReverseMapping<Calculation::Abs> { using Op = Abs; };
 template<> struct ReverseMapping<Calculation::Sign> { using Op = Sign; };
 template<> struct ReverseMapping<Calculation::Progress> { using Op = Progress; };
+template<> struct ReverseMapping<Calculation::Random> { using Op = Random; };
 
 // MARK: TextStream
 
@@ -915,6 +949,7 @@ std::optional<Type> toType(const Exp&);
 std::optional<Type> toType(const Abs&);
 std::optional<Type> toType(const Sign&);
 std::optional<Type> toType(const Progress&);
+std::optional<Type> toType(const Random&);
 
 // MARK: CSSUnitType Evaluation
 
@@ -1194,6 +1229,18 @@ template<size_t I> const auto& get(const Progress& root)
         return root.to;
 }
 
+template<size_t I> const auto& get(const Random& root)
+{
+    if constexpr (!I)
+        return root.cachingOptions;
+    else if constexpr (I == 1)
+        return root.min;
+    else if constexpr (I == 2)
+        return root.max;
+    else if constexpr (I == 3)
+        return root.step;
+}
+
 } // namespace CSSCalc
 } // namespace WebCore
 
@@ -1235,6 +1282,7 @@ OP_TUPLE_LIKE_CONFORMANCE(Exp, 1);
 OP_TUPLE_LIKE_CONFORMANCE(Abs, 1);
 OP_TUPLE_LIKE_CONFORMANCE(Sign, 1);
 OP_TUPLE_LIKE_CONFORMANCE(Progress, 3);
+OP_TUPLE_LIKE_CONFORMANCE(Random, 4);
 // FIXME (webkit.org/b/280798): make Anchor and AnchorSize tuple-like
 OP_TUPLE_LIKE_CONFORMANCE(Anchor, 0);
 OP_TUPLE_LIKE_CONFORMANCE(AnchorSize, 0);

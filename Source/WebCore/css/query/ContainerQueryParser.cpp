@@ -34,6 +34,11 @@
 namespace WebCore {
 namespace CQ {
 
+Vector<const MQ::FeatureSchema*> ContainerQueryParser::featureSchemas()
+{
+    return Features::allSchemas();
+}
+
 std::optional<ContainerQuery> ContainerQueryParser::consumeContainerQuery(CSSParserTokenRange& range, const MediaQueryParserContext& context)
 {
     auto consumeName = [&] {
@@ -70,22 +75,29 @@ bool ContainerQueryParser::isValidFunctionId(CSSValueID functionId)
 
 const MQ::FeatureSchema* ContainerQueryParser::schemaForFeatureName(const AtomString& name, const MediaQueryParserContext& context, State& state)
 {
-    if (state.inFunctionId == CSSValueStyle && context.context.cssStyleQueriesEnabled)
-        return &Features::style();
+    auto* schema = GenericMediaQueryParser<ContainerQueryParser>::schemaForFeatureName(name, context, state);
 
-    return GenericMediaQueryParser<ContainerQueryParser>::schemaForFeatureName(name, context, state);
+    if (schema == &Features::style()) {
+        if (!context.context.cssStyleQueriesEnabled || state.inFunctionId != CSSValueStyle)
+            return nullptr;
+    }
+
+    return schema;
 }
 
-Vector<const MQ::FeatureSchema*> ContainerQueryParser::featureSchemas()
+const ContainerProgressProviding* ContainerQueryParser::containerProgressProvidingSchemaForFeatureName(const AtomString& name, const MediaQueryParserContext&)
 {
-    return {
-        &Features::width(),
-        &Features::height(),
-        &Features::inlineSize(),
-        &Features::blockSize(),
-        &Features::aspectRatio(),
-        &Features::orientation(),
-    };
+    using Map = MemoryCompactLookupOnlyRobinHoodHashMap<AtomString, const ContainerProgressProviding*>;
+
+    static NeverDestroyed<Map> schemas = [&] {
+        auto entries = Features::allContainerProgressProvidingSchemas();
+        Map map;
+        for (auto& entry : entries)
+            map.add(entry->name(), entry);
+        return map;
+    }();
+
+    return schemas->get(name);
 }
 
 }

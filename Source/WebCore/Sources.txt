@@ -999,10 +999,14 @@ css/StyleSheetContents.cpp
 css/StyleSheetList.cpp
 css/calc/CSSCalcSymbolTable.cpp
 css/calc/CSSCalcSymbolsAllowed.cpp
+css/calc/CSSCalcTree+AnchorEvaluator.cpp
+css/calc/CSSCalcTree+AnchorSizeEvaluator.cpp
 css/calc/CSSCalcTree+CalculationValue.cpp
 css/calc/CSSCalcTree+ComputedStyleDependencies.cpp
+css/calc/CSSCalcTree+ContainerProgressEvaluator.cpp
 css/calc/CSSCalcTree+Copy.cpp
 css/calc/CSSCalcTree+Evaluation.cpp
+css/calc/CSSCalcTree+MediaProgressEvaluator.cpp
 css/calc/CSSCalcTree+Parser.cpp
 css/calc/CSSCalcTree+Serialization.cpp
 css/calc/CSSCalcTree+Simplification.cpp

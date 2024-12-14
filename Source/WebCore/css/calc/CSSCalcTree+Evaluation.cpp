@@ -27,6 +27,10 @@
 
 #include "AnchorPositionEvaluator.h"
 #include "CSSCalcSymbolTable.h"
+#include "CSSCalcTree+AnchorEvaluator.h"
+#include "CSSCalcTree+AnchorSizeEvaluator.h"
+#include "CSSCalcTree+ContainerProgressEvaluator.h"
+#include "CSSCalcTree+MediaProgressEvaluator.h"
 #include "CSSCalcTree+Simplification.h"
 #include "CSSCalcTree.h"
 #include "CalculationExecutor.h"
@@ -51,6 +55,8 @@ static auto evaluate(const IndirectNode<Product>&, const EvaluationOptions&) -> 
 static auto evaluate(const IndirectNode<Min>&, const EvaluationOptions&) -> std::optional<double>;
 static auto evaluate(const IndirectNode<Max>&, const EvaluationOptions&) -> std::optional<double>;
 static auto evaluate(const IndirectNode<Hypot>&, const EvaluationOptions&) -> std::optional<double>;
+static auto evaluate(const IndirectNode<MediaProgress>&, const EvaluationOptions&) -> std::optional<double>;
+static auto evaluate(const IndirectNode<ContainerProgress>&, const EvaluationOptions&) -> std::optional<double>;
 static auto evaluate(const IndirectNode<Anchor>&, const EvaluationOptions&) -> std::optional<double>;
 static auto evaluate(const IndirectNode<AnchorSize>&, const EvaluationOptions&) -> std::optional<double>;
 template<typename Op>
@@ -171,12 +177,58 @@ std::optional<double> evaluate(const IndirectNode<Hypot>& root, const Evaluation
     return executeVariadicMathOperationAfterUnwrapping(root, options);
 }
 
+std::optional<double> evaluate(const IndirectNode<MediaProgress>& root, const EvaluationOptions& options)
+{
+    if (!options.conversionData || !options.conversionData->styleBuilderState())
+        return { };
+
+    auto start = evaluate(root->start, options);
+    if (!start)
+        return { };
+
+    auto end = evaluate(root->end, options);
+    if (!end)
+        return { };
+
+    auto value = evaluateMediaProgress(root, options.conversionData->styleBuilderState()->document(), *options.conversionData);
+    return Calculation::executeOperation<Progress::Base>(value, *start, *end);
+}
+
+std::optional<double> evaluate(const IndirectNode<ContainerProgress>& root, const EvaluationOptions& options)
+{
+    if (!options.conversionData || !options.conversionData->styleBuilderState())
+        return { };
+
+    auto start = evaluate(root->start, options);
+    if (!start)
+        return { };
+
+    auto end = evaluate(root->end, options);
+    if (!end)
+        return { };
+
+    auto value = evaluateContainerProgress(root, *options.conversionData);
+    if (!value)
+        return { };
+
+    return Calculation::executeOperation<Progress::Base>(*value, *start, *end);
+}
+
 std::optional<double> evaluate(const IndirectNode<Anchor>& anchor, const EvaluationOptions& options)
 {
     if (!options.conversionData || !options.conversionData->styleBuilderState())
         return { };
 
-    auto result = evaluateWithoutFallback(*anchor, options);
+    auto side = WTF::switchOn(anchor->side,
+        [&](const Child& percentage) -> Style::AnchorPositionEvaluator::Side {
+            return evaluate(percentage, options).value_or(0) / 100;
+        },
+        [&](CSSValueID sideID) -> Style::AnchorPositionEvaluator::Side {
+            return sideID;
+        }
+    );
+
+    auto result = evaluateAnchor(*anchor, side, *options.conversionData->styleBuilderState());
 
     // https://drafts.csswg.org/css-anchor-position-1/#anchor-valid
     // "If any of these conditions are false, the anchor() function resolves to its specified fallback value.
@@ -188,7 +240,6 @@ std::optional<double> evaluate(const IndirectNode<Anchor>& anchor, const Evaluat
         options.conversionData->styleBuilderState()->setCurrentPropertyInvalidAtComputedValueTime();
 
     return result;
-
 }
 
 std::optional<double> evaluate(const IndirectNode<AnchorSize>& anchorSize, const EvaluationOptions& options)
@@ -196,17 +247,7 @@ std::optional<double> evaluate(const IndirectNode<AnchorSize>& anchorSize, const
     if (!options.conversionData || !options.conversionData->styleBuilderState())
         return { };
 
-    auto& builderState = *options.conversionData->styleBuilderState();
-
-    std::optional<Style::ScopedName> anchorSizeScopedName;
-    if (!anchorSize->elementName.isNull()) {
-        anchorSizeScopedName = Style::ScopedName {
-            .name = anchorSize->elementName,
-            .scopeOrdinal = builderState.styleScopeOrdinal()
-        };
-    }
-
-    auto result = Style::AnchorPositionEvaluator::evaluateSize(builderState, anchorSizeScopedName, anchorSize->dimension);
+    auto result = evaluateAnchorSize(*anchorSize, *options.conversionData->styleBuilderState());
 
     if (!result && anchorSize->fallback)
         result = evaluate(*anchorSize->fallback, options);
@@ -225,29 +266,6 @@ template<typename Op> std::optional<double> evaluate(const IndirectNode<Op>& roo
 std::optional<double> evaluateDouble(const Tree& tree, const EvaluationOptions& options)
 {
     return evaluate(tree.root, options);
-}
-
-std::optional<double> evaluateWithoutFallback(const Anchor& anchor, const EvaluationOptions& options)
-{
-    auto& builderState = *options.conversionData->styleBuilderState();
-
-    auto side = WTF::switchOn(anchor.side,
-        [&](const Child& percentage) -> Style::AnchorPositionEvaluator::Side {
-            return evaluate(percentage, options).value_or(0) / 100;
-        }, [&](CSSValueID sideID) -> Style::AnchorPositionEvaluator::Side {
-            return sideID;
-        }
-    );
-
-    std::optional<Style::ScopedName> anchorScopedName;
-    if (!anchor.elementName.isNull()) {
-        anchorScopedName = Style::ScopedName {
-            .name = anchor.elementName,
-            .scopeOrdinal = builderState.styleScopeOrdinal()
-        };
-    }
-
-    return Style::AnchorPositionEvaluator::evaluate(builderState, anchorScopedName, side);
 }
 
 } // namespace CSSCalc

@@ -51,7 +51,6 @@ struct EvaluationOptions {
 };
 
 std::optional<double> evaluateDouble(const Tree&, const EvaluationOptions&);
-std::optional<double> evaluateWithoutFallback(const Anchor&, const EvaluationOptions&);
 
 } // namespace CSSCalc
 } // namespace WebCore

@@ -52,6 +52,12 @@ static void collectComputedStyleDependencies(const Child& root, ComputedStyleDep
         [&](const Symbol& root) {
             CSS::collectComputedStyleDependencies(dependencies, root.unit);
         },
+        [&](const IndirectNode<MediaProgress>&) {
+            // FIXME: Implement
+        },
+        [&](const IndirectNode<ContainerProgress>&) {
+            // FIXME: Implement
+        },
         [&](const IndirectNode<Anchor>& anchor) {
             dependencies.anchors = true;
             if (anchor->fallback)

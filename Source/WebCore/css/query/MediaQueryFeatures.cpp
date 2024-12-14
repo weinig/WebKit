@@ -25,6 +25,7 @@
 #include "config.h"
 #include "MediaQueryFeatures.h"
 
+#include "CalculationCategory.h"
 #include "Chrome.h"
 #include "Document.h"
 #include "DocumentInlines.h"
@@ -43,7 +44,11 @@
 #include "Theme.h"
 #include <wtf/Function.h>
 
-namespace WebCore::MQ::Features {
+namespace WebCore::MQ {
+
+MediaProgressProviding::~MediaProgressProviding() = default;
+
+namespace Features {
 
 struct BooleanSchema : public FeatureSchema {
     using ValueFunction = Function<bool(const FeatureEvaluationContext&)>;
@@ -51,62 +56,117 @@ struct BooleanSchema : public FeatureSchema {
     BooleanSchema(const AtomString& name, ValueFunction&& valueFunction)
         : FeatureSchema(name, FeatureSchema::Type::Discrete, FeatureSchema::ValueType::Integer)
         , valueFunction(WTFMove(valueFunction))
-    { }
+    {
+    }
 
     EvaluationResult evaluate(const Feature& feature, const FeatureEvaluationContext& context) const override
     {
-        return evaluateBooleanFeature(feature, valueFunction(context));
+        return evaluateBooleanFeature(feature, valueFunction(context), context.conversionData);
     }
 
 private:
     ValueFunction valueFunction;
 };
 
-struct IntegerSchema : public FeatureSchema {
+struct IntegerSchema : public FeatureSchema, public MediaProgressProviding {
     using ValueFunction = Function<int(const FeatureEvaluationContext&)>;
 
     IntegerSchema(const AtomString& name, ValueFunction&& valueFunction)
         : FeatureSchema(name, FeatureSchema::Type::Range, FeatureSchema::ValueType::Integer)
         , valueFunction(WTFMove(valueFunction))
-    { }
+    {
+    }
 
     EvaluationResult evaluate(const Feature& feature, const FeatureEvaluationContext& context) const override
     {
-        return evaluateIntegerFeature(feature, valueFunction(context));
+        return evaluateIntegerFeature(feature, valueFunction(context), context.conversionData);
+    }
+
+    // MediaProgressProviding conformance
+
+    AtomString name() const override
+    {
+        return static_cast<const FeatureSchema*>(this)->name;
+    }
+
+    Calculation::Category category() const override
+    {
+        return Calculation::Category::Integer;
+    }
+
+    double valueInCanonicalUnits(const FeatureEvaluationContext& context) const override
+    {
+        return valueFunction(context);
     }
 
 private:
     ValueFunction valueFunction;
 };
 
-struct NumberSchema : public FeatureSchema {
+struct NumberSchema : public FeatureSchema, public MediaProgressProviding {
     using ValueFunction = Function<double(const FeatureEvaluationContext&)>;
 
     NumberSchema(const AtomString& name, ValueFunction&& valueFunction)
         : FeatureSchema(name, FeatureSchema::Type::Range, FeatureSchema::ValueType::Number)
         , valueFunction(WTFMove(valueFunction))
-    { }
+    {
+    }
 
     EvaluationResult evaluate(const Feature& feature, const FeatureEvaluationContext& context) const override
     {
-        return evaluateNumberFeature(feature, valueFunction(context));
+        return evaluateNumberFeature(feature, valueFunction(context), context.conversionData);
+    }
+
+    // MediaProgressProviding conformance
+
+    AtomString name() const override
+    {
+        return static_cast<const FeatureSchema*>(this)->name;
+    }
+
+    Calculation::Category category() const override
+    {
+        return Calculation::Category::Number;
+    }
+
+    double valueInCanonicalUnits(const FeatureEvaluationContext& context) const override
+    {
+        return valueFunction(context);
     }
 
 private:
     ValueFunction valueFunction;
 };
 
-struct LengthSchema : public FeatureSchema {
+struct LengthSchema : public FeatureSchema, public MediaProgressProviding {
     using ValueFunction = Function<LayoutUnit(const FeatureEvaluationContext&)>;
 
     LengthSchema(const AtomString& name, ValueFunction&& valueFunction)
         : FeatureSchema(name, FeatureSchema::Type::Range, FeatureSchema::ValueType::Length)
         , valueFunction(WTFMove(valueFunction))
-    { }
+    {
+    }
 
     EvaluationResult evaluate(const Feature& feature, const FeatureEvaluationContext& context) const override
     {
         return evaluateLengthFeature(feature, valueFunction(context), context.conversionData);
+    }
+
+    // MediaProgressProviding conformance
+
+    AtomString name() const override
+    {
+        return static_cast<const FeatureSchema*>(this)->name;
+    }
+
+    Calculation::Category category() const override
+    {
+        return Calculation::Category::Length;
+    }
+
+    double valueInCanonicalUnits(const FeatureEvaluationContext& context) const override
+    {
+        return valueFunction(context);
     }
 
 private:
@@ -119,28 +179,47 @@ struct RatioSchema : public FeatureSchema {
     RatioSchema(const AtomString& name, ValueFunction&& valueFunction)
         : FeatureSchema(name, FeatureSchema::Type::Range, FeatureSchema::ValueType::Ratio)
         , valueFunction(WTFMove(valueFunction))
-    { }
+    {
+    }
 
     EvaluationResult evaluate(const Feature& feature, const FeatureEvaluationContext& context) const override
     {
-        return evaluateRatioFeature(feature, valueFunction(context));
+        return evaluateRatioFeature(feature, valueFunction(context), context.conversionData);
     }
 
 private:
     ValueFunction valueFunction;
 };
 
-struct ResolutionSchema : public FeatureSchema {
+struct ResolutionSchema : public FeatureSchema, public MediaProgressProviding {
     using ValueFunction = Function<float(const FeatureEvaluationContext&)>;
 
     ResolutionSchema(const AtomString& name, ValueFunction&& valueFunction)
         : FeatureSchema(name, FeatureSchema::Type::Range, FeatureSchema::ValueType::Resolution)
         , valueFunction(WTFMove(valueFunction))
-    { }
+    {
+    }
 
     EvaluationResult evaluate(const Feature& feature, const FeatureEvaluationContext& context) const override
     {
-        return evaluateResolutionFeature(feature, valueFunction(context));
+        return evaluateResolutionFeature(feature, valueFunction(context), context.conversionData);
+    }
+
+    // MediaProgressProviding conformance
+
+    AtomString name() const override
+    {
+        return static_cast<const FeatureSchema*>(this)->name;
+    }
+
+    Calculation::Category category() const override
+    {
+        return Calculation::Category::Resolution;
+    }
+
+    double valueInCanonicalUnits(const FeatureEvaluationContext& context) const override
+    {
+        return valueFunction(context);
     }
 
 private:
@@ -155,14 +234,15 @@ struct IdentifierSchema : public FeatureSchema {
     IdentifierSchema(const AtomString& name, FixedVector<CSSValueID>&& valueIdentifiers, ValueFunction&& valueFunction)
         : FeatureSchema(name, FeatureSchema::Type::Discrete, FeatureSchema::ValueType::Identifier, WTFMove(valueIdentifiers))
         , valueFunction(WTFMove(valueFunction))
-    { }
+    {
+    }
 
     EvaluationResult evaluate(const Feature& feature, const FeatureEvaluationContext& context) const override
     {
         auto valueIDs = valueFunction(context);
         for (auto valueID : valueIDs) {
             ASSERT(valueIdentifiers.contains(valueID));
-            if (evaluateIdentifierFeature(feature, valueID) == EvaluationResult::True)
+            if (evaluateIdentifierFeature(feature, valueID, context.conversionData) == EvaluationResult::True)
                 return EvaluationResult::True;
         }
         return EvaluationResult::False;
@@ -189,7 +269,7 @@ static float deviceScaleFactor(const FeatureEvaluationContext& context)
     return 0;
 }
 
-const FeatureSchema& animation()
+static const BooleanSchema& animationFeatureSchema()
 {
     static MainThreadNeverDestroyed<BooleanSchema> schema {
         "-webkit-animation"_s,
@@ -198,7 +278,7 @@ const FeatureSchema& animation()
     return schema;
 }
 
-const FeatureSchema& anyHover()
+static const IdentifierSchema& anyHoverFeatureSchema()
 {
     static MainThreadNeverDestroyed<IdentifierSchema> schema {
         "any-hover"_s,
@@ -212,7 +292,7 @@ const FeatureSchema& anyHover()
     return schema;
 }
 
-const FeatureSchema& anyPointer()
+static const IdentifierSchema& anyPointerFeatureSchema()
 {
     static MainThreadNeverDestroyed<IdentifierSchema> schema {
         "any-pointer"_s,
@@ -235,7 +315,7 @@ const FeatureSchema& anyPointer()
     return schema;
 }
 
-const FeatureSchema& aspectRatio()
+static const RatioSchema& aspectRatioFeatureSchema()
 {
     static MainThreadNeverDestroyed<RatioSchema> schema {
         "aspect-ratio"_s,
@@ -247,7 +327,7 @@ const FeatureSchema& aspectRatio()
     return schema;
 }
 
-const FeatureSchema& color()
+static const IntegerSchema& colorFeatureSchema()
 {
     static MainThreadNeverDestroyed<IntegerSchema> schema {
         "color"_s,
@@ -258,7 +338,7 @@ const FeatureSchema& color()
     return schema;
 }
 
-const FeatureSchema& colorGamut()
+static const IdentifierSchema& colorGamutFeatureSchema()
 {
     static MainThreadNeverDestroyed<IdentifierSchema> schema {
         "color-gamut"_s,
@@ -274,7 +354,7 @@ const FeatureSchema& colorGamut()
     return schema;
 }
 
-const FeatureSchema& colorIndex()
+static const IntegerSchema& colorIndexFeatureSchema()
 {
     static MainThreadNeverDestroyed<IntegerSchema> schema {
         "color-index"_s,
@@ -283,7 +363,7 @@ const FeatureSchema& colorIndex()
     return schema;
 }
 
-const FeatureSchema& deviceAspectRatio()
+static const RatioSchema& deviceAspectRatioFeatureSchema()
 {
     static MainThreadNeverDestroyed<RatioSchema> schema {
         "device-aspect-ratio"_s,
@@ -298,7 +378,7 @@ const FeatureSchema& deviceAspectRatio()
     return schema;
 }
 
-const FeatureSchema& deviceHeight()
+static const LengthSchema& deviceHeightFeatureSchema()
 {
     static MainThreadNeverDestroyed<LengthSchema> schema {
         "device-height"_s,
@@ -311,7 +391,7 @@ const FeatureSchema& deviceHeight()
     return schema;
 }
 
-const FeatureSchema& devicePixelRatio()
+static const NumberSchema& devicePixelRatioFeatureSchema()
 {
     static MainThreadNeverDestroyed<NumberSchema> schema {
         "-webkit-device-pixel-ratio"_s,
@@ -322,7 +402,7 @@ const FeatureSchema& devicePixelRatio()
     return schema;
 }
 
-const FeatureSchema& deviceWidth()
+static const LengthSchema& deviceWidthFeatureSchema()
 {
     static MainThreadNeverDestroyed<LengthSchema> schema {
         "device-width"_s,
@@ -335,7 +415,7 @@ const FeatureSchema& deviceWidth()
     return schema;
 }
 
-const FeatureSchema& dynamicRange()
+static const IdentifierSchema& dynamicRangeFeatureSchema()
 {
     static MainThreadNeverDestroyed<IdentifierSchema> schema {
         "dynamic-range"_s,
@@ -359,7 +439,7 @@ const FeatureSchema& dynamicRange()
     return schema;
 }
 
-const FeatureSchema& forcedColors()
+static const IdentifierSchema& forcedColorsFeatureSchema()
 {
     static MainThreadNeverDestroyed<IdentifierSchema> schema {
         "forced-colors"_s,
@@ -371,7 +451,7 @@ const FeatureSchema& forcedColors()
     return schema;
 }
 
-const FeatureSchema& grid()
+static const BooleanSchema& gridFeatureSchema()
 {
     static MainThreadNeverDestroyed<BooleanSchema> schema {
         "grid"_s,
@@ -380,7 +460,7 @@ const FeatureSchema& grid()
     return schema;
 }
 
-const FeatureSchema& height()
+static const LengthSchema& heightFeatureSchema()
 {
     static MainThreadNeverDestroyed<LengthSchema> schema {
         "height"_s,
@@ -394,7 +474,7 @@ const FeatureSchema& height()
     return schema;
 }
 
-const FeatureSchema& hover()
+static const IdentifierSchema& hoverFeatureSchema()
 {
     static MainThreadNeverDestroyed<IdentifierSchema> schema {
         "hover"_s,
@@ -408,7 +488,7 @@ const FeatureSchema& hover()
     return schema;
 }
 
-const FeatureSchema& invertedColors()
+static const IdentifierSchema& invertedColorsFeatureSchema()
 {
     static MainThreadNeverDestroyed<IdentifierSchema> schema {
         "inverted-colors"_s,
@@ -429,7 +509,7 @@ const FeatureSchema& invertedColors()
     return schema;
 }
 
-const FeatureSchema& monochrome()
+static const IntegerSchema& monochromeFeatureSchema()
 {
     static MainThreadNeverDestroyed<IntegerSchema> schema {
         "monochrome"_s,
@@ -452,7 +532,7 @@ const FeatureSchema& monochrome()
     return schema;
 }
 
-const FeatureSchema& orientation()
+static const IdentifierSchema& orientationFeatureSchema()
 {
     static MainThreadNeverDestroyed<IdentifierSchema> schema {
         "orientation"_s,
@@ -470,7 +550,7 @@ const FeatureSchema& orientation()
     return schema;
 }
 
-const FeatureSchema& pointer()
+static const IdentifierSchema& pointerFeatureSchema()
 {
     static MainThreadNeverDestroyed<IdentifierSchema> schema {
         "pointer"_s,
@@ -492,7 +572,7 @@ const FeatureSchema& pointer()
     return schema;
 }
 
-const FeatureSchema& prefersContrast()
+static const IdentifierSchema& prefersContrastFeatureSchema()
 {
     static MainThreadNeverDestroyed<IdentifierSchema> schema {
         "prefers-contrast"_s,
@@ -517,7 +597,7 @@ const FeatureSchema& prefersContrast()
     return schema;
 }
 
-const FeatureSchema& prefersDarkInterface()
+static const IdentifierSchema& prefersDarkInterfaceFeatureSchema()
 {
     static MainThreadNeverDestroyed<IdentifierSchema> schema {
         "prefers-dark-interface"_s,
@@ -532,7 +612,7 @@ const FeatureSchema& prefersDarkInterface()
     return schema;
 }
 
-const FeatureSchema& prefersReducedMotion()
+static const IdentifierSchema& prefersReducedMotionFeatureSchema()
 {
     static MainThreadNeverDestroyed<IdentifierSchema> schema {
         "prefers-reduced-motion"_s,
@@ -557,7 +637,7 @@ const FeatureSchema& prefersReducedMotion()
     return schema;
 }
 
-const FeatureSchema& resolution()
+static const ResolutionSchema& resolutionFeatureSchema()
 {
     static MainThreadNeverDestroyed<ResolutionSchema> schema {
         "resolution"_s,
@@ -568,7 +648,7 @@ const FeatureSchema& resolution()
     return schema;
 }
 
-const FeatureSchema& scan()
+static const IdentifierSchema& scanFeatureSchema()
 {
     static MainThreadNeverDestroyed<IdentifierSchema> schema {
         "scan"_s,
@@ -580,7 +660,7 @@ const FeatureSchema& scan()
     return schema;
 }
 
-const FeatureSchema& scripting()
+static const IdentifierSchema& scriptingFeatureSchema()
 {
     static MainThreadNeverDestroyed<IdentifierSchema> schema {
         "scripting"_s,
@@ -595,7 +675,7 @@ const FeatureSchema& scripting()
     return schema;
 }
 
-const FeatureSchema& transform2d()
+static const BooleanSchema& transform2dFeatureSchema()
 {
     static MainThreadNeverDestroyed<BooleanSchema> schema {
         "-webkit-transform-2d"_s,
@@ -604,7 +684,7 @@ const FeatureSchema& transform2d()
     return schema;
 }
 
-const FeatureSchema& transform3d()
+static const BooleanSchema& transform3dFeatureSchema()
 {
     static MainThreadNeverDestroyed<BooleanSchema> schema {
         "-webkit-transform-3d"_s,
@@ -616,7 +696,7 @@ const FeatureSchema& transform3d()
     return schema;
 }
 
-const FeatureSchema& transition()
+static const BooleanSchema& transitionFeatureSchema()
 {
     static MainThreadNeverDestroyed<BooleanSchema> schema {
         "-webkit-transition"_s,
@@ -625,7 +705,7 @@ const FeatureSchema& transition()
     return schema;
 }
 
-const FeatureSchema& update()
+static const IdentifierSchema& updateFeatureSchema()
 {
     static MainThreadNeverDestroyed<IdentifierSchema> schema {
         "update"_s,
@@ -642,7 +722,7 @@ const FeatureSchema& update()
     return schema;
 }
 
-const FeatureSchema& videoPlayableInline()
+static const BooleanSchema& videoPlayableInlineFeatureSchema()
 {
     static MainThreadNeverDestroyed<BooleanSchema> schema {
         "-webkit-video-playable-inline"_s,
@@ -653,7 +733,7 @@ const FeatureSchema& videoPlayableInline()
     return schema;
 }
 
-const FeatureSchema& width()
+static const LengthSchema& widthFeatureSchema()
 {
     static MainThreadNeverDestroyed<LengthSchema> schema {
         "width"_s,
@@ -668,7 +748,7 @@ const FeatureSchema& width()
 }
 
 #if ENABLE(APPLICATION_MANIFEST)
-const FeatureSchema& displayMode()
+static const IdentifierSchema& displayModeFeatureSchema()
 {
     static MainThreadNeverDestroyed<IdentifierSchema> schema {
         "display-mode"_s,
@@ -701,7 +781,7 @@ const FeatureSchema& displayMode()
 }
 #endif
 
-const FeatureSchema& overflowBlock()
+static const IdentifierSchema& overflowBlockFeatureSchema()
 {
     static MainThreadNeverDestroyed<IdentifierSchema> schema {
         "overflow-block"_s,
@@ -720,7 +800,7 @@ const FeatureSchema& overflowBlock()
     return schema;
 }
 
-const FeatureSchema& overflowInline()
+static const IdentifierSchema& overflowInlineFeatureSchema()
 {
     static MainThreadNeverDestroyed<IdentifierSchema> schema {
         "overflow-inline"_s,
@@ -734,7 +814,7 @@ const FeatureSchema& overflowInline()
 }
 
 #if ENABLE(DARK_MODE_CSS)
-const FeatureSchema& prefersColorScheme()
+static const IdentifierSchema& prefersColorSchemeFeatureSchema()
 {
     static MainThreadNeverDestroyed<IdentifierSchema> schema {
         "prefers-color-scheme"_s,
@@ -747,6 +827,192 @@ const FeatureSchema& prefersColorScheme()
         }
     };
     return schema;
+}
+#endif
+
+// MARK: - Exposed schemas
+
+const FeatureSchema& animation()
+{
+    return animationFeatureSchema();
+}
+
+const FeatureSchema& anyHover()
+{
+    return anyHoverFeatureSchema();
+}
+
+const FeatureSchema& anyPointer()
+{
+    return anyPointerFeatureSchema();
+}
+
+const FeatureSchema& aspectRatio()
+{
+    return aspectRatioFeatureSchema();
+}
+
+const FeatureSchema& color()
+{
+    return colorFeatureSchema();
+}
+
+const FeatureSchema& colorGamut()
+{
+    return colorGamutFeatureSchema();
+}
+
+const FeatureSchema& colorIndex()
+{
+    return colorIndexFeatureSchema();
+}
+
+const FeatureSchema& deviceAspectRatio()
+{
+    return deviceAspectRatioFeatureSchema();
+}
+
+const FeatureSchema& deviceHeight()
+{
+    return deviceHeightFeatureSchema();
+}
+
+const FeatureSchema& devicePixelRatio()
+{
+    return devicePixelRatioFeatureSchema();
+}
+
+const FeatureSchema& deviceWidth()
+{
+    return deviceWidthFeatureSchema();
+}
+
+const FeatureSchema& dynamicRange()
+{
+    return dynamicRangeFeatureSchema();
+}
+
+const FeatureSchema& forcedColors()
+{
+    return forcedColorsFeatureSchema();
+}
+
+const FeatureSchema& grid()
+{
+    return gridFeatureSchema();
+}
+
+const FeatureSchema& height()
+{
+    return heightFeatureSchema();
+}
+
+const FeatureSchema& hover()
+{
+    return hoverFeatureSchema();
+}
+
+const FeatureSchema& invertedColors()
+{
+    return invertedColorsFeatureSchema();
+}
+
+const FeatureSchema& monochrome()
+{
+    return monochromeFeatureSchema();
+}
+
+const FeatureSchema& orientation()
+{
+    return orientationFeatureSchema();
+}
+
+const FeatureSchema& pointer()
+{
+    return pointerFeatureSchema();
+}
+
+const FeatureSchema& prefersContrast()
+{
+    return prefersContrastFeatureSchema();
+}
+
+const FeatureSchema& prefersDarkInterface()
+{
+    return prefersDarkInterfaceFeatureSchema();
+}
+
+const FeatureSchema& prefersReducedMotion()
+{
+    return prefersReducedMotionFeatureSchema();
+}
+
+const FeatureSchema& resolution()
+{
+    return resolutionFeatureSchema();
+}
+
+const FeatureSchema& scan()
+{
+    return scanFeatureSchema();
+}
+
+const FeatureSchema& scripting()
+{
+    return scriptingFeatureSchema();
+}
+
+const FeatureSchema& transform2d()
+{
+    return transform2dFeatureSchema();
+}
+
+const FeatureSchema& transform3d()
+{
+    return transform3dFeatureSchema();
+}
+
+const FeatureSchema& transition()
+{
+    return transitionFeatureSchema();
+}
+
+const FeatureSchema& update()
+{
+    return updateFeatureSchema();
+}
+
+const FeatureSchema& videoPlayableInline()
+{
+    return videoPlayableInlineFeatureSchema();
+}
+
+const FeatureSchema& width()
+{
+    return widthFeatureSchema();
+}
+
+#if ENABLE(APPLICATION_MANIFEST)
+const FeatureSchema& displayMode()
+{
+    return displayModeFeatureSchema();
+}
+#endif
+
+const FeatureSchema& overflowBlock()
+{
+    return overflowBlockFeatureSchema();
+}
+
+const FeatureSchema& overflowInline()
+{
+    return overflowInlineFeatureSchema();
+}
+
+#if ENABLE(DARK_MODE_CSS)
+const FeatureSchema& prefersColorScheme()
+{
+    return prefersColorSchemeFeatureSchema();
 }
 #endif
 
@@ -796,6 +1062,21 @@ Vector<const FeatureSchema*> allSchemas()
     };
 }
 
+Vector<const MediaProgressProviding*> allMediaProgressProvidingSchemas()
+{
+    return {
+        &colorFeatureSchema(),
+        &colorIndexFeatureSchema(),
+        &deviceHeightFeatureSchema(),
+        &devicePixelRatioFeatureSchema(),
+        &deviceWidthFeatureSchema(),
+        &heightFeatureSchema(),
+        &monochromeFeatureSchema(),
+        &resolutionFeatureSchema(),
+        &widthFeatureSchema(),
+    };
+}
+
 // FIXME: This could be part of the schema.
 std::optional<MediaQueryDynamicDependency> dynamicDependency(const FeatureSchema& schema)
 {
@@ -815,4 +1096,5 @@ std::optional<MediaQueryDynamicDependency> dynamicDependency(const FeatureSchema
     return { };
 }
 
-}
+} // namespace Features
+} // namespace WebCore::MQ

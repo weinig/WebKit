@@ -26,7 +26,23 @@
 
 #include "MediaQuery.h"
 
-namespace WebCore::MQ {
+namespace WebCore {
+
+namespace Calculation {
+enum class Category : uint8_t;
+}
+
+namespace MQ {
+
+// Interface exposed by schemas that can provide a value for the media-progress() function.
+struct MediaProgressProviding {
+    virtual ~MediaProgressProviding();
+
+    virtual AtomString name() const = 0;
+    virtual Calculation::Category category() const = 0;
+
+    virtual double valueInCanonicalUnits(const FeatureEvaluationContext&) const = 0;
+};
 
 namespace Features {
 
@@ -72,10 +88,10 @@ const FeatureSchema& prefersColorScheme();
 #endif
 
 Vector<const FeatureSchema*> allSchemas();
+Vector<const MediaProgressProviding*> allMediaProgressProvidingSchemas();
 
 std::optional<MediaQueryDynamicDependency> dynamicDependency(const FeatureSchema&);
 
-};
-
-}
-
+} // namespace Features
+} // namespace MQ
+} // namespace WebCore

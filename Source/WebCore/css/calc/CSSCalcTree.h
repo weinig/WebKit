@@ -38,11 +38,16 @@
 
 namespace WebCore {
 
+namespace CQ {
+struct ContainerProgressProviding;
+}
+
+namespace MQ {
+struct MediaProgressProviding;
+}
+
 namespace Style {
-
-// Forward declared from AnchorPositionEvaluator.h
 enum class AnchorSizeDimension : uint8_t;
-
 }
 
 enum class CSSUnitType : uint8_t;
@@ -80,8 +85,8 @@ struct Exp;
 struct Abs;
 struct Sign;
 struct Progress;
-
-// CSS Anchor Positioning functions.
+struct MediaProgress;
+struct ContainerProgress;
 struct Anchor;
 struct AnchorSize;
 
@@ -202,6 +207,8 @@ using Node = std::variant<
     IndirectNode<Abs>,
     IndirectNode<Sign>,
     IndirectNode<Progress>,
+    IndirectNode<MediaProgress>,
+    IndirectNode<ContainerProgress>,
     IndirectNode<Anchor>,
     IndirectNode<AnchorSize>
 >;
@@ -728,18 +735,57 @@ public:
     using Base = Calculation::Progress;
     static constexpr auto id = CSSValueProgress;
 
-    // <progress()> = progress( <calc-sum> from <calc-sum> to <calc-sum> )
+    // <progress()> = progress( <calc-sum>, <calc-sum>, <calc-sum> )
     //     - INPUT: "consistent" <number>, <dimension>, or <percentage>
     //     - OUTPUT: <number> "made consistent"
     static constexpr auto input = AllowedTypes::Any;
     static constexpr auto merge = MergePolicy::Consistent;
     static constexpr auto output = OutputTransform::NumberMadeConsistent;
 
-    Child progress;
-    Child from;
-    Child to;
+    Child value;
+    Child start;
+    Child end;
 
     bool operator==(const Progress&) const = default;
+};
+
+struct MediaProgress {
+    WTF_MAKE_TZONE_ALLOCATED(MediaProgress);
+public:
+    static constexpr auto id = CSSValueMediaProgress;
+
+    // <media-progress()> = media-progress( <mf-name>, <calc-sum>, <calc-sum> )
+    //     - INPUT: "consistent" <number>, <dimension>, or <percentage>, dependent on type of <mf-name> feature.
+    //     - OUTPUT: <number>
+
+    // media-progress() is not a "math function", so its children do not inherit
+    // nor contribute to the type of the overall calculation tree.
+
+    const MQ::MediaProgressProviding* feature;
+    Child start;
+    Child end;
+
+    bool operator==(const MediaProgress&) const = default;
+};
+
+struct ContainerProgress {
+    WTF_MAKE_TZONE_ALLOCATED(ContainerProgress);
+public:
+    static constexpr auto id = CSSValueContainerProgress;
+
+    // <container-progress()> = container-progress( <mf-name> [ of <container-name> ]?, <calc-sum>, <calc-sum> )
+    //     - INPUT: "consistent" <number>, <dimension>, or <percentage>, dependent on type of <mf-name> feature.
+    //     - OUTPUT: <number>
+
+    // container-progress() is not a "math function", so its children do not inherit
+    // nor contribute to the type of the overall calculation tree.
+
+    const CQ::ContainerProgressProviding* feature;
+    AtomString container;
+    Child start;
+    Child end;
+
+    bool operator==(const ContainerProgress&) const = default;
 };
 
 struct Anchor {
@@ -915,6 +961,8 @@ std::optional<Type> toType(const Exp&);
 std::optional<Type> toType(const Abs&);
 std::optional<Type> toType(const Sign&);
 std::optional<Type> toType(const Progress&);
+std::optional<Type> toType(const MediaProgress&);
+std::optional<Type> toType(const ContainerProgress&);
 
 // MARK: CSSUnitType Evaluation
 
@@ -1187,11 +1235,33 @@ template<size_t I> const auto& get(const Sign& root)
 template<size_t I> const auto& get(const Progress& root)
 {
     if constexpr (!I)
-        return root.progress;
+        return root.value;
     else if constexpr (I == 1)
-        return root.from;
+        return root.start;
     else if constexpr (I == 2)
-        return root.to;
+        return root.end;
+}
+
+template<size_t I> const auto& get(const MediaProgress& root)
+{
+    if constexpr (!I)
+        return root.feature;
+    else if constexpr (I == 1)
+        return root.start;
+    else if constexpr (I == 2)
+        return root.end;
+}
+
+template<size_t I> const auto& get(const ContainerProgress& root)
+{
+    if constexpr (!I)
+        return root.feature;
+    else if constexpr (I == 1)
+        return root.container;
+    else if constexpr (I == 2)
+        return root.start;
+    else if constexpr (I == 3)
+        return root.end;
 }
 
 } // namespace CSSCalc
@@ -1235,6 +1305,8 @@ OP_TUPLE_LIKE_CONFORMANCE(Exp, 1);
 OP_TUPLE_LIKE_CONFORMANCE(Abs, 1);
 OP_TUPLE_LIKE_CONFORMANCE(Sign, 1);
 OP_TUPLE_LIKE_CONFORMANCE(Progress, 3);
+OP_TUPLE_LIKE_CONFORMANCE(MediaProgress, 3);
+OP_TUPLE_LIKE_CONFORMANCE(ContainerProgress, 4);
 // FIXME (webkit.org/b/280798): make Anchor and AnchorSize tuple-like
 OP_TUPLE_LIKE_CONFORMANCE(Anchor, 0);
 OP_TUPLE_LIKE_CONFORMANCE(AnchorSize, 0);

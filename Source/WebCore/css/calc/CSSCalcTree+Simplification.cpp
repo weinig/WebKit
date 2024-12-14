@@ -25,10 +25,13 @@
 #include "config.h"
 #include "CSSCalcTree+Simplification.h"
 
-#include "AnchorPositionEvaluator.h"
 #include "CSSCalcSymbolTable.h"
+#include "CSSCalcTree+AnchorEvaluator.h"
+#include "CSSCalcTree+AnchorSizeEvaluator.h"
+#include "CSSCalcTree+ContainerProgressEvaluator.h"
 #include "CSSCalcTree+Copy.h"
 #include "CSSCalcTree+Evaluation.h"
+#include "CSSCalcTree+MediaProgressEvaluator.h"
 #include "CSSCalcTree+NumericIdentity.h"
 #include "CSSCalcTree+Traversal.h"
 #include "CSSCalcTree.h"
@@ -43,14 +46,36 @@
 namespace WebCore {
 namespace CSSCalc {
 
-static auto copyAndSimplify(const Children&, const SimplificationOptions&) -> Children;
-static auto copyAndSimplify(const std::optional<Child>&, const SimplificationOptions&) -> std::optional<Child>;
+static auto copyAndSimplify(CSSValueID, const SimplificationOptions&) -> CSSValueID;
+static auto copyAndSimplify(Style::AnchorSizeDimension, const SimplificationOptions&) -> Style::AnchorSizeDimension;
+static auto copyAndSimplify(const MQ::MediaProgressProviding*, const SimplificationOptions&) -> const MQ::MediaProgressProviding*;
+static auto copyAndSimplify(const CQ::ContainerProgressProviding*, const SimplificationOptions&) -> const CQ::ContainerProgressProviding*;
+static auto copyAndSimplify(const AtomString&, const SimplificationOptions&) -> AtomString;
 static auto copyAndSimplify(const CSS::NoneRaw&, const SimplificationOptions&) -> CSS::NoneRaw;
-static auto copyAndSimplify(const ChildOrNone&, const SimplificationOptions&) -> ChildOrNone;
+static auto copyAndSimplify(const Children&, const SimplificationOptions&) -> Children;
+template<typename T>
+static auto copyAndSimplify(const std::optional<T>&, const SimplificationOptions&) -> std::optional<T>;
+template<typename... Ts>
+static auto copyAndSimplify(const std::variant<Ts...>&, const SimplificationOptions&) -> std::variant<Ts...>;
 
 template<typename Op, typename... Args> static double executeMathOperation(Args&&... args)
 {
     return Calculation::executeOperation<typename Op::Base>(std::forward<Args>(args)...);
+}
+
+template<typename... F> static decltype(auto) switchTogether(const Child& a, const Child& b, F&&... f)
+{
+    auto visitor = WTF::makeVisitor(std::forward<F>(f)...);
+    using ResultType = decltype(visitor(std::declval<Number>(), std::declval<Number>()));
+
+    if (a.index() != b.index())
+        return visitor(std::nullopt, std::nullopt);
+
+    return WTF::switchOn(a,
+        [&]<typename T>(const T& aT) -> ResultType {
+            return visitor(aT, std::get<T>(b));
+        }
+    );
 }
 
 // MARK: Predicate: percentageResolveToDimension
@@ -280,18 +305,14 @@ std::optional<CanonicalDimension> canonicalize(NonCanonicalDimension root, const
 
 template<typename Op> static std::optional<Child> simplifyForOperation(Child& a, Child& b, const SimplificationOptions& options)
 {
-    if (a.index() != b.index())
-        return std::nullopt;
-
-    return WTF::switchOn(a,
-        [&]<Numeric T>(T& numericA) -> std::optional<Child> {
-            auto& numericB = std::get<T>(b);
+    return switchTogether(a, b,
+        [&]<Numeric T>(const T& numericA, const T& numericB) -> std::optional<Child> {
             if (!unitsMatch(numericA, numericB, options) || !fullyResolved(numericA, options))
                 return std::nullopt;
 
             return makeChildWithValueBasedOn(executeMathOperation<Op>(numericA.value, numericB.value), numericA);
         },
-        [](auto&) -> std::optional<Child> {
+        [](const auto&, const auto&) -> std::optional<Child> {
             return std::nullopt;
         }
     );
@@ -299,18 +320,14 @@ template<typename Op> static std::optional<Child> simplifyForOperation(Child& a,
 
 template<typename Op, typename Completion> static std::optional<Child> simplifyForOperationWithCompletion(Child& a, Child& b, const SimplificationOptions& options, Completion&& completion)
 {
-    if (a.index() != b.index())
-        return std::nullopt;
-
-    return WTF::switchOn(a,
-        [&]<Numeric T>(T& numericA) -> std::optional<Child> {
-            auto& numericB = std::get<T>(b);
+    return switchTogether(a, b,
+        [&]<Numeric T>(const T& numericA, const T& numericB) -> std::optional<Child> {
             if (!unitsMatch(numericA, numericB, options) || !fullyResolved(numericA, options))
                 return std::nullopt;
 
             return completion(executeMathOperation<Op>(numericA.value, numericB.value));
         },
-        [](auto&) -> std::optional<Child> {
+        [](const auto&, const auto&) -> std::optional<Child> {
             return std::nullopt;
         }
     );
@@ -1106,14 +1123,11 @@ std::optional<Child> simplify(Pow& root, const SimplificationOptions&)
     // NOTE: `a` and `b` have been type checked by this point to be `<number>`, though they may not
     // be able to be fully resolved yet.
 
-    if (root.a.index() != root.b.index())
-        return std::nullopt;
-
-    return WTF::switchOn(root.a,
-        [&](const Number& a) -> std::optional<Child> {
-            return makeChild(Number { .value = executeMathOperation<Pow>(a.value, std::get<Number>(root.b).value) });
+    return switchTogether(root.a, root.b,
+        [&](const Number& a, const Number& b) -> std::optional<Child> {
+            return makeChild(Number { .value = executeMathOperation<Pow>(a.value, b.value) });
         },
-        [](const auto&) -> std::optional<Child> {
+        [](const auto&, const auto&) -> std::optional<Child> {
             return std::nullopt;
         }
     );
@@ -1217,14 +1231,11 @@ std::optional<Child> simplify(Log& root, const SimplificationOptions&)
     // be able to be fully resolved yet.
 
     if (root.b) {
-        if (root.a.index() != root.b->index())
-            return std::nullopt;
-
-        return WTF::switchOn(root.a,
-            [&](const Number& a) -> std::optional<Child> {
-                return makeChild(Number { .value = executeMathOperation<Log>(a.value, std::get<Number>(*root.b).value) });
+        return switchTogether(root.a, *root.b,
+            [&](const Number& a, const Number& b) -> std::optional<Child> {
+                return makeChild(Number { .value = executeMathOperation<Log>(a.value, b.value) });
             },
-            [](const auto&) -> std::optional<Child> {
+            [](const auto&, const auto&) -> std::optional<Child> {
                 return std::nullopt;
             }
         );
@@ -1285,20 +1296,61 @@ std::optional<Child> simplify(Sign& root, const SimplificationOptions& options)
 
 std::optional<Child> simplify(Progress& root, const SimplificationOptions& options)
 {
-    if (root.progress.index() != root.from.index() || root.from.index() != root.to.index())
+    if (root.value.index() != root.start.index() || root.start.index() != root.end.index())
         return std::nullopt;
 
-    return WTF::switchOn(root.progress,
-        [&]<Numeric T>(T& numericProgress) -> std::optional<Child> {
-            auto& numericFrom = std::get<T>(root.from);
-            auto& numericTo = std::get<T>(root.to);
+    return WTF::switchOn(root.value,
+        [&]<Numeric T>(T& numericValue) -> std::optional<Child> {
+            auto& numericStart = std::get<T>(root.start);
+            auto& numericEnd = std::get<T>(root.end);
 
-            if (!unitsMatch(numericProgress, numericFrom, options) || !unitsMatch(numericFrom, numericTo, options) || !fullyResolved(numericProgress, options))
+            if (!unitsMatch(numericValue, numericStart, options) || !unitsMatch(numericStart, numericEnd, options) || !fullyResolved(numericValue, options))
                 return std::nullopt;
 
-            return makeChild(Number { .value = executeMathOperation<Progress>(numericProgress.value, numericFrom.value, numericTo.value) });
+            return makeChild(Number { .value = executeMathOperation<Progress>(numericValue.value, numericStart.value, numericEnd.value) });
         },
         [](auto&) -> std::optional<Child> {
+            return std::nullopt;
+        }
+    );
+}
+
+std::optional<Child> simplify(MediaProgress& root, const SimplificationOptions& options)
+{
+    if (!options.conversionData || !options.conversionData->styleBuilderState())
+        return std::nullopt;
+
+    return switchTogether(root.start, root.end,
+        [&]<Numeric T>(const T& start, const T& end) -> std::optional<Child> {
+            if (!unitsMatch(start, end, options) || !fullyResolved(start, options))
+                return std::nullopt;
+
+            auto value = evaluateMediaProgress(root, options.conversionData->styleBuilderState()->document(), *options.conversionData);
+            return makeChild(Number { .value = executeMathOperation<Progress>(value, start.value, end.value) });
+        },
+        [](const auto&, const auto&) -> std::optional<Child> {
+            return std::nullopt;
+        }
+    );
+}
+
+std::optional<Child> simplify(ContainerProgress& root, const SimplificationOptions& options)
+{
+    if (!options.conversionData || !options.conversionData->styleBuilderState())
+        return std::nullopt;
+
+    return switchTogether(root.start, root.end,
+        [&]<Numeric T>(const T& start, const T& end) -> std::optional<Child> {
+            if (!unitsMatch(start, end, options) || !fullyResolved(start, options))
+                return std::nullopt;
+
+            auto value = evaluateContainerProgress(root, *options.conversionData);
+            if (!value)
+                return std::nullopt;
+
+            return makeChild(Number { .value = executeMathOperation<Progress>(*value, start.value, end.value) });
+        },
+        [](const auto&, const auto&) -> std::optional<Child> {
             return std::nullopt;
         }
     );
@@ -1309,9 +1361,25 @@ std::optional<Child> simplify(Anchor& anchor, const SimplificationOptions& optio
     if (!options.conversionData || !options.conversionData->styleBuilderState())
         return { };
 
-    auto evaluationOptions = EvaluationOptions { .conversionData = options.conversionData, .symbolTable = options.symbolTable };
+    auto side = WTF::switchOn(anchor.side,
+        [&](const Child& percentage) -> std::optional<Style::AnchorPositionEvaluator::Side> {
+            return WTF::switchOn(percentage,
+                [](const Percentage& percentage) -> std::optional<Style::AnchorPositionEvaluator::Side> {
+                    return Style::AnchorPositionEvaluator::Side { percentage.value / 100.0 };
+                },
+                [](const auto&) -> std::optional<Style::AnchorPositionEvaluator::Side> {
+                    return { };
+                }
+            );
+        },
+        [&](CSSValueID sideID) -> std::optional<Style::AnchorPositionEvaluator::Side> {
+            return Style::AnchorPositionEvaluator::Side { sideID };
+        }
+    );
+    if (!side)
+        return { };
 
-    auto result = evaluateWithoutFallback(anchor, evaluationOptions);
+    auto result = evaluateAnchor(anchor, *side, *options.conversionData->styleBuilderState());
     if (!result) {
         // https://drafts.csswg.org/css-anchor-position-1/#anchor-valid
         // "If any of these conditions are false, the anchor() function resolves to its specified fallback value.
@@ -1331,18 +1399,7 @@ std::optional<Child> simplify(AnchorSize& anchorSize, const SimplificationOption
     if (!options.conversionData || !options.conversionData->styleBuilderState())
         return { };
 
-    auto& builderState = *options.conversionData->styleBuilderState();
-
-    std::optional<Style::ScopedName> anchorSizeScopedName;
-    if (!anchorSize.elementName.isNull()) {
-        anchorSizeScopedName = Style::ScopedName {
-            .name = anchorSize.elementName,
-            .scopeOrdinal = builderState.styleScopeOrdinal()
-        };
-    }
-
-    auto result = Style::AnchorPositionEvaluator::evaluateSize(builderState, anchorSizeScopedName, anchorSize.dimension);
-
+    auto result = evaluateAnchorSize(anchorSize, *options.conversionData->styleBuilderState());
     if (!result) {
         if (!anchorSize.fallback)
             options.conversionData->styleBuilderState()->setCurrentPropertyInvalidAtComputedValueTime();
@@ -1355,26 +1412,51 @@ std::optional<Child> simplify(AnchorSize& anchorSize, const SimplificationOption
 
 // MARK: Copy & Simplify.
 
+CSSValueID copyAndSimplify(CSSValueID root, const SimplificationOptions&)
+{
+    return root;
+}
+
+Style::AnchorSizeDimension copyAndSimplify(Style::AnchorSizeDimension root, const SimplificationOptions&)
+{
+    return root;
+}
+
+const MQ::MediaProgressProviding* copyAndSimplify(const MQ::MediaProgressProviding* root, const SimplificationOptions&)
+{
+    return root;
+}
+
+const CQ::ContainerProgressProviding* copyAndSimplify(const CQ::ContainerProgressProviding* root, const SimplificationOptions&)
+{
+    return root;
+}
+
+AtomString copyAndSimplify(const AtomString& root, const SimplificationOptions&)
+{
+    return root;
+}
+
 CSS::NoneRaw copyAndSimplify(const CSS::NoneRaw& root, const SimplificationOptions&)
 {
     return root;
 }
 
-static ChildOrNone copyAndSimplify(const ChildOrNone& root, const SimplificationOptions& options)
+Children copyAndSimplify(const Children& children, const SimplificationOptions& options)
 {
-    return WTF::switchOn(root, [&](auto& root) { return ChildOrNone { copyAndSimplify(root, options) }; });
+    return WTF::map(children, [&](auto& child) { return copyAndSimplify(child, options); });
 }
 
-std::optional<Child> copyAndSimplify(const std::optional<Child>& root, const SimplificationOptions& options)
+template<typename T> auto copyAndSimplify(const std::optional<T>& root, const SimplificationOptions& options) -> std::optional<T>
 {
     if (root)
         return copyAndSimplify(*root, options);
     return std::nullopt;
 }
 
-Children copyAndSimplify(const Children& children, const SimplificationOptions& options)
+template<typename... Ts> auto copyAndSimplify(const std::variant<Ts...>& root, const SimplificationOptions& options) -> std::variant<Ts...>
 {
-    return WTF::map(children, [&](auto& child) { return copyAndSimplify(child, options); });
+    return WTF::switchOn(root, [&](auto& root) { return std::variant<Ts...> { copyAndSimplify(root, options) }; });
 }
 
 template<Leaf Op> static auto copyAndSimplifyChildren(const Op& op, const SimplificationOptions&) -> Op
@@ -1389,14 +1471,18 @@ template<typename Op> static auto copyAndSimplifyChildren(const IndirectNode<Op>
 
 static auto copyAndSimplifyChildren(const IndirectNode<Anchor>& anchor, const SimplificationOptions& options) -> Anchor
 {
-    return Anchor { .elementName = anchor->elementName, .side = copy(anchor->side), .fallback = copyAndSimplify(anchor->fallback, options) };
+    return Anchor {
+        .elementName = copyAndSimplify(anchor->elementName, options),
+        .side = copyAndSimplify(anchor->side, options),
+        .fallback = copyAndSimplify(anchor->fallback, options)
+    };
 }
 
 static auto copyAndSimplifyChildren(const IndirectNode<AnchorSize>& anchorSize, const SimplificationOptions& options) -> AnchorSize
 {
     return AnchorSize {
-        .elementName = anchorSize->elementName,
-        .dimension = anchorSize->dimension,
+        .elementName = copyAndSimplify(anchorSize->elementName, options),
+        .dimension = copyAndSimplify(anchorSize->dimension, options),
         .fallback = copyAndSimplify(anchorSize->fallback, options)
     };
 }

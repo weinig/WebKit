@@ -1328,6 +1328,20 @@ CSSLineFitEdgeEnabled:
     WebCore:
       default: false
 
+CSSLogicalPositionKeywordsEnabled:
+  type: bool
+  category: css
+  status: preview
+  humanReadableName: "CSS logical keywords in <position>"
+  humanReadableDescription: "Enable support for CSS Values and Units Module Level 5 logical keywords in <position>"
+  defaultValue:
+    WebKitLegacy:
+      default: false
+    WebKit:
+      default: false
+    WebCore:
+      default: false
+
 CSSMarginTrimEnabled:
   type: bool
   status: stable

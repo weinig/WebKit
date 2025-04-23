@@ -38,6 +38,83 @@ namespace Style {
 
 using namespace CSS::Literals;
 
+enum XAxisPhysicalKeywords : bool { Left, Right };
+enum YAxisPhysicalKeywords : bool { Top, Bottom };
+
+static XAxisPhysicalKeywords mapXStart(WritingMode writingMode)
+{
+    if (writingMode.isHorizontal()) {
+        if (writingMode.isBidiLTR()) {
+            // horizontal / left-to-right: `x-start` maps to `left`
+            return XAxisPhysicalKeywords::Left;
+        } else {
+            // horizontal / right-to-left: `x-start` maps to `right`
+            return XAxisPhysicalKeywords::Right;
+        }
+    } else {
+        if (!writingMode.isBlockFlipped()) {
+            // vertical / left-to-right: `x-start` maps to `left`
+            return XAxisPhysicalKeywords::Left;
+        } else {
+            // vertical / right-to-left: `x-start` maps to `right`
+            return XAxisPhysicalKeywords::Right;
+        }
+    }
+}
+
+static XAxisPhysicalKeywords mapXEnd(WritingMode writingMode)
+{
+    if (writingMode.isHorizontal()) {
+        if (writingMode.isBidiLTR()) {
+            // horizontal / left-to-right: `x-end` maps to `right`
+            return XAxisPhysicalKeywords::Right;
+        } else {
+            // horizontal / right-to-left: `x-end` maps to `left`
+            return XAxisPhysicalKeywords::Left;
+        }
+    } else {
+        if (!writingMode.isBlockFlipped()) {
+            // vertical / left-to-right: `x-end` maps to `right`
+            return XAxisPhysicalKeywords::Right;
+        } else {
+            // vertical / right-to-left: `x-end` maps to `left`
+            return XAxisPhysicalKeywords::Left;
+        }
+    }
+}
+
+static YAxisPhysicalKeywords mapYStart(WritingMode writingMode)
+{
+    if (writingMode.isHorizontal()) {
+        if (!writingMode.isBlockFlipped()) {
+            // horizontal / top-to-bottom: `y-start` maps to `top`
+            return YAxisPhysicalKeywords::Top;
+        } else {
+            // horizontal / bottom-to-top: `y-start` maps to `bottom`
+            return YAxisPhysicalKeywords::Bottom;
+        }
+    } else {
+        // vertical: `y-start` maps to `top`
+        return YAxisPhysicalKeywords::Top;
+    }
+}
+
+static YAxisPhysicalKeywords mapYEnd(WritingMode writingMode)
+{
+    if (writingMode.isHorizontal()) {
+        if (!writingMode.isBlockFlipped()) {
+            // horizontal / top-to-bottom: `y-end` maps to `bottom`
+            return YAxisPhysicalKeywords::Bottom;
+        } else {
+            // horizontal / bottom-to-top: `y-end` maps to `top`
+            return YAxisPhysicalKeywords::Top;
+        }
+    } else {
+        // vertical: `y-end` maps to `bottom`
+        return YAxisPhysicalKeywords::Bottom;
+    }
+}
+
 // MARK: Core Keyword Resolution
 
 static auto resolveKeyword(CSS::Keyword::Top, const BuilderState&) -> LengthPercentage<>
@@ -83,6 +160,132 @@ static auto resolveKeyword(CSS::Keyword::Left, const CSS::LengthPercentage<>& le
 static auto resolveKeyword(CSS::Keyword::Center, const BuilderState&) -> LengthPercentage<>
 {
     return 50_css_percentage;
+}
+
+// MARK: Mapped value resolution
+
+template<typename... Args> static auto resolveKeyword(XAxisPhysicalKeywords keyword, Args&&... args) -> LengthPercentage<>
+{
+    switch (keyword) {
+    case XAxisPhysicalKeywords::Right:
+        return resolveKeyword(CSS::Keyword::Right { }, std::forward<Args>(args)...);
+    case XAxisPhysicalKeywords::Left:
+        return resolveKeyword(CSS::Keyword::Left { }, std::forward<Args>(args)...);
+    }
+    ASSERT_NOT_REACHED();
+    return 0_css_percentage;
+}
+
+template<typename... Args> static auto resolveKeyword(YAxisPhysicalKeywords keyword, Args&&... args) -> LengthPercentage<>
+{
+    switch (keyword) {
+    case YAxisPhysicalKeywords::Top:
+        return resolveKeyword(CSS::Keyword::Top { }, std::forward<Args>(args)...);
+    case YAxisPhysicalKeywords::Bottom:
+        return resolveKeyword(CSS::Keyword::Bottom { }, std::forward<Args>(args)...);
+    }
+    ASSERT_NOT_REACHED();
+    return 0_css_percentage;
+}
+
+template<typename... Args> static auto resolveKeyword(BoxSide boxSide, Args&&... args) -> LengthPercentage<>
+{
+    switch (boxSide) {
+    case BoxSide::Top:
+        return resolveKeyword(CSS::Keyword::Top { }, std::forward<Args>(args)...);
+    case BoxSide::Right:
+        return resolveKeyword(CSS::Keyword::Right { }, std::forward<Args>(args)...);
+    case BoxSide::Bottom:
+        return resolveKeyword(CSS::Keyword::Bottom { }, std::forward<Args>(args)...);
+    case BoxSide::Left:
+        return resolveKeyword(CSS::Keyword::Left { }, std::forward<Args>(args)...);
+    }
+    ASSERT_NOT_REACHED();
+    return 0_css_percentage;
+}
+
+// MARK: Mapping resolvers (<position-two>)
+
+static auto resolveKeyword(CSS::Keyword::XStart, const BuilderState& state) -> LengthPercentage<>
+{
+    return resolveKeyword(mapXStart(state.style().writingMode()), state);
+}
+
+static auto resolveKeyword(CSS::Keyword::XEnd, const BuilderState& state) -> LengthPercentage<>
+{
+    return resolveKeyword(mapXEnd(state.style().writingMode()), state);
+}
+
+static auto resolveKeyword(CSS::Keyword::YStart, const BuilderState& state) -> LengthPercentage<>
+{
+    return resolveKeyword(mapYStart(state.style().writingMode()), state);
+}
+
+static auto resolveKeyword(CSS::Keyword::YEnd, const BuilderState& state) -> LengthPercentage<>
+{
+    return resolveKeyword(mapYEnd(state.style().writingMode()), state);
+}
+
+static auto resolveKeyword(CSS::Keyword::BlockStart, const BuilderState& state) -> LengthPercentage<>
+{
+    return resolveKeyword(mapSideLogicalToPhysical(state.style().writingMode(), LogicalBoxSide::BlockStart), state);
+}
+
+static auto resolveKeyword(CSS::Keyword::BlockEnd, const BuilderState& state) -> LengthPercentage<>
+{
+    return resolveKeyword(mapSideLogicalToPhysical(state.style().writingMode(), LogicalBoxSide::BlockEnd), state);
+}
+
+static auto resolveKeyword(CSS::Keyword::InlineStart, const BuilderState& state) -> LengthPercentage<>
+{
+    return resolveKeyword(mapSideLogicalToPhysical(state.style().writingMode(), LogicalBoxSide::InlineStart), state);
+}
+
+static auto resolveKeyword(CSS::Keyword::InlineEnd, const BuilderState& state) -> LengthPercentage<>
+{
+    return resolveKeyword(mapSideLogicalToPhysical(state.style().writingMode(), LogicalBoxSide::InlineEnd), state);
+}
+
+// MARK: Mapping resolvers (<position-four>)
+
+static auto resolveKeyword(CSS::Keyword::XStart, const CSS::LengthPercentage<>& length, const BuilderState& state) -> LengthPercentage<>
+{
+    return resolveKeyword(mapXStart(state.style().writingMode()), length, state);
+}
+
+static auto resolveKeyword(CSS::Keyword::XEnd, const CSS::LengthPercentage<>& length, const BuilderState& state) -> LengthPercentage<>
+{
+    return resolveKeyword(mapXEnd(state.style().writingMode()), length, state);
+}
+
+static auto resolveKeyword(CSS::Keyword::YStart, const CSS::LengthPercentage<>& length, const BuilderState& state) -> LengthPercentage<>
+{
+    return resolveKeyword(mapYStart(state.style().writingMode()), length, state);
+}
+
+static auto resolveKeyword(CSS::Keyword::YEnd, const CSS::LengthPercentage<>& length, const BuilderState& state) -> LengthPercentage<>
+{
+    return resolveKeyword(mapYEnd(state.style().writingMode()), length, state);
+}
+
+static auto resolveKeyword(CSS::Keyword::BlockStart, const CSS::LengthPercentage<>& length, const BuilderState& state) -> LengthPercentage<>
+{
+    return resolveKeyword(mapSideLogicalToPhysical(state.style().writingMode(), LogicalBoxSide::BlockStart), length, state);
+}
+
+static auto resolveKeyword(CSS::Keyword::BlockEnd, const CSS::LengthPercentage<>& length, const BuilderState& state) -> LengthPercentage<>
+{
+    return resolveKeyword(mapSideLogicalToPhysical(state.style().writingMode(), LogicalBoxSide::BlockEnd), length, state);
+}
+
+static auto resolveKeyword(CSS::Keyword::InlineStart, const CSS::LengthPercentage<>& length, const BuilderState& state) -> LengthPercentage<>
+{
+    return resolveKeyword(mapSideLogicalToPhysical(state.style().writingMode(), LogicalBoxSide::InlineStart), length, state);
+}
+
+static auto resolveKeyword(CSS::Keyword::InlineEnd, const CSS::LengthPercentage<>& length, const BuilderState& state) -> LengthPercentage<>
+{
+    return resolveKeyword(mapSideLogicalToPhysical(state.style().writingMode(), LogicalBoxSide::InlineEnd), length, state);
 }
 
 // MARK: Horizontal/Vertical
@@ -147,6 +350,100 @@ static auto resolve(const CSS::FourComponentPositionVertical& value, const Build
     );
 }
 
+// MARK: Block/Inline
+
+static auto resolve(const CSS::TwoComponentPositionBlock& value, const BuilderState& state) -> LengthPercentage<>
+{
+    return WTF::switchOn(value.offset,
+        [&](auto keyword) {
+            return resolveKeyword(keyword, state);
+        }
+    );
+}
+
+static auto resolve(const CSS::TwoComponentPositionInline& value, const BuilderState& state) -> LengthPercentage<>
+{
+    return WTF::switchOn(value.offset,
+        [&](auto keyword) {
+            return resolveKeyword(keyword, state);
+        }
+    );
+}
+
+static auto resolve(const CSS::FourComponentPositionBlock& value, const BuilderState& state) -> LengthPercentage<>
+{
+    return WTF::switchOn(get<0>(value.offset),
+        [&](auto keyword) {
+            return resolveKeyword(keyword, get<1>(value.offset), state);
+        }
+    );
+}
+
+static auto resolve(const CSS::FourComponentPositionInline& value, const BuilderState& state) -> LengthPercentage<>
+{
+    return WTF::switchOn(get<0>(value.offset),
+        [&](auto keyword) {
+            return resolveKeyword(keyword, get<1>(value.offset), state);
+        }
+    );
+}
+
+// MARK: Start/End
+
+static auto resolveMappingBlock(const CSS::TwoComponentPositionLogical& value, const BuilderState& state) -> LengthPercentage<>
+{
+    return WTF::switchOn(value.offset,
+        [&](CSS::Keyword::Start) {
+            return resolveKeyword(CSS::Keyword::BlockStart { }, state);
+        },
+        [&](CSS::Keyword::End) {
+            return resolveKeyword(CSS::Keyword::BlockEnd { }, state);
+        },
+        [&](CSS::Keyword::Center) {
+            return resolveKeyword(CSS::Keyword::Center { }, state);
+        }
+    );
+}
+
+static auto resolveMappingInline(const CSS::TwoComponentPositionLogical& value, const BuilderState& state) -> LengthPercentage<>
+{
+    return WTF::switchOn(value.offset,
+        [&](CSS::Keyword::Start) {
+            return resolveKeyword(CSS::Keyword::InlineStart { }, state);
+        },
+        [&](CSS::Keyword::End) {
+            return resolveKeyword(CSS::Keyword::InlineEnd { }, state);
+        },
+        [&](CSS::Keyword::Center) {
+            return resolveKeyword(CSS::Keyword::Center { }, state);
+        }
+    );
+}
+
+static auto resolveMappingBlock(const CSS::FourComponentPositionLogical& value, const BuilderState& state) -> LengthPercentage<>
+{
+    return WTF::switchOn(get<0>(value.offset),
+        [&](CSS::Keyword::Start) {
+            return resolveKeyword(CSS::Keyword::BlockStart { }, get<1>(value.offset), state);
+        },
+        [&](CSS::Keyword::End) {
+            return resolveKeyword(CSS::Keyword::BlockEnd { }, get<1>(value.offset), state);
+        }
+    );
+}
+
+static auto resolveMappingInline(const CSS::FourComponentPositionLogical& value, const BuilderState& state) -> LengthPercentage<>
+{
+    return WTF::switchOn(get<0>(value.offset),
+        [&](CSS::Keyword::Start) {
+            return resolveKeyword(CSS::Keyword::InlineStart { }, get<1>(value.offset), state);
+        },
+        [&](CSS::Keyword::End) {
+            return resolveKeyword(CSS::Keyword::InlineEnd { }, get<1>(value.offset), state);
+        }
+    );
+}
+
 auto ToStyle<CSS::TwoComponentPositionHorizontal>::operator()(const CSS::TwoComponentPositionHorizontal& value, const BuilderState& state) -> TwoComponentPositionHorizontal
 {
     return { resolve(value, state) };
@@ -156,6 +453,16 @@ auto ToStyle<CSS::TwoComponentPositionVertical>::operator()(const CSS::TwoCompon
 {
     return { resolve(value, state) };
 }
+
+template<typename T> concept IsLogicalComponent =
+       std::same_as<T, CSS::TwoComponentPositionLogical>
+    || std::same_as<T, CSS::FourComponentPositionLogical>;
+
+template<typename T> concept IsStartEndComponents =
+       std::same_as<T, CSS::TwoComponentPositionStartEnd>
+    || std::same_as<T, CSS::ThreeComponentPositionStartEndLengthFirst>
+    || std::same_as<T, CSS::ThreeComponentPositionStartEndLengthSecond>
+    || std::same_as<T, CSS::FourComponentPositionStartEnd>;
 
 // MARK: <position> conversion
 
@@ -171,6 +478,12 @@ auto ToStyle<CSS::Position>::operator()(const CSS::Position& position, const Bui
             return Position {
                 resolve(get<0>(components), state),
                 resolve(get<1>(components), state),
+            };
+        },
+        [&]<IsStartEndComponents T>(const T& components) {
+            return Position {
+                resolveMappingBlock(get<0>(components), state),
+                resolveMappingInline(get<1>(components), state),
             };
         }
     );
@@ -188,6 +501,9 @@ auto ToStyle<CSS::PositionX>::operator()(const CSS::PositionX& positionX, const 
     return WTF::switchOn(positionX,
         [&](const auto& value) {
             return PositionX { resolve(value, state) };
+        },
+        [&]<IsLogicalComponent T>(const T& value) {
+            return PositionX { resolveMappingBlock(value, state) };
         }
     );
 }
@@ -204,6 +520,9 @@ auto ToStyle<CSS::PositionY>::operator()(const CSS::PositionY& positionY, const 
     return WTF::switchOn(positionY,
         [&](const auto& value) {
             return PositionY { resolve(value, state) };
+        },
+        [&]<IsLogicalComponent T>(const T& value) {
+            return PositionY { resolveMappingInline(value, state) };
         }
     );
 }

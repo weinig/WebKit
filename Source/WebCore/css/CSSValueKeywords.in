@@ -1904,6 +1904,16 @@ no-overflow
 // top
 // bottom
 // center
+// x-start
+// x-end
+// y-start
+// y-end
+// block-start
+// block-end
+// inline-start
+// inline-end
+// start
+// end
 
 // view-transition-name
 match-element

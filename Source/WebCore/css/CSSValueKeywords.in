@@ -1898,6 +1898,13 @@ anchors-valid
 anchors-visible
 no-overflow
 
+// <position>
+// left
+// right
+// top
+// bottom
+// center
+
 // view-transition-name
 match-element
 

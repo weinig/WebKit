@@ -4889,6 +4889,7 @@
 		BC3A00C82754496D0047C0E5 /* ColorInterpolation.h in Headers */ = {isa = PBXBuildFile; fileRef = BCDC642527517B040038FB39 /* ColorInterpolation.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		BC3AA25C2DA2DD2F00BC27C6 /* CSSURLModifiers.h in Headers */ = {isa = PBXBuildFile; fileRef = BC3AA25A2DA2DD2300BC27C6 /* CSSURLModifiers.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		BC3AA25E2DA2F14700BC27C6 /* LoadedFromOpaqueSource.h in Headers */ = {isa = PBXBuildFile; fileRef = BC3AA25D2DA2F14700BC27C6 /* LoadedFromOpaqueSource.h */; settings = {ATTRIBUTES = (Private, ); }; };
+		BC3B7A1D2DB55F9B00C7A692 /* CSSPositionValue.h in Headers */ = {isa = PBXBuildFile; fileRef = BC3B7A1C2DB55F9B00C7A692 /* CSSPositionValue.h */; };
 		BC3BC29C0E91AB0F00835588 /* HostWindow.h in Headers */ = {isa = PBXBuildFile; fileRef = BC3BC29B0E91AB0F00835588 /* HostWindow.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		BC3BE12B0E98092F00835588 /* PopupMenuStyle.h in Headers */ = {isa = PBXBuildFile; fileRef = BC3BE12A0E98092F00835588 /* PopupMenuStyle.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		BC3BE9940E9C1C7C00835588 /* RenderScrollbar.h in Headers */ = {isa = PBXBuildFile; fileRef = BC3BE9910E9C1C7C00835588 /* RenderScrollbar.h */; };
@@ -18079,6 +18080,8 @@
 		BC3AA25A2DA2DD2300BC27C6 /* CSSURLModifiers.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = CSSURLModifiers.h; sourceTree = "<group>"; };
 		BC3AA25B2DA2DD2300BC27C6 /* CSSURLModifiers.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = CSSURLModifiers.cpp; sourceTree = "<group>"; };
 		BC3AA25D2DA2F14700BC27C6 /* LoadedFromOpaqueSource.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = LoadedFromOpaqueSource.h; sourceTree = "<group>"; };
+		BC3B7A1C2DB55F9B00C7A692 /* CSSPositionValue.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = CSSPositionValue.h; sourceTree = "<group>"; };
+		BC3B7A1E2DB55FA600C7A692 /* CSSPositionValue.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = CSSPositionValue.cpp; sourceTree = "<group>"; };
 		BC3BC29B0E91AB0F00835588 /* HostWindow.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = HostWindow.h; sourceTree = "<group>"; };
 		BC3BE12A0E98092F00835588 /* PopupMenuStyle.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = PopupMenuStyle.h; sourceTree = "<group>"; };
 		BC3BE9900E9C1C7C00835588 /* RenderScrollbar.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = RenderScrollbar.cpp; sourceTree = "<group>"; };
@@ -37919,6 +37922,8 @@
 				EE0C7E012CE845CB0043DAF8 /* CSSPositionTryRule.cpp */,
 				EE0C7E002CE845CB0043DAF8 /* CSSPositionTryRule.h */,
 				EE0C7E022CE845CB0043DAF8 /* CSSPositionTryRule.idl */,
+				BC3B7A1E2DB55FA600C7A692 /* CSSPositionValue.cpp */,
+				BC3B7A1C2DB55F9B00C7A692 /* CSSPositionValue.h */,
 				A80E6CDB0A1989CA007FB8C5 /* CSSPrimitiveValue.cpp */,
 				A80E6CBC0A1989CA007FB8C5 /* CSSPrimitiveValue.h */,
 				E1ED8AC20CC49BE000BFC557 /* CSSPrimitiveValueMappings.h */,
@@ -40773,6 +40778,7 @@
 				BCB272202CC20AA000265123 /* CSSPosition.h in Headers */,
 				BC23888E2D8C801300698102 /* CSSPositionTryDescriptors.h in Headers */,
 				EE0C7E042CE845CB0043DAF8 /* CSSPositionTryRule.h in Headers */,
+				BC3B7A1D2DB55F9B00C7A692 /* CSSPositionValue.h in Headers */,
 				977B3863122883E900B81FF8 /* CSSPreloadScanner.h in Headers */,
 				BC2C0C972D32FCE600FCFBA0 /* CSSPrimitiveData.h in Headers */,
 				BC2C0C992D32FF3F00FCFBA0 /* CSSPrimitiveKeywordList.h in Headers */,

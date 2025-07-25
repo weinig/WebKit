@@ -27,6 +27,7 @@
 #include "CSSPrimitiveKeywordList.h"
 #include "Length.h"
 #include "LengthFunctions.h"
+#include "RenderStyle.h"
 #include "StylePrimitiveNumericTypes+Platform.h"
 #include "StylePrimitiveNumericTypes.h"
 #include "StyleValueTypes.h"
@@ -69,7 +70,7 @@ template<typename Numeric, CSS::PrimitiveKeyword... Ks> struct LengthWrapperBase
     LengthWrapperBase(CSS::Keyword::Content) requires (SupportsContent) : m_value(WebCore::LengthType::Content) { }
     LengthWrapperBase(CSS::Keyword::None) requires (SupportsNone) : m_value(WebCore::LengthType::Undefined) { }
 
-    LengthWrapperBase(Fixed fixed) : m_value(fixed.value, WebCore::LengthType::Fixed) { }
+    LengthWrapperBase(Fixed fixed) : m_value(fixed.evaluate(1.0f), WebCore::LengthType::Fixed) { }
     LengthWrapperBase(Percentage percent) : m_value(percent.value, WebCore::LengthType::Percent) { }
     LengthWrapperBase(Specified&& specified) : m_value(toPlatform(WTFMove(specified))) { }
     LengthWrapperBase(const Specified& specified) : m_value(toPlatform(specified)) { }
@@ -231,33 +232,60 @@ template<LengthWrapperBaseDerived T> struct ToPlatform<T> {
 // MARK: - Evaluation
 
 template<LengthWrapperBaseDerived T> struct Evaluation<T> {
-    auto operator()(const T& value, NOESCAPE const Invocable<LayoutUnit()> auto& lazyMaximumValueFunctor) -> LayoutUnit
+    auto operator()(const T& value, NOESCAPE const Invocable<LayoutUnit()> auto& lazyMaximumValueFunctor, float zoom) -> LayoutUnit
     {
-        return valueForLengthWithLazyMaximum<LayoutUnit, LayoutUnit>(toPlatform(value), lazyMaximumValueFunctor);
+        return valueForLengthWithLazyMaximum<LayoutUnit, LayoutUnit>(toPlatform(value), lazyMaximumValueFunctor, zoom);
     }
-    auto operator()(const T& value, LayoutUnit referenceLength) -> LayoutUnit
+    auto operator()(const T& value, NOESCAPE const Invocable<LayoutUnit()> auto& lazyMaximumValueFunctor, const RenderStyle& style) -> LayoutUnit
     {
-        return valueForLength(toPlatform(value), referenceLength);
+        return valueForLengthWithLazyMaximum<LayoutUnit, LayoutUnit>(toPlatform(value), lazyMaximumValueFunctor, style.usedZoom());
     }
-    auto operator()(const T& value, float referenceLength) -> float
+    auto operator()(const T& value, LayoutUnit referenceLength, float zoom) -> LayoutUnit
     {
-        return floatValueForLength(toPlatform(value), referenceLength);
+        return valueForLength(toPlatform(value), referenceLength, zoom);
+    }
+    auto operator()(const T& value, LayoutUnit referenceLength, const RenderStyle& style) -> LayoutUnit
+    {
+        return valueForLength(toPlatform(value), referenceLength, style.usedZoom());
+    }
+    auto operator()(const T& value, float referenceLength, float zoom) -> float
+    {
+        return floatValueForLength(toPlatform(value), referenceLength, zoom);
+    }
+    auto operator()(const T& value, float referenceLength, const RenderStyle& style) -> float
+    {
+        return floatValueForLength(toPlatform(value), referenceLength, style.usedZoom());
     }
 };
 
-template<LengthWrapperBaseDerived T> inline LayoutUnit evaluateMinimum(const T& value, NOESCAPE const Invocable<LayoutUnit()> auto& lazyMaximumValueFunctor)
+template<LengthWrapperBaseDerived T> inline LayoutUnit evaluateMinimum(const T& value, NOESCAPE const Invocable<LayoutUnit()> auto& lazyMaximumValueFunctor, float zoom)
 {
-    return minimumValueForLengthWithLazyMaximum<LayoutUnit, LayoutUnit>(toPlatform(value), lazyMaximumValueFunctor);
+    return minimumValueForLengthWithLazyMaximum<LayoutUnit, LayoutUnit>(toPlatform(value), lazyMaximumValueFunctor, zoom);
 }
 
-template<LengthWrapperBaseDerived T> inline LayoutUnit evaluateMinimum(const T& value, LayoutUnit maximumValue)
+template<LengthWrapperBaseDerived T> inline LayoutUnit evaluateMinimum(const T& value, NOESCAPE const Invocable<LayoutUnit()> auto& lazyMaximumValueFunctor, const RenderStyle& style)
 {
-    return minimumValueForLength(toPlatform(value), maximumValue);
+    return minimumValueForLengthWithLazyMaximum<LayoutUnit, LayoutUnit>(toPlatform(value), lazyMaximumValueFunctor, style.usedZoom());
 }
 
-template<LengthWrapperBaseDerived T> inline float evaluateMinimum(const T& value, float maximumValue)
+template<LengthWrapperBaseDerived T> inline LayoutUnit evaluateMinimum(const T& value, LayoutUnit maximumValue, float zoom)
 {
-    return minimumValueForLength(toPlatform(value), maximumValue);
+    return minimumValueForLength(toPlatform(value), maximumValue, zoom);
+}
+
+template<LengthWrapperBaseDerived T> inline LayoutUnit evaluateMinimum(const T& value, LayoutUnit maximumValue, const RenderStyle& style)
+{
+    return minimumValueForLength(toPlatform(value), maximumValue, style.usedZoom());
+}
+
+template<LengthWrapperBaseDerived T> inline float evaluateMinimum(const T& value, float maximumValue, float zoom)
+{
+    return minimumValueForLength(toPlatform(value), maximumValue, zoom);
+}
+
+template<LengthWrapperBaseDerived T> inline float evaluateMinimum(const T& value, float maximumValue, const RenderStyle& style)
+{
+    return minimumValueForLength(toPlatform(value), maximumValue, style.usedZoom());
 }
 
 // MARK: - Blending

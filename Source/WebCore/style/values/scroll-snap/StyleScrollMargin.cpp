@@ -34,11 +34,11 @@
 namespace WebCore {
 namespace Style {
 
-LayoutUnit Evaluation<ScrollMarginEdge>::operator()(const ScrollMarginEdge& edge, LayoutUnit referenceLength)
+LayoutUnit Evaluation<ScrollMarginEdge>::operator()(const ScrollMarginEdge& edge, LayoutUnit referenceLength, const RenderStyle& style)
 {
     switch (edge.m_value.type()) {
     case LengthType::Fixed:
-        return LayoutUnit(edge.m_value.value());
+        return LayoutUnit(edge.m_value.fixed().evaluate(style.usedZoom()));
 
     case LengthType::Percent:
         return LayoutUnit(static_cast<float>(referenceLength * edge.m_value.percent() / 100.0f));
@@ -63,11 +63,11 @@ LayoutUnit Evaluation<ScrollMarginEdge>::operator()(const ScrollMarginEdge& edge
     return 0_lu;
 }
 
-float Evaluation<ScrollMarginEdge>::operator()(const ScrollMarginEdge& edge, float referenceLength)
+float Evaluation<ScrollMarginEdge>::operator()(const ScrollMarginEdge& edge, float referenceLength, const RenderStyle& style)
 {
     switch (edge.m_value.type()) {
     case LengthType::Fixed:
-        return edge.m_value.value();
+        return edge.m_value.fixed().evaluate(style.usedZoom());
 
     case LengthType::Percent:
         return referenceLength * edge.m_value.percent() / 100.0f;
@@ -97,13 +97,13 @@ auto CSSValueConversion<ScrollMarginEdge>::operator()(BuilderState& state, const
     return ScrollMarginEdge { BuilderConverter::convertLength(state, value) };
 }
 
-LayoutBoxExtent extentForRect(const ScrollMarginBox& margin, const LayoutRect& rect)
+LayoutBoxExtent extentForRect(const ScrollMarginBox& margin, const LayoutRect& rect, const RenderStyle& style)
 {
     return LayoutBoxExtent {
-        Style::evaluate(margin.top(), rect.height()),
-        Style::evaluate(margin.right(), rect.width()),
-        Style::evaluate(margin.bottom(), rect.height()),
-        Style::evaluate(margin.left(), rect.width()),
+        Style::evaluate(margin.top(), rect.height(), style),
+        Style::evaluate(margin.right(), rect.width(), style),
+        Style::evaluate(margin.bottom(), rect.height(), style),
+        Style::evaluate(margin.left(), rect.width(), style),
     };
 }
 

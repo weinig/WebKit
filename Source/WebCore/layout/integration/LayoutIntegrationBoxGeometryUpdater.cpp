@@ -67,30 +67,31 @@
 #include "RenderTextControlSingleLine.h"
 #include "RenderTheme.h"
 #include "RenderViewTransitionCapture.h"
+#include "StylePrimitiveNumericTypes+Evaluation.h"
 
 namespace WebCore {
 namespace LayoutIntegration {
 
-static LayoutUnit usedValueOrZero(const Style::MarginEdge& marginEdge, std::optional<LayoutUnit> availableWidth)
+static LayoutUnit usedValueOrZero(const RenderStyle& style, const Style::MarginEdge& marginEdge, std::optional<LayoutUnit> availableWidth)
 {
     if (auto fixed = marginEdge.tryFixed())
-        return LayoutUnit { fixed->value };
+        return LayoutUnit { fixed->evaluate(style) };
 
     if (marginEdge.isAuto() || !availableWidth)
         return { };
 
-    return Style::evaluateMinimum(marginEdge, *availableWidth);
+    return Style::evaluateMinimum(marginEdge, *availableWidth, style);
 }
 
-static LayoutUnit usedValueOrZero(const Style::PaddingEdge& paddingEdge, std::optional<LayoutUnit> availableWidth)
+static LayoutUnit usedValueOrZero(const RenderStyle& style, const Style::PaddingEdge& paddingEdge, std::optional<LayoutUnit> availableWidth)
 {
     if (auto fixed = paddingEdge.tryFixed())
-        return LayoutUnit { fixed->value };
+        return LayoutUnit { fixed->evaluate(style) };
 
     if (!availableWidth)
         return { };
 
-    return Style::evaluateMinimum(paddingEdge, *availableWidth);
+    return Style::evaluateMinimum(paddingEdge, *availableWidth, style);
 }
 
 static inline void adjustBorderForTableAndFieldset(const RenderBoxModelObject& renderer, LayoutUnit& borderLeft, LayoutUnit& borderRight, LayoutUnit& borderTop, LayoutUnit& borderBottom)
@@ -220,14 +221,14 @@ Layout::BoxGeometry::HorizontalEdges BoxGeometryUpdater::horizontalLogicalMargin
     auto& style = renderer.style();
 
     if (writingMode.isHorizontal()) {
-        auto marginInlineStart = retainMarginStart ? usedValueOrZero(writingMode.isInlineLeftToRight() ? style.marginLeft() : style.marginRight(), availableWidth) : 0_lu;
-        auto marginInlineEnd = retainMarginEnd ? usedValueOrZero(writingMode.isInlineLeftToRight() ? style.marginRight() : style.marginLeft(), availableWidth) : 0_lu;
+        auto marginInlineStart = retainMarginStart ? usedValueOrZero(style, writingMode.isInlineLeftToRight() ? style.marginLeft() : style.marginRight(), availableWidth) : 0_lu;
+        auto marginInlineEnd = retainMarginEnd ? usedValueOrZero(style, writingMode.isInlineLeftToRight() ? style.marginRight() : style.marginLeft(), availableWidth) : 0_lu;
 
         return { marginInlineStart, marginInlineEnd };
     }
 
-    auto marginInlineStart = retainMarginStart ? usedValueOrZero(writingMode.isInlineTopToBottom() ? style.marginTop() : style.marginBottom(), availableWidth) : 0_lu;
-    auto marginInlineEnd = retainMarginEnd ? usedValueOrZero(writingMode.isInlineTopToBottom() ? style.marginBottom() : style.marginTop(), availableWidth) : 0_lu;
+    auto marginInlineStart = retainMarginStart ? usedValueOrZero(style, writingMode.isInlineTopToBottom() ? style.marginTop() : style.marginBottom(), availableWidth) : 0_lu;
+    auto marginInlineEnd = retainMarginEnd ? usedValueOrZero(style, writingMode.isInlineTopToBottom() ? style.marginBottom() : style.marginTop(), availableWidth) : 0_lu;
 
     return { marginInlineStart, marginInlineEnd };
 }
@@ -236,10 +237,10 @@ Layout::BoxGeometry::VerticalEdges BoxGeometryUpdater::verticalLogicalMargin(con
 {
     auto& style = renderer.style();
     if (writingMode.isHorizontal())
-        return { usedValueOrZero(style.marginTop(), availableWidth), usedValueOrZero(style.marginBottom(), availableWidth) };
+        return { usedValueOrZero(style, style.marginTop(), availableWidth), usedValueOrZero(style, style.marginBottom(), availableWidth) };
     if (writingMode.isLineOverLeft())
-        return { usedValueOrZero(style.marginLeft(), availableWidth), usedValueOrZero(style.marginRight(), availableWidth) };
-    return { usedValueOrZero(style.marginRight(), availableWidth), usedValueOrZero(style.marginLeft(), availableWidth) };
+        return { usedValueOrZero(style, style.marginLeft(), availableWidth), usedValueOrZero(style, style.marginRight(), availableWidth) };
+    return { usedValueOrZero(style, style.marginRight(), availableWidth), usedValueOrZero(style, style.marginLeft(), availableWidth) };
 }
 
 Layout::BoxGeometry::Edges BoxGeometryUpdater::logicalBorder(const RenderBoxModelObject& renderer, WritingMode writingMode, bool isIntrinsicWidthMode, bool retainBorderStart, bool retainBorderEnd)
@@ -271,10 +272,10 @@ Layout::BoxGeometry::Edges BoxGeometryUpdater::logicalPadding(const RenderBoxMod
 {
     auto& style = renderer.style();
 
-    auto paddingLeft = usedValueOrZero(style.paddingLeft(), availableWidth);
-    auto paddingRight = usedValueOrZero(style.paddingRight(), availableWidth);
-    auto paddingTop = usedValueOrZero(style.paddingTop(), availableWidth);
-    auto paddingBottom = usedValueOrZero(style.paddingBottom(), availableWidth);
+    auto paddingLeft = usedValueOrZero(style, style.paddingLeft(), availableWidth);
+    auto paddingRight = usedValueOrZero(style, style.paddingRight(), availableWidth);
+    auto paddingTop = usedValueOrZero(style, style.paddingTop(), availableWidth);
+    auto paddingBottom = usedValueOrZero(style, style.paddingBottom(), availableWidth);
 
     if (writingMode.isHorizontal()) {
         auto paddingInlineStart = retainPaddingStart ? writingMode.isInlineLeftToRight() ? paddingLeft : paddingRight : 0_lu;

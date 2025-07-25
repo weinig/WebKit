@@ -309,11 +309,19 @@ auto CSSValueConversion<PositionY>::operator()(BuilderState& state, const CSSVal
 
 // MARK: - Evaluation
 
-auto Evaluation<Position>::operator()(const Position& position, FloatSize referenceBox) -> FloatPoint
+auto Evaluation<Position>::operator()(const Position& position, FloatSize referenceBox, float zoom) -> FloatPoint
 {
     return {
-        evaluate(position.x, referenceBox.width()),
-        evaluate(position.y, referenceBox.height())
+        evaluate(position.x, referenceBox.width(), zoom),
+        evaluate(position.y, referenceBox.height(), zoom)
+    };
+}
+
+auto Evaluation<Position>::operator()(const Position& position, FloatSize referenceBox, const RenderStyle& style) -> FloatPoint
+{
+    return {
+        evaluate(position.x, referenceBox.width(), style),
+        evaluate(position.y, referenceBox.height(), style)
     };
 }
 

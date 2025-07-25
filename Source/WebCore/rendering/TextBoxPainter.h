@@ -52,7 +52,7 @@ public:
 
     void paint();
 
-    static inline FloatSize rotateShadowOffset(const SpaceSeparatedPoint<Style::Length<>>& offset, WritingMode);
+    static inline FloatSize rotateShadowOffset(const SpaceSeparatedPoint<Style::Length<>>& offset, WritingMode, const RenderStyle&);
 
 protected:
     auto& textBox() const { return m_textBox; }
@@ -114,12 +114,13 @@ protected:
     std::optional<bool> m_emphasisMarkExistsAndIsAbove { };
 };
 
-inline FloatSize TextBoxPainter::rotateShadowOffset(const SpaceSeparatedPoint<Style::Length<>>& offset, WritingMode writingMode)
+inline FloatSize TextBoxPainter::rotateShadowOffset(const SpaceSeparatedPoint<Style::Length<>>& offset, WritingMode writingMode, const RenderStyle& style)
 {
     if (writingMode.isHorizontal())
-        return { offset.x().value, offset.y().value };
+        return { offset.x().evaluate(style), offset.y().evaluate(style) };
     if (writingMode.isLineOverLeft()) // sideways-lr
-        return { -offset.y().value, offset.x().value };
-    return { offset.y().value, -offset.x().value };
+        return { -offset.y().evaluate(style), offset.x().evaluate(style) };
+    return { offset.y().evaluate(style), -offset.x().evaluate(style) };
 }
-}
+
+} // namespace WebCore

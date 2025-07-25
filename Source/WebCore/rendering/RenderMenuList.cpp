@@ -53,6 +53,7 @@
 #include "RenderTheme.h"
 #include "RenderTreeBuilder.h"
 #include "RenderView.h"
+#include "StylePrimitiveNumericTypes+Evaluation.h"
 #include "StyleResolver.h"
 #include "TextRun.h"
 #include <math.h>
@@ -229,7 +230,7 @@ void RenderMenuList::updateOptionsWidth()
             // Add in the option's text indent.  We can't calculate percentage values for now.
             float optionWidth = 0;
             if (auto* optionStyle = option->computedStyleForEditability())
-                optionWidth += Style::evaluate(optionStyle->textIndent().length, 0);
+                optionWidth += Style::evaluate(optionStyle->textIndent().length, 0, *optionStyle);
             if (!text.isEmpty()) {
                 const FontCascade& font = style().fontCascade();
                 TextRun run = RenderBlock::constructTextRun(text, style());
@@ -350,8 +351,8 @@ void RenderMenuList::computeIntrinsicLogicalWidths(LayoutUnit& minLogicalWidth, 
             maxLogicalWidth = logicalWidth.value();
     }
     auto& logicalWidth = style().logicalWidth();
-    if (logicalWidth.isCalculated())
-        minLogicalWidth = std::max(0_lu, Style::evaluate(logicalWidth, 0_lu));
+    if (auto calculatedLogicalWidth = logicalWidth.tryCalc())
+        minLogicalWidth = std::max(0_lu, Style::evaluate(calculatedLogicalWidth, 0_lu, style()));
     else if (!logicalWidth.isPercent())
         minLogicalWidth = maxLogicalWidth;
 }
@@ -366,7 +367,7 @@ void RenderMenuList::computePreferredLogicalWidths()
     m_minPreferredLogicalWidth = 0;
     m_maxPreferredLogicalWidth = 0;
     
-    if (auto fixedLogicalWidth = style().logicalWidth().tryFixed(); fixedLogicalWidth && fixedLogicalWidth->value > 0)
+    if (auto fixedLogicalWidth = style().logicalWidth().tryFixed(); fixedLogicalWidth && fixedLogicalWidth->evaluate(style()) > 0)
         m_minPreferredLogicalWidth = m_maxPreferredLogicalWidth = adjustContentBoxLogicalWidthForBoxSizing(*fixedLogicalWidth);
     else
         computeIntrinsicLogicalWidths(m_minPreferredLogicalWidth, m_maxPreferredLogicalWidth);

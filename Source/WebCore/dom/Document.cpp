@@ -3344,8 +3344,8 @@ void Document::pageSizeAndMarginsInPixels(int pageIndex, IntSize& pageSize, int&
         auto& size = style->pageSize();
         ASSERT(size.width.isFixed());
         ASSERT(size.height.isFixed());
-        width = valueForLength(size.width, 0);
-        height = valueForLength(size.height, 0);
+        width = valueForLength(size.width, 0, style->usedZoom());
+        height = valueForLength(size.height, 0, style->usedZoom());
         break;
     }
     default:
@@ -3355,10 +3355,10 @@ void Document::pageSizeAndMarginsInPixels(int pageIndex, IntSize& pageSize, int&
 
     // The percentage is calculated with respect to the width even for margin top and bottom.
     // http://www.w3.org/TR/CSS2/box.html#margin-properties
-    marginTop = style->marginTop().isAuto() ? marginTop : Style::evaluate(style->marginTop(), width);
-    marginRight = style->marginRight().isAuto() ? marginRight : Style::evaluate(style->marginRight(), width);
-    marginBottom = style->marginBottom().isAuto() ? marginBottom : Style::evaluate(style->marginBottom(), width);
-    marginLeft = style->marginLeft().isAuto() ? marginLeft : Style::evaluate(style->marginLeft(), width);
+    marginTop = style->marginTop().isAuto() ? marginTop : Style::evaluate(style->marginTop(), width, *style);
+    marginRight = style->marginRight().isAuto() ? marginRight : Style::evaluate(style->marginRight(), width, *style);
+    marginBottom = style->marginBottom().isAuto() ? marginBottom : Style::evaluate(style->marginBottom(), width, *style);
+    marginLeft = style->marginLeft().isAuto() ? marginLeft : Style::evaluate(style->marginLeft(), width, *style);
 }
 
 void Document::fontsNeedUpdate(FontSelector&)

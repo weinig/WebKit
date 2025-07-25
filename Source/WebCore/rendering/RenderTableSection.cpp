@@ -80,7 +80,7 @@ static inline void updateLogicalHeightForCell(RenderTableSection::RowStruct& row
             if (auto percentageRowLogicalHeight = row.logicalHeight.tryPercentage(); !percentageRowLogicalHeight || percentageRowLogicalHeight->value < percentageLogicalHeight->value)
                 row.logicalHeight = logicalHeight;
         } else if (auto fixedLogicalHeight = logicalHeight.tryFixed()) {
-            if (auto fixedRowLogicalHeight = row.logicalHeight.tryFixed(); row.logicalHeight.isAuto() || (fixedRowLogicalHeight && fixedRowLogicalHeight->value < fixedLogicalHeight->value))
+            if (auto fixedRowLogicalHeight = row.logicalHeight.tryFixed(); row.logicalHeight.isAuto() || (fixedRowLogicalHeight && fixedRowLogicalHeight->evaluate(1.0f /*FIXME FIND STYLE*/) < fixedLogicalHeight->evaluate(cell->style())))
                 row.logicalHeight = logicalHeight;
         }
     }
@@ -218,10 +218,10 @@ void RenderTableSection::addCell(RenderTableCell* cell, RenderTableRow* row)
 static LayoutUnit resolveLogicalHeightForRow(const Style::PreferredSize& rowLogicalHeight)
 {
     if (auto fixedRowLogicalHeight = rowLogicalHeight.tryFixed())
-        return LayoutUnit(fixedRowLogicalHeight->value);
-    if (rowLogicalHeight.isCalculated())
-        return LayoutUnit(Style::evaluate(rowLogicalHeight, 0));
-    return 0;
+        return LayoutUnit(fixedRowLogicalHeight->evaluate(1.0f /*FIXME FIND STYLE*/));
+    if (auto calculatedRowLogicalHeight = rowLogicalHeight.tryCalc())
+        return Style::evaluate(calculatedRowLogicalHeight, 0_lu);
+    return 0_lu;
 }
 
 LayoutUnit RenderTableSection::calcRowLogicalHeight()
@@ -703,13 +703,13 @@ LayoutUnit RenderTableSection::calcOuterBorderBefore() const
     if (sb.style() == BorderStyle::Hidden)
         return -1;
     if (sb.style() > BorderStyle::Hidden)
-        borderWidth = sb.width();
+        borderWidth = sb.width().evaluate(style());
 
     const BorderValue& rb = firstRow()->style().borderBefore(table()->writingMode());
     if (rb.style() == BorderStyle::Hidden)
         return -1;
-    if (rb.style() > BorderStyle::Hidden && rb.width() > borderWidth)
-        borderWidth = rb.width();
+    if (rb.style() > BorderStyle::Hidden && rb.width().evaluate(firstRow()->style()) > borderWidth)
+        borderWidth = rb.width().evaluate(firstRow()->style());
 
     bool allHidden = true;
     for (unsigned c = 0; c < totalCols; c++) {
@@ -724,16 +724,16 @@ LayoutUnit RenderTableSection::calcOuterBorderBefore() const
             if (gb.style() == BorderStyle::Hidden || cb.style() == BorderStyle::Hidden)
                 continue;
             allHidden = false;
-            if (gb.style() > BorderStyle::Hidden && gb.width() > borderWidth)
-                borderWidth = gb.width();
+            if (gb.style() > BorderStyle::Hidden && gb.width().evaluate(colGroup->style()) > borderWidth)
+                borderWidth = gb.width().evaluate(colGroup->style());
             if (cb.style() > BorderStyle::Hidden && cb.width() > borderWidth)
-                borderWidth = cb.width();
+                borderWidth = cb.width().evaluate(current.primaryCell()->style());
         } else {
             if (cb.style() == BorderStyle::Hidden)
                 continue;
             allHidden = false;
-            if (cb.style() > BorderStyle::Hidden && cb.width() > borderWidth)
-                borderWidth = cb.width();
+            if (cb.style() > BorderStyle::Hidden && cb.width().evaluate(current.primaryCell()->style()) > borderWidth)
+                borderWidth = cb.width().evaluate(current.primaryCell()->style());
         }
     }
     if (allHidden)
@@ -753,13 +753,13 @@ LayoutUnit RenderTableSection::calcOuterBorderAfter() const
     if (sb.style() == BorderStyle::Hidden)
         return -1;
     if (sb.style() > BorderStyle::Hidden)
-        borderWidth = sb.width();
+        borderWidth = sb.width().evaluate(style());
 
     const BorderValue& rb = lastRow()->style().borderAfter(table()->writingMode());
     if (rb.style() == BorderStyle::Hidden)
         return -1;
-    if (rb.style() > BorderStyle::Hidden && rb.width() > borderWidth)
-        borderWidth = rb.width();
+    if (rb.style() > BorderStyle::Hidden && rb.width().evaluate(lastRow()->style()) > borderWidth)
+        borderWidth = rb.width().evaluate(lastRow()->style());
 
     bool allHidden = true;
     for (unsigned c = 0; c < totalCols; c++) {
@@ -774,16 +774,16 @@ LayoutUnit RenderTableSection::calcOuterBorderAfter() const
             if (gb.style() == BorderStyle::Hidden || cb.style() == BorderStyle::Hidden)
                 continue;
             allHidden = false;
-            if (gb.style() > BorderStyle::Hidden && gb.width() > borderWidth)
-                borderWidth = gb.width();
-            if (cb.style() > BorderStyle::Hidden && cb.width() > borderWidth)
-                borderWidth = cb.width();
+            if (gb.style() > BorderStyle::Hidden && gb.width().evaluate(colGroup->style()) > borderWidth)
+                borderWidth = gb.width().evaluate(colGroup->style());
+            if (cb.style() > BorderStyle::Hidden && cb.width().evaluate(current.primaryCell()->style()) > borderWidth)
+                borderWidth = cb.width().evaluate(current.primaryCell()->style());
         } else {
             if (cb.style() == BorderStyle::Hidden)
                 continue;
             allHidden = false;
-            if (cb.style() > BorderStyle::Hidden && cb.width() > borderWidth)
-                borderWidth = cb.width();
+            if (cb.style() > BorderStyle::Hidden && cb.width().evaluate(current.primaryCell()->style()) > borderWidth)
+                borderWidth = cb.width().evaluate(current.primaryCell()->style());
         }
     }
     if (allHidden)

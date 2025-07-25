@@ -61,7 +61,7 @@ struct TextDecorationThickness {
     bool isLength() const { return WTF::holdsAlternative<TextDecorationThicknessLength>(m_value); }
 
     float resolve(const RenderStyle&) const;
-    float resolve(float fontSize, const FontMetrics&) const;
+    float resolve(float fontSize, const FontMetrics&, float zoom) const;
 
     template<typename... F> decltype(auto) switchOn(F&&... f) const
     {

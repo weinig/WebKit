@@ -129,7 +129,7 @@ float SVGLengthContext::valueForLength(const Style::PreferredSize& size, SVGLeng
 {
     return WTF::switchOn(size,
         [&](const Style::PreferredSize::Fixed& fixed) -> float {
-            return fixed.value;
+            return fixed.evaluate(1.0f); /* FIXME: is this zoom of 1.0f right for all SVGLengths? What about in SVGSVG elements? */
         },
         [&](const Style::PreferredSize::Percentage& percentage) -> float {
             auto result = convertValueFromPercentageToUserUnits(percentage.value / 100, lengthMode);

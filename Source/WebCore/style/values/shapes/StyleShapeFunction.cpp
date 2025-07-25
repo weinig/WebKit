@@ -49,14 +49,14 @@ template<typename ControlPoint> static ControlPointAnchor evaluateControlPointAn
     return defaultValue;
 }
 
-template<typename ControlPoint> static FloatPoint evaluateControlPointOffset(const ControlPoint& value, const FloatSize& boxSize)
+template<typename ControlPoint> static FloatPoint evaluateControlPointOffset(const ControlPoint& value, const FloatSize& boxSize, const RenderStyle& style)
 {
-    return evaluate(value.offset, boxSize);
+    return evaluate(value.offset, boxSize, style);
 }
 
-template<typename ControlPoint> static FloatPoint resolveControlPoint(CommandAffinity affinity, FloatPoint currentPosition, FloatPoint segmentOffset, const ControlPoint& controlPoint, const FloatSize& boxSize)
+template<typename ControlPoint> static FloatPoint resolveControlPoint(CommandAffinity affinity, FloatPoint currentPosition, FloatPoint segmentOffset, const ControlPoint& controlPoint, const FloatSize& boxSize, const RenderStyle& style)
 {
-    auto controlPointOffset = evaluateControlPointOffset(controlPoint, boxSize);
+    auto controlPointOffset = evaluateControlPointOffset(controlPoint, boxSize, style);
 
     auto defaultAnchor = (std::holds_alternative<CSS::Keyword::By>(affinity)) ? RelativeControlPoint::defaultAnchor : AbsoluteControlPoint::defaultAnchor;
     auto controlPointAnchoring = evaluateControlPointAnchoring(controlPoint, defaultAnchor);
@@ -84,11 +84,12 @@ template<typename ControlPoint> static FloatPoint resolveControlPoint(CommandAff
 
 class ShapeSVGPathSource final : public SVGPathSource {
 public:
-    explicit ShapeSVGPathSource(const Position& startPoint, const Shape& shape, const FloatSize& boxSize)
+    explicit ShapeSVGPathSource(const Position& startPoint, const Shape& shape, const FloatSize& boxSize, const RenderStyle& style)
         : m_start(startPoint)
         , m_shape(shape)
         , m_boxSize(boxSize)
         , m_endIndex(shape.commands.size())
+        , m_style(style)
     {
     }
 
@@ -117,32 +118,32 @@ private:
     std::optional<MoveToSegment> parseMoveToSegment(FloatPoint) override
     {
         if (!m_nextIndex)
-            return MoveToSegment { evaluate(m_start, m_boxSize) };
+            return MoveToSegment { evaluate(m_start, m_boxSize, m_style) };
 
         auto& moveCommand = currentValue<MoveCommand>();
 
-        return MoveToSegment { evaluate(moveCommand.toBy, m_boxSize) };
+        return MoveToSegment { evaluate(moveCommand.toBy, m_boxSize, m_style) };
     }
 
     std::optional<LineToSegment> parseLineToSegment(FloatPoint) override
     {
         auto& lineCommand = currentValue<LineCommand>();
 
-        return LineToSegment { evaluate(lineCommand.toBy, m_boxSize) };
+        return LineToSegment { evaluate(lineCommand.toBy, m_boxSize, m_style) };
     }
 
     std::optional<LineToHorizontalSegment> parseLineToHorizontalSegment(FloatPoint) override
     {
         auto& lineCommand = currentValue<HLineCommand>();
 
-        return LineToHorizontalSegment { evaluate(lineCommand.toBy, m_boxSize.width()) };
+        return LineToHorizontalSegment { evaluate(lineCommand.toBy, m_boxSize.width(), m_style) };
     }
 
     std::optional<LineToVerticalSegment> parseLineToVerticalSegment(FloatPoint) override
     {
         auto& lineCommand = currentValue<VLineCommand>();
 
-        return LineToVerticalSegment { evaluate(lineCommand.toBy, m_boxSize.height()) };
+        return LineToVerticalSegment { evaluate(lineCommand.toBy, m_boxSize.height(), m_style) };
     }
 
     std::optional<CurveToCubicSegment> parseCurveToCubicSegment(FloatPoint currentPosition) override
@@ -151,10 +152,10 @@ private:
 
         return WTF::switchOn(curveCommand.toBy,
             [&](const auto& value) {
-                auto offset = evaluate(value.offset, m_boxSize);
+                auto offset = evaluate(value.offset, m_boxSize, m_style);
                 return CurveToCubicSegment {
-                    resolveControlPoint(value.affinity, currentPosition, offset, value.controlPoint1, m_boxSize),
-                    resolveControlPoint(value.affinity, currentPosition, offset, value.controlPoint2.value(), m_boxSize),
+                    resolveControlPoint(value.affinity, currentPosition, offset, value.controlPoint1, m_boxSize, m_style),
+                    resolveControlPoint(value.affinity, currentPosition, offset, value.controlPoint2.value(), m_boxSize, m_style),
                     offset
                 };
             }
@@ -167,9 +168,9 @@ private:
 
         return WTF::switchOn(curveCommand.toBy,
             [&](const auto& value) {
-                auto offset = evaluate(value.offset, m_boxSize);
+                auto offset = evaluate(value.offset, m_boxSize, m_style);
                 return CurveToQuadraticSegment {
-                    resolveControlPoint(value.affinity, currentPosition, offset, value.controlPoint1, m_boxSize),
+                    resolveControlPoint(value.affinity, currentPosition, offset, value.controlPoint1, m_boxSize, m_style),
                     offset
                 };
             }
@@ -183,9 +184,9 @@ private:
         return WTF::switchOn(smoothCommand.toBy,
             [&](const auto& value) {
                 ASSERT(value.controlPoint);
-                auto offset = evaluate(value.offset, m_boxSize);
+                auto offset = evaluate(value.offset, m_boxSize, m_style);
                 return CurveToCubicSmoothSegment {
-                    resolveControlPoint(value.affinity, currentPosition, offset, value.controlPoint.value(), m_boxSize),
+                    resolveControlPoint(value.affinity, currentPosition, offset, value.controlPoint.value(), m_boxSize, m_style),
                     offset
                 };
             }
@@ -199,7 +200,7 @@ private:
         return WTF::switchOn(smoothCommand.toBy,
             [&](const auto& value) {
                 return CurveToQuadraticSmoothSegment {
-                    evaluate(value.offset, m_boxSize)
+                    evaluate(value.offset, m_boxSize, m_style)
                 };
             }
         );
@@ -209,14 +210,14 @@ private:
     {
         auto& arcCommand = currentValue<ArcCommand>();
 
-        auto radius = evaluate(arcCommand.size, m_boxSize);
+        auto radius = evaluate(arcCommand.size, m_boxSize, m_style);
         return ArcToSegment {
             .rx = radius.width(),
             .ry = radius.height(),
             .angle = narrowPrecisionToFloat(arcCommand.rotation.value),
             .largeArc = std::holds_alternative<CSS::Keyword::Large>(arcCommand.arcSize),
             .sweep = std::holds_alternative<CSS::Keyword::Cw>(arcCommand.arcSweep),
-            .targetPoint = evaluate(arcCommand.toBy, m_boxSize)
+            .targetPoint = evaluate(arcCommand.toBy, m_boxSize, m_style)
         };
     }
 
@@ -278,6 +279,7 @@ private:
     FloatSize m_boxSize;
     size_t m_endIndex { 0 };
     size_t m_nextIndex { 0 };
+    const RenderStyle& m_style;
 };
 
 // MARK: - ShapeConversionPathConsumer
@@ -590,10 +592,10 @@ auto Blending<ArcCommand>::blend(const ArcCommand& a, const ArcCommand& b, const
 
 // MARK: - Shape (path conversion)
 
-WebCore::Path PathComputation<Shape>::operator()(const Shape& value, const FloatRect& boundingBox)
+WebCore::Path PathComputation<Shape>::operator()(const Shape& value, const FloatRect& boundingBox, const RenderStyle& style)
 {
     // FIXME: We should do some caching here.
-    auto pathSource = ShapeSVGPathSource(value.startingPoint, value, boundingBox.size());
+    auto pathSource = ShapeSVGPathSource(value.startingPoint, value, boundingBox.size(), style);
 
     WebCore::Path path;
     SVGPathBuilder builder(path);

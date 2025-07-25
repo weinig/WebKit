@@ -99,7 +99,10 @@ bool RenderSVGRoot::hasIntrinsicAspectRatio() const
 
 FloatSize RenderSVGRoot::calculateIntrinsicSize() const
 {
-    return FloatSize(floatValueForLength(svgSVGElement().intrinsicWidth(), 0), floatValueForLength(svgSVGElement().intrinsicHeight(), 0));
+    return {
+        floatValueForLength(svgSVGElement().intrinsicWidth(), 0, 1.0f /* FIXME FIND ZOOM */),
+        floatValueForLength(svgSVGElement().intrinsicHeight(), 0, 1.0f /* FIXME FIND ZOOM */),
+    };
 }
 
 void RenderSVGRoot::computeIntrinsicSizeAndPreferredAspectRatio(FloatSize& intrinsicSize, FloatSize& preferredAspectRatio) const

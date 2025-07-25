@@ -190,7 +190,7 @@ InlineLayoutUnit InlineFormattingUtils::computedTextIndent(IsIntrinsicWidthMode 
         // https://drafts.csswg.org/css-text/#text-indent-property
         return { };
     }
-    return Style::evaluate(textIndentLength, availableWidth);
+    return Style::evaluate(textIndentLength, availableWidth, root.style());
 }
 
 InlineLayoutUnit InlineFormattingUtils::initialLineHeight(bool isFirstLine) const

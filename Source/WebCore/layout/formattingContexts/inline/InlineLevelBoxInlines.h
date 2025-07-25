@@ -42,7 +42,7 @@ inline InlineLevelBox::InlineLevelBox(const Box& layoutBox, const RenderStyle& s
 {
     m_style.verticalAlignment.type = style.verticalAlign();
     if (m_style.verticalAlignment.type == VerticalAlign::Length)
-        m_style.verticalAlignment.baselineOffset = floatValueForLength(style.verticalAlignLength(), preferredLineHeight());
+        m_style.verticalAlignment.baselineOffset = floatValueForLength(style.verticalAlignLength(), preferredLineHeight(), style.usedZoom());
 }
 
 inline InlineLevelBox InlineLevelBox::createAtomicInlineBox(const Box& layoutBox, const RenderStyle& style, InlineLayoutUnit logicalLeft, InlineLayoutUnit logicalWidth)

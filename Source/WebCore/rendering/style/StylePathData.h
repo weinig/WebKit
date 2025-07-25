@@ -54,7 +54,7 @@ public:
 
     const Style::PathFunction& path() const { return m_path; }
 
-    Path path(const FloatRect&) const;
+    Path path(const FloatRect&, const RenderStyle&) const;
     WindRule windRule() const;
 
     bool canBlend(const StylePathData&) const;

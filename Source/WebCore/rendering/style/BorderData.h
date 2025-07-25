@@ -63,23 +63,25 @@ public:
     }
 
     template<BoxSide side>
-    float borderEdgeWidth() const
+    float borderEdgeWidth(const RenderStyle& style) const
     {
         if (m_edges[side].style() == BorderStyle::None || m_edges[side].style() == BorderStyle::Hidden)
             return 0;
-        if (m_image.overridesBorderWidths() && m_image.borderSlices()[side].isFixed())
-            return m_image.borderSlices()[side].value();
-        return m_edges[side].width();
+        if (m_image.overridesBorderWidths()) {
+            if (auto fixed = m_image.borderSlices()[side].tryFixed())
+                return fixed->evaluate(style.usedZoom());
+        }
+        return m_edges[side].width().evaluate(style);
     }
 
-    float borderLeftWidth() const { return borderEdgeWidth<BoxSide::Left>(); }
-    float borderRightWidth() const { return borderEdgeWidth<BoxSide::Right>(); }
-    float borderTopWidth() const { return borderEdgeWidth<BoxSide::Top>(); }
-    float borderBottomWidth() const { return borderEdgeWidth<BoxSide::Bottom>(); }
+    float borderLeftWidth(const RenderStyle& style) const { return borderEdgeWidth<BoxSide::Left>(style); }
+    float borderRightWidth(const RenderStyle& style) const { return borderEdgeWidth<BoxSide::Right>(style); }
+    float borderTopWidth(const RenderStyle& style) const { return borderEdgeWidth<BoxSide::Top>(style); }
+    float borderBottomWidth(const RenderStyle& style) const { return borderEdgeWidth<BoxSide::Bottom>(style); }
 
-    FloatBoxExtent borderWidth() const
+    FloatBoxExtent borderWidth(const RenderStyle& style) const
     {
-        return FloatBoxExtent(borderTopWidth(), borderRightWidth(), borderBottomWidth(), borderLeftWidth());
+        return FloatBoxExtent(borderTopWidth(style), borderRightWidth(style), borderBottomWidth(style), borderLeftWidth(style));
     }
 
     bool isEquivalentForPainting(const BorderData& other, bool currentColorDiffers) const;

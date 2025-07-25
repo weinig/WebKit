@@ -97,9 +97,9 @@ RefPtr<PathOperation> ShapePathOperation::blend(const PathOperation* to, const B
     return ShapePathOperation::create(WebCore::Style::blend(m_shape, toShapePathOperation->m_shape, context));
 }
 
-std::optional<Path> ShapePathOperation::getPath(const TransformOperationData& data) const
+std::optional<Path> ShapePathOperation::getPath(const TransformOperationData& data, const RenderStyle& style) const
 {
-    return MotionPath::computePathForShape(*this, data);
+    return MotionPath::computePathForShape(*this, data, style);
 }
 
 // MARK: - BoxPathOperation
@@ -114,7 +114,7 @@ Ref<PathOperation> BoxPathOperation::clone() const
     return adoptRef(*new BoxPathOperation(referenceBox()));
 }
 
-std::optional<Path> BoxPathOperation::getPath(const TransformOperationData& data) const
+std::optional<Path> BoxPathOperation::getPath(const TransformOperationData& data, const RenderStyle&) const
 {
     return MotionPath::computePathForBox(*this, data);
 }
@@ -148,7 +148,7 @@ RefPtr<PathOperation> RayPathOperation::blend(const PathOperation* to, const Ble
     return RayPathOperation::create(Style::blend(m_ray, toRayPathOperation->m_ray, context), m_referenceBox);
 }
 
-std::optional<Path> RayPathOperation::getPath(const TransformOperationData& data) const
+std::optional<Path> RayPathOperation::getPath(const TransformOperationData& data, const RenderStyle&) const
 {
     return MotionPath::computePathForRay(*this, data);
 }

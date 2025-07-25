@@ -2200,7 +2200,7 @@ static void adjustInputElementButtonStyleForVectorBasedControls(RenderStyle& sty
     applyCommonButtonPaddingToStyleForVectorBasedControls(style, inputElement);
 
     // Don't adjust the style if the width is specified.
-    if (auto fixedLogicalWidth = style.logicalWidth().tryFixed(); fixedLogicalWidth && fixedLogicalWidth->value > 0)
+    if (auto fixedLogicalWidth = style.logicalWidth().tryFixed(); fixedLogicalWidth && fixedLogicalWidth->evaluate(style) > 0)
         return;
 
     // Don't adjust for unsupported date input types.
@@ -2347,7 +2347,7 @@ bool RenderThemeCocoa::adjustButtonStyleForVectorBasedControls(RenderStyle& styl
     if (style.logicalWidth().isIntrinsicOrLegacyIntrinsicOrAuto() || style.logicalHeight().isAuto()) {
         auto minimumHeight = controlBaseHeight / controlBaseFontSize * style.fontDescription().computedSize();
         if (auto fixedValue = style.logicalMinHeight().tryFixed())
-            minimumHeight = std::max(minimumHeight, fixedValue->value);
+            minimumHeight = std::max(minimumHeight, fixedValue->evaluate(style));
         // FIXME: This may need to be a layout time adjustment to support various
         // values like fit-content etc.
         style.setLogicalMinHeight(Style::MinimumSize::Fixed { minimumHeight });
@@ -2488,12 +2488,12 @@ bool RenderThemeCocoa::paintMenuListButtonDecorationsForVectorBasedControls(cons
 
     auto glyphPaddingEnd = logicalRect.width();
     if (auto fixedPaddingEnd = box.style().paddingEnd().tryFixed())
-        glyphPaddingEnd = fixedPaddingEnd->value;
+        glyphPaddingEnd = fixedPaddingEnd->evaluate(box.style());
 
     // Add RenderMenuList inner start padding for symmetry.
     if (CheckedPtr menulist = dynamicDowncast<RenderMenuList>(box); menulist && menulist->innerRenderer()) {
         if (auto innerPaddingStart = menulist->innerRenderer()->style().paddingStart().tryFixed())
-            glyphPaddingEnd += innerPaddingStart->value;
+            glyphPaddingEnd += innerPaddingStart->evaluate(menulist->innerRenderer()->style());
     }
 
     if (!style->writingMode().isInlineFlipped())

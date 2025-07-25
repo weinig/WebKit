@@ -88,7 +88,7 @@ constexpr bool isInset(const TextShadow&)
     return false;
 }
 
-constexpr LayoutUnit paintingSpread(const TextShadow&)
+constexpr LayoutUnit paintingSpread(const TextShadow&, const RenderStyle&)
 {
     return LayoutUnit();
 }

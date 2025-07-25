@@ -103,7 +103,7 @@ inline LayoutUnit RenderBoxModelObject::resolveLengthPercentageUsingContainerLog
     LayoutUnit containerWidth;
     if (value.isPercentOrCalculated())
         containerWidth = containingBlockLogicalWidthForContent();
-    return Style::evaluateMinimum(value, containerWidth);
+    return Style::evaluateMinimum(value, containerWidth, style());
 }
 
 } // namespace WebCore

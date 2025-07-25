@@ -341,9 +341,10 @@ void ViewTimeline::cacheCurrentTime()
             m_insets = { computedInset(m_specifiedInsets->start), computedInset(m_specifiedInsets->end) };
         }
 
+        auto& style = sourceRenderer->style();
+
         enum class PaddingEdge : bool { Start, End };
         auto scrollPadding = [&](PaddingEdge edge) {
-            auto& style = sourceRenderer->style();
             if (edge == PaddingEdge::Start)
                 return scrollDirection.isVertical ? style.scrollPaddingTop() : style.scrollPaddingLeft();
             return scrollDirection.isVertical ? style.scrollPaddingBottom() : style.scrollPaddingRight();
@@ -356,32 +357,32 @@ void ViewTimeline::cacheCurrentTime()
         float insetEnd = 0;
         if (hasInsetsStart && hasInsetsEnd) {
             if (m_insets.start->isAuto())
-                insetStart = Style::evaluate(scrollPadding(PaddingEdge::Start), scrollContainerSize);
+                insetStart = Style::evaluate(scrollPadding(PaddingEdge::Start), scrollContainerSize, style);
             else
-                insetStart = floatValueForOffset(*m_insets.start, scrollContainerSize);
+                insetStart = floatValueForOffset(*m_insets.start, scrollContainerSize, style.usedZoom());
 
             if (m_insets.end->isAuto())
-                insetEnd = Style::evaluate(scrollPadding(PaddingEdge::End), scrollContainerSize);
+                insetEnd = Style::evaluate(scrollPadding(PaddingEdge::End), scrollContainerSize, style);
             else
-                insetEnd = floatValueForOffset(*m_insets.end, scrollContainerSize);
+                insetEnd = floatValueForOffset(*m_insets.end, scrollContainerSize, style.usedZoom());
         } else if (hasInsetsStart) {
             if (m_insets.start->isAuto()) {
-                insetStart = Style::evaluate(scrollPadding(PaddingEdge::Start), scrollContainerSize);
-                insetEnd = Style::evaluate(scrollPadding(PaddingEdge::End), scrollContainerSize);
+                insetStart = Style::evaluate(scrollPadding(PaddingEdge::Start), scrollContainerSize, style);
+                insetEnd = Style::evaluate(scrollPadding(PaddingEdge::End), scrollContainerSize, style);
             } else {
-                insetStart = floatValueForOffset(*m_insets.start, scrollContainerSize);
-                insetEnd = insetStart; 
+                insetStart = floatValueForOffset(*m_insets.start, scrollContainerSize, style.usedZoom());
+                insetEnd = insetStart;
             }
         } else if (hasInsetsEnd) {
-            insetStart = Style::evaluate(scrollPadding(PaddingEdge::Start), scrollContainerSize);
+            insetStart = Style::evaluate(scrollPadding(PaddingEdge::Start), scrollContainerSize, style);
 
             if (m_insets.end->isAuto())
-                insetEnd = Style::evaluate(scrollPadding(PaddingEdge::End), scrollContainerSize);
+                insetEnd = Style::evaluate(scrollPadding(PaddingEdge::End), scrollContainerSize, style);
             else
-                insetEnd = floatValueForOffset(*m_insets.end, scrollContainerSize);
+                insetEnd = floatValueForOffset(*m_insets.end, scrollContainerSize, style.usedZoom());
         } else {
-            insetStart = Style::evaluate(scrollPadding(PaddingEdge::Start), scrollContainerSize);
-            insetEnd = Style::evaluate(scrollPadding(PaddingEdge::End), scrollContainerSize);
+            insetStart = Style::evaluate(scrollPadding(PaddingEdge::Start), scrollContainerSize, style);
+            insetEnd = Style::evaluate(scrollPadding(PaddingEdge::End), scrollContainerSize, style);
         }
 
         StickinessAdjustmentData stickyData;
@@ -582,7 +583,7 @@ std::pair<double, double> ViewTimeline::offsetIntervalForAttachmentRange(const T
     auto offsetForSingleTimelineRange = [&](const SingleTimelineRange& rangeToConvert) {
         auto [conversionRangeStart, conversionRangeEnd] = intervalForTimelineRangeName(data, rangeToConvert.name);
         auto conversionRange = conversionRangeEnd - conversionRangeStart;
-        auto convertedValue = floatValueForOffset(rangeToConvert.offset, conversionRange);
+        auto convertedValue = floatValueForOffset(rangeToConvert.offset, conversionRange, 1.0f /*FIXME FIND ZOOM*/);
         auto position = conversionRangeStart + convertedValue;
         return (position - data.rangeStart) / timelineRange;
     };
@@ -600,7 +601,7 @@ std::pair<WebAnimationTime, WebAnimationTime> ViewTimeline::intervalForAttachmen
 
     auto computeTime = [&](const SingleTimelineRange& rangeToConvert) {
         auto mappedOffset = mapOffsetToTimelineRange(data, rangeToConvert.name, [&](const float& subjectRange) {
-            return floatValueForOffset(rangeToConvert.offset, subjectRange);
+            return floatValueForOffset(rangeToConvert.offset, subjectRange, 1.0f /*FIXME FIND ZOOM*/);
         });
         return WebAnimationTime::fromPercentage(mappedOffset * 100);
     };

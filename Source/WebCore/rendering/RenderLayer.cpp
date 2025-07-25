@@ -2285,7 +2285,7 @@ FloatPoint RenderLayer::perspectiveOrigin() const
 {
     if (!renderer().hasTransformRelatedProperty())
         return { };
-    return Style::evaluate(renderer().style().perspectiveOrigin(), renderer().transformReferenceBoxRect(renderer().style()).size());
+    return Style::evaluate(renderer().style().perspectiveOrigin(), renderer().transformReferenceBoxRect(renderer().style()).size(), renderer().style());
 }
 
 static inline bool isContainerForPositioned(RenderLayer& layer, PositionType position, bool establishesTopLayer)
@@ -2968,8 +2968,8 @@ LayoutSize RenderLayer::minimumSizeForResizing(float zoomFactor) const
 {
     // Use the resizer size as the strict minimum size
     auto resizerRect = overflowControlsRects().resizer;
-    LayoutUnit minWidth = Style::evaluateMinimum(renderer().style().minWidth(), renderer().containingBlock()->width());
-    LayoutUnit minHeight = Style::evaluateMinimum(renderer().style().minHeight(), renderer().containingBlock()->height());
+    LayoutUnit minWidth = Style::evaluateMinimum(renderer().style().minWidth(), renderer().containingBlock()->width(), renderer().style());
+    LayoutUnit minHeight = Style::evaluateMinimum(renderer().style().minHeight(), renderer().containingBlock()->height(), renderer().style());
     minWidth = std::max(LayoutUnit(minWidth / zoomFactor), LayoutUnit(resizerRect.width()));
     minHeight = std::max(LayoutUnit(minHeight / zoomFactor), LayoutUnit(resizerRect.height()));
     return LayoutSize(minWidth, minHeight);
@@ -3488,7 +3488,7 @@ std::pair<Path, WindRule> RenderLayer::computeClipPath(const LayoutSize& offsetF
         [&](const Style::BasicShapePath& clipPath) -> std::pair<Path, WindRule> {
             auto referenceBoxRect = referenceBoxRectForClipPath(clipPath.referenceBox(), offsetFromRoot, rootRelativeBoundsForNonBoxes);
             auto snappedReferenceBoxRect = snapRectToDevicePixelsIfNeeded(referenceBoxRect, renderer());
-            return { Style::path(clipPath.shape(), snappedReferenceBoxRect), Style::windRule(clipPath.shape()) };
+            return { Style::path(clipPath.shape(), snappedReferenceBoxRect, style), Style::windRule(clipPath.shape()) };
         },
         [&](const Style::BoxPath& clipPath) -> std::pair<Path, WindRule> {
             CheckedPtr box = dynamicDowncast<RenderBox>(renderer());

@@ -64,6 +64,7 @@
 #include "ScrollbarTheme.h"
 #include "Settings.h"
 #include "SpatialNavigation.h"
+#include "StylePrimitiveNumericTypes+Evaluation.h"
 #include "StyleResolver.h"
 #include "StyleTreeResolver.h"
 #include "UnicodeBidi.h"
@@ -234,8 +235,8 @@ void RenderListBox::computeIntrinsicLogicalWidths(LayoutUnit& minLogicalWidth, L
         maxLogicalWidth += m_scrollbar->orientation() == ScrollbarOrientation::Vertical ? m_scrollbar->width() : m_scrollbar->height();
 
     auto& logicalWidth = style().logicalWidth();
-    if (logicalWidth.isCalculated())
-        minLogicalWidth = std::max(0_lu, Style::evaluate(logicalWidth, 0_lu));
+    if (auto calculatedLogicalWidth = logicalWidth.tryCalc())
+        minLogicalWidth = std::max(0_lu, Style::evaluate(calculatedLogicalWidth, 0_lu));
     else if (!logicalWidth.isPercent())
         minLogicalWidth = maxLogicalWidth;
 }
@@ -248,7 +249,7 @@ void RenderListBox::computePreferredLogicalWidths()
     m_minPreferredLogicalWidth = 0;
     m_maxPreferredLogicalWidth = 0;
 
-    if (auto fixedLogicalWidth = style().logicalWidth().tryFixed(); fixedLogicalWidth && fixedLogicalWidth->value > 0)
+    if (auto fixedLogicalWidth = style().logicalWidth().tryFixed(); fixedLogicalWidth && fixedLogicalWidth->evaluate(style()) > 0)
         m_minPreferredLogicalWidth = m_maxPreferredLogicalWidth = adjustContentBoxLogicalWidthForBoxSizing(*fixedLogicalWidth);
     else
         computeIntrinsicLogicalWidths(m_minPreferredLogicalWidth, m_maxPreferredLogicalWidth);

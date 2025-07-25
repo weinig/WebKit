@@ -56,7 +56,7 @@ inline LayoutUnit RenderTableCell::logicalHeightForRowSizing() const
     LayoutUnit adjustedLogicalHeight = logicalHeight() - (intrinsicPaddingBefore() + intrinsicPaddingAfter());
     if (!style().logicalHeight().isSpecified())
         return adjustedLogicalHeight;
-    LayoutUnit styleLogicalHeight = Style::evaluate(style().logicalHeight(), 0_lu);
+    LayoutUnit styleLogicalHeight = Style::evaluate(style().logicalHeight(), 0_lu, style());
     // In strict mode, box-sizing: content-box do the right thing and actually add in the border and padding.
     // Call computedCSSPadding* directly to avoid including implicitPadding.
     if (!document().inQuirksMode() && style().boxSizing() != BoxSizing::BorderBox)

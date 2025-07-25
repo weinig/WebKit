@@ -682,7 +682,7 @@ void LocalFrameView::applyPaginationToViewport()
         if (!columnGap.isNormal()) {
             auto* renderBox = dynamicDowncast<RenderBox>(documentOrBodyRenderer);
             if (auto* containerForPaginationGap = renderBox ? renderBox : documentOrBodyRenderer->containingBlock())
-                pagination.gap = Style::evaluate(columnGap, containerForPaginationGap->contentBoxLogicalWidth()).toUnsigned();
+                pagination.gap = Style::evaluate(columnGap, containerForPaginationGap->contentBoxLogicalWidth(), documentOrBodyRenderer->style()).toUnsigned();
         }
     }
     setPagination(pagination);

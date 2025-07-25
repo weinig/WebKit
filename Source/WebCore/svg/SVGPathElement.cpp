@@ -251,7 +251,7 @@ Path SVGPathElement::path() const
     if (document().settings().cssDPropertyEnabled()) {
         if (CheckedPtr renderer = this->renderer()) {
             if (RefPtr basicShapePath = renderer->style().d())
-                return basicShapePath->path({ });
+                return basicShapePath->path({ }, renderer->style());
             return { };
         }
     }

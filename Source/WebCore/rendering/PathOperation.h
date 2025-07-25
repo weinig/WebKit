@@ -62,7 +62,7 @@ public:
 
     virtual bool canBlend(const PathOperation&) const { return false; }
     virtual RefPtr<PathOperation> blend(const PathOperation*, const BlendingContext&) const { return nullptr; }
-    virtual std::optional<Path> getPath(const TransformOperationData&) const = 0;
+    virtual std::optional<Path> getPath(const TransformOperationData&, const RenderStyle&) const = 0;
 
     Type type() const { return m_type; }
 
@@ -96,7 +96,7 @@ public:
     const Style::URL& url() const { return m_url; }
     const AtomString& fragment() const { return m_fragment; }
 
-    std::optional<Path> getPath(const TransformOperationData&) const final { return m_path; }
+    std::optional<Path> getPath(const TransformOperationData&, const RenderStyle&) const final { return m_path; }
     std::optional<Path> path() const { return m_path; }
 
     bool operator==(const ReferencePathOperation& other) const
@@ -131,9 +131,9 @@ public:
 
     const Style::BasicShape& shape() const { return m_shape; }
     WindRule windRule() const { return Style::windRule(m_shape); }
-    Path pathForReferenceRect(const FloatRect& boundingRect) const { return Style::path(m_shape, boundingRect); }
+    Path pathForReferenceRect(const FloatRect& boundingRect, const RenderStyle& style) const { return Style::path(m_shape, boundingRect, style); }
 
-    std::optional<Path> getPath(const TransformOperationData&) const final;
+    std::optional<Path> getPath(const TransformOperationData&, const RenderStyle&) const final;
 
     bool operator==(const ShapePathOperation& other) const
     {
@@ -164,7 +164,7 @@ public:
 
     Ref<PathOperation> clone() const final;
 
-    std::optional<Path> getPath(const TransformOperationData&) const final;
+    std::optional<Path> getPath(const TransformOperationData&, const RenderStyle&) const final;
 
     bool operator==(const BoxPathOperation& other) const
     {
@@ -199,7 +199,7 @@ public:
 
     double lengthForPath() const;
     double lengthForContainPath(const FloatRect& elementRect, double computedPathLength) const;
-    std::optional<Path> getPath(const TransformOperationData&) const final;
+    std::optional<Path> getPath(const TransformOperationData&, const RenderStyle&) const final;
 
     bool operator==(const RayPathOperation& other) const
     {

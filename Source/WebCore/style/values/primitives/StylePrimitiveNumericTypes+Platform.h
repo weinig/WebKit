@@ -36,7 +36,7 @@ template<auto R> struct ToPlatform<LengthPercentage<R>> {
     {
         return WTF::switchOn(length,
             [](const LengthPercentage<R>::Dimension& dimension) {
-                return WebCore::Length { dimension.value, WebCore::LengthType::Fixed };
+                return WebCore::Length { dimension.evaluate(1.0f), WebCore::LengthType::Fixed };
             },
             [](const LengthPercentage<R>::Percentage& percentage) {
                 return WebCore::Length { percentage.value, WebCore::LengthType::Percent };

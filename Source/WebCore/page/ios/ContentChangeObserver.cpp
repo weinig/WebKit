@@ -105,26 +105,26 @@ bool ContentChangeObserver::isVisuallyHidden(const Node& node)
 
     auto fixedWidth = style.logicalWidth().tryFixed();
     auto fixedHeight = style.logicalHeight().tryFixed();
-    if ((fixedWidth && !fixedWidth->value) || (fixedHeight && !fixedHeight->value))
+    if ((fixedWidth && !fixedWidth->evaluate(style)) || (fixedHeight && !fixedHeight->evaluate(style)))
         return true;
 
     auto fixedTop = style.logicalTop().tryFixed();
     auto fixedLeft = style.logicalLeft().tryFixed();
     // FIXME: This is trying to check if the element is outside of the viewport. This is incorrect for many reasons.
-    if (fixedLeft && fixedWidth && -fixedLeft->value >= fixedWidth->value)
+    if (fixedLeft && fixedWidth && -fixedLeft->evaluate(style) >= fixedWidth->evaluate(style))
         return true;
-    if (fixedTop && fixedHeight && -fixedTop->value >= fixedHeight->value)
+    if (fixedTop && fixedHeight && -fixedTop->evaluate(style) >= fixedHeight->evaluate(style))
         return true;
 
     // It's a common technique used to position content offscreen.
-    if (style.hasOutOfFlowPosition() && fixedLeft && fixedLeft->value <= -999)
+    if (style.hasOutOfFlowPosition() && fixedLeft && fixedLeft->evaluate(style) <= -999)
         return true;
 
     // FIXME: Check for other cases like zero height with overflow hidden.
-    if (auto fixedMaxHeight = style.maxHeight().tryFixed(); fixedMaxHeight && !fixedMaxHeight->value)
+    if (auto fixedMaxHeight = style.maxHeight().tryFixed(); fixedMaxHeight && !fixedMaxHeight->evaluate(style))
         return true;
 
-    // Special case opacity, because a descendant with non-zero opacity should still be considered hidden when one of its ancetors has opacity: 0;
+    // Special case opacity, because a descendant with non-zero opacity should still be considered hidden when one of its ancestors has opacity: 0;
     // YouTube.com has this setup with the bottom control bar.
     constexpr static unsigned numberOfAncestorsToCheckForOpacity = 4;
     unsigned i = 0;
@@ -148,9 +148,9 @@ bool ContentChangeObserver::isConsideredVisible(const Node& node)
     // 1px width or height content is not considered visible.
     auto& style = *node.renderStyle();
 
-    if (auto fixedWidth = style.logicalWidth().tryFixed(); fixedWidth && fixedWidth->value <= 1)
+    if (auto fixedWidth = style.logicalWidth().tryFixed(); fixedWidth && fixedWidth->evaluate(style) <= 1)
         return false;
-    if (auto fixedHeight = style.logicalHeight().tryFixed(); fixedHeight && fixedHeight->value <= 1)
+    if (auto fixedHeight = style.logicalHeight().tryFixed(); fixedHeight && fixedHeight->evaluate(style) <= 1)
         return false;
     return true;
 }

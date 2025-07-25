@@ -211,7 +211,7 @@ float NumberInputType::decorationWidth(float inputWidth) const
 
         // FIXME <https://webkit.org/b/294858>: This is incorrect for anything other than fixed widths.
         if (auto fixedLogicalWidth = spinButton->computedStyle()->logicalWidth().tryFixed())
-            width += fixedLogicalWidth->value;
+            width += fixedLogicalWidth->evaluate(*spinButton->computedStyle());
         else if (auto percentageLogicalWidth = spinButton->computedStyle()->logicalWidth().tryPercentage()) {
             auto percentageLogicalWidthValue = percentageLogicalWidth->value;
             if (percentageLogicalWidthValue != 100.f)

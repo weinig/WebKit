@@ -42,6 +42,7 @@
 #include "RenderTheme.h"
 #include "ShadowRoot.h"
 #include "StringTruncator.h"
+#include "StylePrimitiveNumericTypes+Evaluation.h"
 #include "TextRun.h"
 #include "VisiblePosition.h"
 #include <math.h>
@@ -295,8 +296,8 @@ void RenderFileUploadControl::computeIntrinsicLogicalWidths(LayoutUnit& minLogic
     maxLogicalWidth = static_cast<int>(ceilf(std::max(minDefaultLabelWidth, defaultLabelWidth)));
 
     auto& logicalWidth = style().logicalWidth();
-    if (logicalWidth.isCalculated())
-        minLogicalWidth = std::max(0_lu, Style::evaluate(logicalWidth, 0_lu));
+    if (auto calculatedLogicalWidth = logicalWidth.tryCalc())
+        minLogicalWidth = std::max(0_lu, Style::evaluate(calculatedLogicalWidth, 0_lu));
     else if (!logicalWidth.isPercent())
         minLogicalWidth = maxLogicalWidth;
 }
@@ -308,7 +309,7 @@ void RenderFileUploadControl::computePreferredLogicalWidths()
     m_minPreferredLogicalWidth = 0;
     m_maxPreferredLogicalWidth = 0;
 
-    if (auto fixedLogicalWidth = style().logicalWidth().tryFixed(); fixedLogicalWidth && fixedLogicalWidth->value > 0)
+    if (auto fixedLogicalWidth = style().logicalWidth().tryFixed(); fixedLogicalWidth && fixedLogicalWidth->isPositive())
         m_minPreferredLogicalWidth = m_maxPreferredLogicalWidth = adjustContentBoxLogicalWidthForBoxSizing(*fixedLogicalWidth);
     else
         computeIntrinsicLogicalWidths(m_minPreferredLogicalWidth, m_maxPreferredLogicalWidth);

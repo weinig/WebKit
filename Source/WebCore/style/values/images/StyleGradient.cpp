@@ -120,7 +120,7 @@ static WebCore::Color resolveColorStopColor(const Markable<Color>& styleColor, c
     return resolveColorStopColor(*styleColor, style, hasColorFilter);
 }
 
-static std::optional<float> resolveColorStopPosition(const GradientLinearColorStop::Position& position, float gradientLength)
+static std::optional<float> resolveColorStopPosition(const GradientLinearColorStop::Position& position, float gradientLength, const RenderStyle& style)
 {
     if (!position)
         return std::nullopt;
@@ -129,7 +129,7 @@ static std::optional<float> resolveColorStopPosition(const GradientLinearColorSt
         [&](const typename LengthPercentage<>::Dimension& length) -> std::optional<float> {
             if (gradientLength <= 0)
                 return 0;
-            return length.value / gradientLength;
+            return length.evaluate(style) / gradientLength;
         },
         [&](const typename LengthPercentage<>::Percentage& percentage) -> std::optional<float> {
             return percentage.value / 100.0;
@@ -142,7 +142,7 @@ static std::optional<float> resolveColorStopPosition(const GradientLinearColorSt
     );
 }
 
-static std::optional<float> resolveColorStopPosition(const GradientAngularColorStop::Position& position, float)
+static std::optional<float> resolveColorStopPosition(const GradientAngularColorStop::Position& position, float, const RenderStyle&)
 {
     if (!position)
         return std::nullopt;
@@ -382,7 +382,7 @@ template<typename GradientAdapter, typename StyleGradient> GradientColorStops co
 
         stops[i].color = resolveColorStopColor(stop.color, style, hasColorFilter);
 
-        auto offset = resolveColorStopPosition(stop.position, gradientLength);
+        auto offset = resolveColorStopPosition(stop.position, gradientLength, style);
         if (offset)
             stops[i].offset = *offset;
         else {
@@ -642,12 +642,12 @@ template<typename GradientAdapter, typename StyleGradient> GradientColorStops co
     };
 }
 
-static inline float positionFromValue(LengthWrapperBaseDerived auto const& coordinate, float widthOrHeight)
+static inline float positionFromValue(LengthWrapperBaseDerived auto const& coordinate, float widthOrHeight, const RenderStyle& style)
 {
-    return evaluate(coordinate, widthOrHeight);
+    return evaluate(coordinate, widthOrHeight, style);
 }
 
-static inline float positionFromValue(const NumberOrPercentage<>& coordinate, float widthOrHeight)
+static inline float positionFromValue(const NumberOrPercentage<>& coordinate, float widthOrHeight, const RenderStyle&)
 {
     return WTF::switchOn(coordinate,
         [&](Number<> number) -> float { return number.value; },
@@ -655,11 +655,11 @@ static inline float positionFromValue(const NumberOrPercentage<>& coordinate, fl
     );
 }
 
-template<typename Position> static inline FloatPoint computeEndPoint(const Position& value, const FloatSize& size)
+template<typename Position> static inline FloatPoint computeEndPoint(const Position& value, const FloatSize& size, const RenderStyle& style)
 {
     return {
-        positionFromValue(get<0>(value), size.width()),
-        positionFromValue(get<1>(value), size.height())
+        positionFromValue(get<0>(value), size.width(), style),
+        positionFromValue(get<1>(value), size.height(), style),
     };
 }
 
@@ -720,9 +720,9 @@ static std::pair<FloatPoint, FloatPoint> endPointsFromAngleForPrefixedVariants(f
     return endPointsFromAngle(90 - angleDeg, size);
 }
 
-static float resolveRadius(const LengthPercentage<CSS::Nonnegative>& radius, float widthOrHeight)
+static float resolveRadius(const LengthPercentage<CSS::Nonnegative>& radius, float widthOrHeight, const RenderStyle& style)
 {
-    return evaluate(radius, widthOrHeight);
+    return evaluate(radius, widthOrHeight, style);
 }
 
 struct DistanceToCorner {
@@ -920,8 +920,8 @@ template<CSSValueID Name> static Ref<WebCore::Gradient> createPlatformGradient(c
 {
     ASSERT(!size.isEmpty());
 
-    auto point0 = computeEndPoint(get<0>(linear.parameters.gradientLine), size);
-    auto point1 = computeEndPoint(get<1>(linear.parameters.gradientLine), size);
+    auto point0 = computeEndPoint(get<0>(linear.parameters.gradientLine), size, style);
+    auto point1 = computeEndPoint(get<1>(linear.parameters.gradientLine), size, style);
 
     WebCore::Gradient::LinearData data { point0, point1 };
     LinearGradientAdapter adapter { data };
@@ -937,13 +937,13 @@ template<CSSValueID Name> static Ref<WebCore::Gradient> createPlatformGradient(c
     ASSERT(!size.isEmpty());
 
     auto computeCenterPoint = [&](const std::optional<Position>& position) -> FloatPoint {
-        return position ? computeEndPoint(*position, size) : FloatPoint { size.width() / 2, size.height() / 2 };
+        return position ? computeEndPoint(*position, size, style) : FloatPoint { size.width() / 2, size.height() / 2 };
     };
 
     auto computeCircleRadius = [&](const Variant<RadialGradient::Circle::Length, RadialGradient::Extent>& circleLengthOrExtent, FloatPoint centerPoint) -> std::pair<float, float> {
         return WTF::switchOn(circleLengthOrExtent,
             [&](const RadialGradient::Circle::Length& circleLength) -> std::pair<float, float> {
-                return { circleLength.value, 1 };
+                return { circleLength.evaluate(style), 1 };
             },
             [&](const RadialGradient::Extent& extent) -> std::pair<float, float> {
                 return WTF::switchOn(extent,
@@ -967,8 +967,8 @@ template<CSSValueID Name> static Ref<WebCore::Gradient> createPlatformGradient(c
     auto computeEllipseRadii = [&](const Variant<RadialGradient::Ellipse::Size, RadialGradient::Extent>& ellipseSizeOrExtent, FloatPoint centerPoint) -> std::pair<float, float> {
         return WTF::switchOn(ellipseSizeOrExtent,
             [&](const RadialGradient::Ellipse::Size& ellipseSize) -> std::pair<float, float> {
-                auto xDist = resolveRadius(get<0>(ellipseSize), size.width());
-                auto yDist = resolveRadius(get<1>(ellipseSize), size.height());
+                auto xDist = resolveRadius(get<0>(ellipseSize), size.width(), style);
+                auto yDist = resolveRadius(get<1>(ellipseSize), size.height(), style);
                 return { xDist, xDist / yDist };
             },
             [&](const RadialGradient::Extent& extent) -> std::pair<float, float> {
@@ -1032,14 +1032,14 @@ template<CSSValueID Name> static Ref<WebCore::Gradient> createPlatformGradient(c
     ASSERT(!size.isEmpty());
 
     auto computeCenterPoint = [&](const std::optional<Position>& position) -> FloatPoint {
-        return position ? computeEndPoint(*position, size) : FloatPoint { size.width() / 2, size.height() / 2 };
+        return position ? computeEndPoint(*position, size, style) : FloatPoint { size.width() / 2, size.height() / 2 };
     };
 
     auto computeEllipseRadii = [&](const Variant<PrefixedRadialGradient::Ellipse::Size, PrefixedRadialGradient::Extent>& ellipseSizeOrExtent, FloatPoint centerPoint) -> std::pair<float, float> {
         return WTF::switchOn(ellipseSizeOrExtent,
             [&](const PrefixedRadialGradient::Ellipse::Size& ellipseSize) -> std::pair<float, float> {
-                auto xDist = resolveRadius(get<0>(ellipseSize), size.width());
-                auto yDist = resolveRadius(get<1>(ellipseSize), size.height());
+                auto xDist = resolveRadius(get<0>(ellipseSize), size.width(), style);
+                auto yDist = resolveRadius(get<1>(ellipseSize), size.height(), style);
                 return { xDist, xDist / yDist };
             },
             [&](const PrefixedRadialGradient::Extent& extent) -> std::pair<float, float> {
@@ -1138,8 +1138,8 @@ template<CSSValueID Name> static Ref<WebCore::Gradient> createPlatformGradient(c
 {
     ASSERT(!size.isEmpty());
 
-    auto firstPoint = computeEndPoint(radial.parameters.gradientBox.first, size);
-    auto secondPoint = computeEndPoint(radial.parameters.gradientBox.second, size);
+    auto firstPoint = computeEndPoint(radial.parameters.gradientBox.first, size, style);
+    auto secondPoint = computeEndPoint(radial.parameters.gradientBox.second, size, style);
 
     auto firstRadius = narrowPrecisionToFloat(radial.parameters.gradientBox.firstRadius.value);
     auto secondRadius = narrowPrecisionToFloat(radial.parameters.gradientBox.secondRadius.value);
@@ -1159,7 +1159,7 @@ template<CSSValueID Name> static Ref<WebCore::Gradient> createPlatformGradient(c
     ASSERT(!size.isEmpty());
 
     auto computeCenterPoint = [&](const std::optional<Position>& position) -> FloatPoint {
-        return position ? computeEndPoint(*position, size) : FloatPoint { size.width() / 2, size.height() / 2 };
+        return position ? computeEndPoint(*position, size, style) : FloatPoint { size.width() / 2, size.height() / 2 };
     };
 
     auto centerPoint = computeCenterPoint(conic.parameters.gradientBox.position);

@@ -284,10 +284,10 @@ inline void ExtractorSerializer::serializeLength(const RenderStyle& style, Strin
         serializationForCSS(builder, context, style, CSS::Keyword::Normal { });
         return;
     case LengthType::Fixed:
-        CSS::serializationForCSS(builder, context, CSS::LengthRaw<> { CSS::LengthUnit::Px, adjustFloatForAbsoluteZoom(length.value(), style) });
+        CSS::serializationForCSS(builder, context, CSS::LengthRaw<> { CSS::LengthUnit::Px, length.fixed().evaluate(1.0f) });
         return;
     case LengthType::Percent:
-        CSS::serializationForCSS(builder, context, CSS::PercentageRaw<> { length.value() });
+        CSS::serializationForCSS(builder, context, CSS::PercentageRaw<> { length.percentage().value });
         return;
     case LengthType::Calculated:
         builder.append(CSSCalcValue::create(length.protectedCalculationValue(), style)->customCSSText(context));
@@ -314,9 +314,9 @@ template<typename T> void ExtractorSerializer::serializeNumber(ExtractorState& s
     serialize(state, builder, context, number);
 }
 
-template<typename T> void ExtractorSerializer::serializeNumberAsPixels(ExtractorState& state, StringBuilder& builder, const CSS::SerializationContext& context, T number)
+template<typename T> void ExtractorSerializer::serializeNumberAsPixels(ExtractorState&, StringBuilder& builder, const CSS::SerializationContext& context, T number)
 {
-    CSS::serializationForCSS(builder, context, CSS::LengthRaw<> { CSS::LengthUnit::Px, adjustFloatForAbsoluteZoom(number, state.style) });
+    CSS::serializationForCSS(builder, context, CSS::LengthRaw<> { CSS::LengthUnit::Px, static_cast<float>(number) });
 }
 
 template<typename T> void ExtractorSerializer::serializeComputedLength(ExtractorState& state, StringBuilder& builder, const CSS::SerializationContext& context, T number)

@@ -85,23 +85,43 @@ auto CSSValueConversion<BorderRadiusValue>::operator()(BuilderState& state, cons
 
 // MARK: - Evaluation
 
-auto Evaluation<BorderRadius>::operator()(const BorderRadius& value, FloatSize referenceSize) -> FloatRoundedRect::Radii
+auto Evaluation<BorderRadius>::operator()(const BorderRadius& value, FloatSize referenceSize, float zoom) -> FloatRoundedRect::Radii
 {
     return {
-        evaluate(value.topLeft(), referenceSize),
-        evaluate(value.topRight(), referenceSize),
-        evaluate(value.bottomLeft(), referenceSize),
-        evaluate(value.bottomRight(), referenceSize),
+        evaluate(value.topLeft(), referenceSize, zoom),
+        evaluate(value.topRight(), referenceSize, zoom),
+        evaluate(value.bottomLeft(), referenceSize, zoom),
+        evaluate(value.bottomRight(), referenceSize, zoom),
     };
 }
 
-auto Evaluation<BorderRadius>::operator()(const BorderRadius& value, LayoutSize referenceSize) -> LayoutRoundedRect::Radii
+auto Evaluation<BorderRadius>::operator()(const BorderRadius& value, FloatSize referenceSize, const RenderStyle& style) -> FloatRoundedRect::Radii
 {
     return {
-        evaluate(value.topLeft(), referenceSize),
-        evaluate(value.topRight(), referenceSize),
-        evaluate(value.bottomLeft(), referenceSize),
-        evaluate(value.bottomRight(), referenceSize),
+        evaluate(value.topLeft(), referenceSize, style),
+        evaluate(value.topRight(), referenceSize, style),
+        evaluate(value.bottomLeft(), referenceSize, style),
+        evaluate(value.bottomRight(), referenceSize, style),
+    };
+}
+
+auto Evaluation<BorderRadius>::operator()(const BorderRadius& value, LayoutSize referenceSize, float zoom) -> LayoutRoundedRect::Radii
+{
+    return {
+        evaluate(value.topLeft(), referenceSize, zoom),
+        evaluate(value.topRight(), referenceSize, zoom),
+        evaluate(value.bottomLeft(), referenceSize, zoom),
+        evaluate(value.bottomRight(), referenceSize, zoom),
+    };
+}
+
+auto Evaluation<BorderRadius>::operator()(const BorderRadius& value, LayoutSize referenceSize, const RenderStyle& style) -> LayoutRoundedRect::Radii
+{
+    return {
+        evaluate(value.topLeft(), referenceSize, style),
+        evaluate(value.topRight(), referenceSize, style),
+        evaluate(value.bottomLeft(), referenceSize, style),
+        evaluate(value.bottomRight(), referenceSize, style),
     };
 }
 

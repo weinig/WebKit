@@ -48,12 +48,12 @@ float TextDecorationThickness::resolve(const RenderStyle& style) const
             return style.metricsOfPrimaryFont().underlineThickness().value_or(0);
         },
         [&](const TextDecorationThicknessLength& length) {
-            return Style::evaluate(length, style.computedFontSize());
+            return Style::evaluate(length, style.computedFontSize(), style);
         }
     );
 }
 
-float TextDecorationThickness::resolve(float fontSize, const FontMetrics& metrics) const
+float TextDecorationThickness::resolve(float fontSize, const FontMetrics& metrics, float zoom) const
 {
     return WTF::switchOn(m_value,
         [&](const CSS::Keyword::Auto&) {
@@ -63,7 +63,7 @@ float TextDecorationThickness::resolve(float fontSize, const FontMetrics& metric
             return metrics.underlineThickness().value_or(0);
         },
         [&](const TextDecorationThicknessLength& length) {
-            return Style::evaluate(length, fontSize);
+            return Style::evaluate(length, fontSize, zoom);
         }
     );
 }

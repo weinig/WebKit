@@ -96,9 +96,9 @@ inline bool isInset(const BoxShadow& shadow)
     return shadow.inset.has_value();
 }
 
-inline LayoutUnit paintingSpread(const BoxShadow& shadow)
+inline LayoutUnit paintingSpread(const BoxShadow& shadow, const RenderStyle& style)
 {
-    return LayoutUnit { shadow.spread.value };
+    return LayoutUnit { shadow.spread.evaluate(style) };
 }
 
 } // namespace Style

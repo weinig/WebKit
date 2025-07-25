@@ -152,7 +152,7 @@ auto TextAutoSizingValue::adjustTextNodeSizes() -> StillHasNodes
 
         int specifiedLineHeight;
         if (lineHeightLength.isPercent())
-            specifiedLineHeight = minimumValueForLength(lineHeightLength, fontDescription.specifiedSize());
+            specifiedLineHeight = minimumValueForLength(lineHeightLength, fontDescription.specifiedSize(), parentStyle.usedZoom());
         else
             specifiedLineHeight = lineHeightLength.value();
 

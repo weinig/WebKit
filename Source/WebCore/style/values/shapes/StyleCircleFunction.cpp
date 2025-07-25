@@ -61,16 +61,16 @@ static const WebCore::Path& cachedCirclePath(const FloatRect& rect)
 
 // MARK: - Path Generation
 
-FloatPoint resolvePosition(const Circle& value, FloatSize boundingBox)
+FloatPoint resolvePosition(const Circle& value, FloatSize boundingBox, const RenderStyle& style)
 {
-    return value.position ? evaluate(*value.position, boundingBox) : FloatPoint { boundingBox.width() / 2, boundingBox.height() / 2 };
+    return value.position ? evaluate(*value.position, boundingBox, style) : FloatPoint { boundingBox.width() / 2, boundingBox.height() / 2 };
 }
 
-float resolveRadius(const Circle& value, FloatSize boxSize, FloatPoint center)
+float resolveRadius(const Circle& value, FloatSize boxSize, FloatPoint center, const RenderStyle& style)
 {
     return WTF::switchOn(value.radius,
         [&](const Circle::Length& length) -> float {
-            return evaluate(length, boxSize.diagonalLength() / std::numbers::sqrt2_v<float>);
+            return evaluate(length, boxSize.diagonalLength() / std::numbers::sqrt2_v<float>, style);
         },
         [&](const Circle::Extent& extent) -> float {
             return WTF::switchOn(extent,
@@ -91,9 +91,9 @@ float resolveRadius(const Circle& value, FloatSize boxSize, FloatPoint center)
     );
 }
 
-WebCore::Path pathForCenterCoordinate(const Circle& value, const FloatRect& boundingBox, FloatPoint center)
+WebCore::Path pathForCenterCoordinate(const Circle& value, const FloatRect& boundingBox, FloatPoint center, const RenderStyle& style)
 {
-    auto radius = resolveRadius(value, boundingBox.size(), center);
+    auto radius = resolveRadius(value, boundingBox.size(), center, style);
     auto bounding = FloatRect {
         center.x() - radius + boundingBox.x(),
         center.y() - radius + boundingBox.y(),
@@ -103,9 +103,9 @@ WebCore::Path pathForCenterCoordinate(const Circle& value, const FloatRect& boun
     return cachedCirclePath(bounding);
 }
 
-WebCore::Path PathComputation<Circle>::operator()(const Circle& value, const FloatRect& boundingBox)
+WebCore::Path PathComputation<Circle>::operator()(const Circle& value, const FloatRect& boundingBox, const RenderStyle& style)
 {
-    return pathForCenterCoordinate(value, boundingBox, resolvePosition(value, boundingBox.size()));
+    return pathForCenterCoordinate(value, boundingBox, resolvePosition(value, boundingBox.size(), style), style);
 }
 
 // MARK: - Blending

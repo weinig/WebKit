@@ -54,11 +54,11 @@ template<size_t I> const auto& get(const Circle& value)
 
 DEFINE_TYPE_MAPPING(CSS::Circle, Circle)
 
-FloatPoint resolvePosition(const Circle& value, FloatSize boxSize);
-float resolveRadius(const Circle& value, FloatSize boxSize, FloatPoint center);
-WebCore::Path pathForCenterCoordinate(const Circle&, const FloatRect&, FloatPoint);
+FloatPoint resolvePosition(const Circle& value, FloatSize boxSize, const RenderStyle&);
+float resolveRadius(const Circle& value, FloatSize boxSize, FloatPoint center, const RenderStyle&);
+WebCore::Path pathForCenterCoordinate(const Circle&, const FloatRect&, FloatPoint, const RenderStyle&);
 
-template<> struct PathComputation<Circle> { WebCore::Path operator()(const Circle&, const FloatRect&); };
+template<> struct PathComputation<Circle> { WebCore::Path operator()(const Circle&, const FloatRect&, const RenderStyle&); };
 
 template<> struct Blending<Circle> {
     auto canBlend(const Circle&, const Circle&) -> bool;

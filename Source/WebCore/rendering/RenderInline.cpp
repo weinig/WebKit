@@ -346,49 +346,49 @@ LayoutPoint RenderInline::firstInlineBoxTopLeft() const
     return { };
 }
 
-static LayoutUnit computeMargin(const RenderInline* renderer, const Style::MarginEdge& margin)
+static LayoutUnit computeMargin(const RenderInline* renderer, const Style::MarginEdge& margin, const RenderStyle& style)
 {
-    return Style::evaluateMinimum(margin, [&] ALWAYS_INLINE_LAMBDA { return std::max<LayoutUnit>(0, renderer->containingBlock()->contentBoxLogicalWidth()); });
+    return Style::evaluateMinimum(margin, [&] ALWAYS_INLINE_LAMBDA { return std::max<LayoutUnit>(0, renderer->containingBlock()->contentBoxLogicalWidth()); }, style);
 }
 
 LayoutUnit RenderInline::marginLeft() const
 {
-    return computeMargin(this, style().marginLeft());
+    return computeMargin(this, style().marginLeft(), style());
 }
 
 LayoutUnit RenderInline::marginRight() const
 {
-    return computeMargin(this, style().marginRight());
+    return computeMargin(this, style().marginRight(), style());
 }
 
 LayoutUnit RenderInline::marginTop() const
 {
-    return computeMargin(this, style().marginTop());
+    return computeMargin(this, style().marginTop(), style());
 }
 
 LayoutUnit RenderInline::marginBottom() const
 {
-    return computeMargin(this, style().marginBottom());
+    return computeMargin(this, style().marginBottom(), style());
 }
 
 LayoutUnit RenderInline::marginStart(const WritingMode writingMode) const
 {
-    return computeMargin(this, style().marginStart(writingMode));
+    return computeMargin(this, style().marginStart(writingMode), style());
 }
 
 LayoutUnit RenderInline::marginEnd(const WritingMode writingMode) const
 {
-    return computeMargin(this, style().marginEnd(writingMode));
+    return computeMargin(this, style().marginEnd(writingMode), style());
 }
 
 LayoutUnit RenderInline::marginBefore(const WritingMode writingMode) const
 {
-    return computeMargin(this, style().marginBefore(writingMode));
+    return computeMargin(this, style().marginBefore(writingMode), style());
 }
 
 LayoutUnit RenderInline::marginAfter(const WritingMode writingMode) const
 {
-    return computeMargin(this, style().marginAfter(writingMode));
+    return computeMargin(this, style().marginAfter(writingMode), style());
 }
 
 ASCIILiteral RenderInline::renderName() const

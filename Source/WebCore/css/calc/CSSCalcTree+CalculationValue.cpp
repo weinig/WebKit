@@ -159,7 +159,7 @@ Child fromCalculationValue(const Calculation::Dimension& root, const FromConvers
 {
     switch (options.canonicalDimension) {
     case CanonicalDimension::Dimension::Length:
-        return makeChild(CanonicalDimension { .value = adjustFloatForAbsoluteZoom(root.value, options.style), .dimension = options.canonicalDimension });
+        return makeChild(CanonicalDimension { .value = root.value, .dimension = options.canonicalDimension });
 
     case CanonicalDimension::Dimension::Angle:
     case CanonicalDimension::Dimension::Time:

@@ -1476,10 +1476,10 @@ bool RenderElement::repaintAfterLayoutIfNeeded(SingleThreadWeakPtr<const RenderL
     const RenderStyle& outlineStyle = outlineStyleForRepaint();
     auto& style = this->style();
     auto outlineWidth = LayoutUnit { outlineStyle.outlineSize() };
-    auto insetShadowExtent = Style::shadowInsetExtent(style.boxShadow());
+    auto insetShadowExtent = Style::shadowInsetExtent(style.boxShadow(), style);
     auto sizeDelta = LayoutSize { absoluteValue(newOutlineBoundsRect.width() - oldOutlineBoundsRect.width()), absoluteValue(newOutlineBoundsRect.height() - oldOutlineBoundsRect.height()) };
     if (sizeDelta.width()) {
-        auto [shadowLeft, shadowRight] = Style::shadowHorizontalExtent(style.boxShadow());
+        auto [shadowLeft, shadowRight] = Style::shadowHorizontalExtent(style.boxShadow(), style);
 
         auto insetExtent = [&] {
             // Inset "content" is inside the border box (e.g. border, negative outline and box shadow).
@@ -1490,8 +1490,8 @@ bool RenderElement::repaintAfterLayoutIfNeeded(SingleThreadWeakPtr<const RenderL
                 auto borderBoxWidth = renderBox->width();
                 return std::max({
                     renderBox->borderRight(),
-                    Style::evaluate(style.borderTopRightRadius().width(), borderBoxWidth),
-                    Style::evaluate(style.borderBottomRightRadius().width(), borderBoxWidth),
+                    Style::evaluate(style.borderTopRightRadius().width(), borderBoxWidth, style),
+                    Style::evaluate(style.borderBottomRightRadius().width(), borderBoxWidth, style),
                 });
             };
             auto outlineRightInsetExtent = [&]() -> LayoutUnit {
@@ -1523,7 +1523,7 @@ bool RenderElement::repaintAfterLayoutIfNeeded(SingleThreadWeakPtr<const RenderL
         }
     }
     if (sizeDelta.height()) {
-        auto [shadowTop, shadowBottom] = Style::shadowVerticalExtent(style.boxShadow());
+        auto [shadowTop, shadowBottom] = Style::shadowVerticalExtent(style.boxShadow(), style);
 
         auto insetExtent = [&] {
             // Inset "content" is inside the border box (e.g. border, negative outline and box shadow).
@@ -1534,8 +1534,8 @@ bool RenderElement::repaintAfterLayoutIfNeeded(SingleThreadWeakPtr<const RenderL
                 auto borderBoxHeight = renderBox->height();
                 return std::max({
                     renderBox->borderBottom(),
-                    Style::evaluate(style.borderBottomLeftRadius().height(), borderBoxHeight),
-                    Style::evaluate(style.borderBottomRightRadius().height(), borderBoxHeight),
+                    Style::evaluate(style.borderBottomLeftRadius().height(), borderBoxHeight, style),
+                    Style::evaluate(style.borderBottomRightRadius().height(), borderBoxHeight, style),
                 });
             };
             auto outlineBottomInsetExtent = [&]() -> LayoutUnit {
@@ -2076,7 +2076,7 @@ MarginRect RenderElement::absoluteAnchorRectWithScrollMargin(bool* insideFixed) 
     // box of the transformed border box of the target element.
     // See https://www.w3.org/TR/css-scroll-snap-1/#scroll-margin.
     auto marginRect = anchorRect;
-    marginRect.expand(Style::extentForRect(scrollMarginBox, anchorRect));
+    marginRect.expand(Style::extentForRect(scrollMarginBox, anchorRect, style()));
     return { marginRect, anchorRect };
 }
 
@@ -2498,7 +2498,7 @@ static RenderObject::BlockContentHeightType includeNonFixedHeight(const RenderOb
         if (CheckedPtr block = dynamicDowncast<RenderBlock>(renderer)) {
             // For fixed height styles, if the overflow size of the element spills out of the specified
             // height, assume we can apply text auto-sizing.
-            if (block->effectiveOverflowY() == Overflow::Visible && fixedHeight->value < block->layoutOverflowRect().maxY())
+            if (block->effectiveOverflowY() == Overflow::Visible && fixedHeight->evaluate(style) < block->layoutOverflowRect().maxY())
                 return RenderObject::OverflowHeight;
         }
         return RenderObject::FixedHeight;

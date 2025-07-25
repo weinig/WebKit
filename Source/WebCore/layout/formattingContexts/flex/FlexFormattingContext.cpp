@@ -35,6 +35,7 @@
 #include "LayoutState.h"
 #include "LengthFunctions.h"
 #include "RenderStyleInlines.h"
+#include "StylePrimitiveNumericTypes+Evaluation.h"
 #include <ranges>
 #include <wtf/FixedVector.h>
 #include <wtf/TZoneMallocInlines.h>
@@ -89,12 +90,25 @@ FlexLayout::LogicalFlexItems FlexFormattingContext::convertFlexItemsToLogicalSpa
             auto mainAxis = LogicalFlexItem::MainAxisGeometry { };
             auto crossAxis = LogicalFlexItem::CrossAxisGeometry { };
 
-            auto propertyValueForLength = [&](auto& propertyValue, auto availableSize) -> std::optional<LayoutUnit> {
-                if (auto fixedPropertyValue = propertyValue.tryFixed())
-                    return LayoutUnit { fixedPropertyValue->value };
-                if (propertyValue.isSpecified() && availableSize)
-                    return Style::evaluate(propertyValue, *availableSize);
-                return { };
+            auto propertyValueForLength = [&]<typename SizeType>(const SizeType& propertyValue, auto availableSize) -> std::optional<LayoutUnit> {
+                return WTF::switchOn(propertyValue,
+                    [&](const typename SizeType::Fixed& fixedPropertyValue) -> std::optional<LayoutUnit> {
+                        return LayoutUnit { fixedPropertyValue.evaluate(style) };
+                    },
+                    [&](const typename SizeType::Percentage& percentagePropertyValue) -> std::optional<LayoutUnit> {
+                        if (availableSize)
+                            return Style::evaluate(percentagePropertyValue, *availableSize);
+                        return { };
+                    },
+                    [&](const typename SizeType::Calc& calcPropertyValue) -> std::optional<LayoutUnit> {
+                        if (availableSize)
+                            return Style::evaluate(calcPropertyValue, *availableSize);
+                        return { };
+                    },
+                    [&](const auto&) -> std::optional<LayoutUnit> {
+                        return { };
+                    }
+                );
             };
 
             auto setMainAxisValues = [&] {

@@ -167,8 +167,8 @@ static void applyBoxShadowForBackground(GraphicsContext& context, const RenderSt
         if (shadow.inset)
             continue;
 
-        FloatSize shadowOffset(shadow.location.x().value, shadow.location.y().value);
-        context.setDropShadow({ shadowOffset, shadow.blur.value, style.colorWithColorFilter(shadow.color), shadow.isWebkitBoxShadow ? ShadowRadiusMode::Legacy : ShadowRadiusMode::Default });
+        FloatSize shadowOffset(shadow.location.x().evaluate(style), shadow.location.y().evaluate(style));
+        context.setDropShadow({ shadowOffset, shadow.blur.evaluate(style), style.colorWithColorFilter(shadow.color), shadow.isWebkitBoxShadow ? ShadowRadiusMode::Legacy : ShadowRadiusMode::Default });
         break;
     }
 }
@@ -647,7 +647,7 @@ BackgroundImageGeometry BackgroundPainter::calculateBackgroundImageGeometry(cons
 
     LayoutSize spaceSize;
     LayoutSize phase;
-    auto computedXPosition = Style::evaluate(fillLayer.xPosition(), availableWidth);
+    auto computedXPosition = Style::evaluate(fillLayer.xPosition(), availableWidth, renderer.style());
     if (backgroundRepeatX == FillRepeat::Round && positioningAreaSize.width() > 0 && tileSize.width() > 0) {
         int numTiles = std::max(1, roundToInt(positioningAreaSize.width() / tileSize.width()));
         if (fillLayer.size().size.height.isAuto() && backgroundRepeatY != FillRepeat::Round)
@@ -657,7 +657,7 @@ BackgroundImageGeometry BackgroundPainter::calculateBackgroundImageGeometry(cons
         phase.setWidth(tileSize.width() ? tileSize.width() - fmodf((computedXPosition + left), tileSize.width()) : 0);
     }
 
-    auto computedYPosition = Style::evaluate(fillLayer.yPosition(), availableHeight);
+    auto computedYPosition = Style::evaluate(fillLayer.yPosition(), availableHeight, renderer.style());
     if (backgroundRepeatY == FillRepeat::Round && positioningAreaSize.height() > 0 && tileSize.height() > 0) {
         int numTiles = std::max(1, roundToInt(positioningAreaSize.height() / tileSize.height()));
         if (fillLayer.size().size.width.isAuto() && backgroundRepeatX != FillRepeat::Round)
@@ -673,7 +673,7 @@ BackgroundImageGeometry BackgroundPainter::calculateBackgroundImageGeometry(cons
     } else if (backgroundRepeatX == FillRepeat::Space && tileSize.width() > 0) {
         if (auto space = getSpace(positioningAreaSize.width(), tileSize.width())) {
             LayoutUnit actualWidth = tileSize.width() + *space;
-            computedXPosition = minimumValueForLength(Length(), availableWidth);
+            computedXPosition = minimumValueForLength(Length(), availableWidth, 1.0f);
             spaceSize.setWidth(*space);
             spaceSize.setHeight(0);
             phase.setWidth(actualWidth ? actualWidth - fmodf((computedXPosition + left), actualWidth) : 0);
@@ -697,7 +697,7 @@ BackgroundImageGeometry BackgroundPainter::calculateBackgroundImageGeometry(cons
     } else if (backgroundRepeatY == FillRepeat::Space && tileSize.height() > 0) {
         if (auto space = getSpace(positioningAreaSize.height(), tileSize.height())) {
             LayoutUnit actualHeight = tileSize.height() + *space;
-            computedYPosition = minimumValueForLength(Length(), availableHeight);
+            computedYPosition = minimumValueForLength(Length(), availableHeight, 1.0f);
             spaceSize.setHeight(*space);
             phase.setHeight(actualHeight ? actualHeight - fmodf((computedYPosition + top), actualHeight) : 0);
         } else
@@ -746,18 +746,18 @@ LayoutSize BackgroundPainter::calculateFillTileSize(const RenderBoxModelObject& 
         Length layerWidth = fillLayer.size().size.width;
         Length layerHeight = fillLayer.size().size.height;
 
-        if (layerWidth.isFixed())
-            tileSize.setWidth(layerWidth.value());
+        if (auto fixedLayerWidth = layerWidth.tryFixed())
+            tileSize.setWidth(fixedLayerWidth->evaluate(renderer.style().usedZoom());
         else if (layerWidth.isPercentOrCalculated()) {
-            auto resolvedWidth = valueForLength(layerWidth, positioningAreaSize.width());
+            auto resolvedWidth = valueForLength(layerWidth, positioningAreaSize.width(), renderer.style().usedZoom());
             // Non-zero resolved value should always produce some content.
             tileSize.setWidth(!resolvedWidth ? resolvedWidth : std::max(devicePixelSize, resolvedWidth));
         }
 
-        if (layerHeight.isFixed())
-            tileSize.setHeight(layerHeight.value());
+        if (auto fixedLayerHeight = layerHeight.tryFixed())
+            tileSize.setHeight(fixedLayerHeight->evaluate(renderer.style().usedZoom());
         else if (layerHeight.isPercentOrCalculated()) {
-            auto resolvedHeight = valueForLength(layerHeight, positioningAreaSize.height());
+            auto resolvedHeight = valueForLength(layerHeight, positioningAreaSize.height(), renderer.style().usedZoom());
             // Non-zero resolved value should always produce some content.
             tileSize.setHeight(!resolvedHeight ? resolvedHeight : std::max(devicePixelSize, resolvedHeight));
         }
@@ -826,10 +826,10 @@ void BackgroundPainter::paintBoxShadow(const LayoutRect& paintRect, const Render
         if (Style::shadowStyle(shadow) != shadowStyle)
             continue;
 
-        LayoutSize shadowOffset(shadow.location.x().value, shadow.location.y().value);
-        LayoutUnit shadowPaintingExtent = Style::paintingExtent(shadow);
-        LayoutUnit shadowSpread = LayoutUnit(shadow.spread.value);
-        auto shadowRadius = shadow.blur.value;
+        LayoutSize shadowOffset(shadow.location.x().evaluate(style), shadow.location.y().evaluate(style));
+        LayoutUnit shadowPaintingExtent = Style::paintingExtent(shadow, style);
+        LayoutUnit shadowSpread = LayoutUnit(shadow.spread.evaluate(style));
+        auto shadowRadius = shadow.blur.evaluate(style);
 
         if (shadowOffset.isZero() && !shadowRadius && !shadowSpread)
             continue;

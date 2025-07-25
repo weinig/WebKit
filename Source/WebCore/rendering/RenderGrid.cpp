@@ -693,7 +693,7 @@ LayoutUnit RenderGrid::gridGap(Style::GridTrackSizingDirection direction, std::o
         return downcast<RenderGrid>(parent())->gridGap(parentDirection);
     }
 
-    return Style::evaluate(gap, availableSize.value_or(0_lu));
+    return Style::evaluate(gap, availableSize.value_or(0_lu), style());
 }
 
 LayoutUnit RenderGrid::gridGap(Style::GridTrackSizingDirection direction) const
@@ -886,7 +886,7 @@ unsigned RenderGrid::computeAutoRepeatTracksCount(Style::GridTrackSizingDirectio
         auto& maxSize = isRowAxis ? style().logicalMaxWidth() : style().logicalMaxHeight();
         auto availableMaxSize = WTF::switchOn(maxSize,
             [&](const Style::MaximumSize::Fixed& fixedMaxSize) -> std::optional<LayoutUnit> {
-                auto maxSizeValue = LayoutUnit { fixedMaxSize.value };
+                auto maxSizeValue = LayoutUnit { fixedMaxSize.evaluate(style()) };
                 return isRowAxis
                     ? adjustContentBoxLogicalWidthForBoxSizing(maxSizeValue)
                     : adjustContentBoxLogicalHeightForBoxSizing(maxSizeValue);
@@ -918,7 +918,7 @@ unsigned RenderGrid::computeAutoRepeatTracksCount(Style::GridTrackSizingDirectio
 
         auto availableMinSize = WTF::switchOn(minSize,
             [&](const Style::MinimumSize::Fixed& fixedMinSize) -> std::optional<LayoutUnit> {
-                auto minSizeValue = LayoutUnit { fixedMinSize.value };
+                auto minSizeValue = LayoutUnit { fixedMinSize.evaluate(style()) };
                 return isRowAxis
                     ? adjustContentBoxLogicalWidthForBoxSizing(minSizeValue)
                     : adjustContentBoxLogicalHeightForBoxSizing(minSizeValue);
@@ -963,8 +963,8 @@ unsigned RenderGrid::computeAutoRepeatTracksCount(Style::GridTrackSizingDirectio
 
         auto contributingTrackSize = [&] {
             if (hasDefiniteMaxTrackSizingFunction && hasDefiniteMinTrackSizingFunction)
-                return std::max(Style::evaluate(minTrackSizingFunction.length(), *availableSize), Style::evaluate(maxTrackSizingFunction.length(), *availableSize));
-            return hasDefiniteMaxTrackSizingFunction ? Style::evaluate(maxTrackSizingFunction.length(), *availableSize) : Style::evaluate(minTrackSizingFunction.length(), *availableSize);
+                return std::max(Style::evaluate(minTrackSizingFunction.length(), *availableSize, style()), Style::evaluate(maxTrackSizingFunction.length(), *availableSize, style()));
+            return hasDefiniteMaxTrackSizingFunction ? Style::evaluate(maxTrackSizingFunction.length(), *availableSize, style()) : Style::evaluate(minTrackSizingFunction.length(), *availableSize, style());
         };
         autoRepeatTracksSize += contributingTrackSize();
     }

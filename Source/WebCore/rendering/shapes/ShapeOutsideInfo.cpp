@@ -256,7 +256,7 @@ Ref<const LayoutShape> makeShapeForShapeOutside(const RenderBox& renderer)
     auto boxSize = computeLogicalBoxSize(renderer, isHorizontalWritingMode);
 
     auto logicalMargin = [&] {
-        auto shapeMargin = floatValueForLength(style.shapeMargin(), containingBlock.contentBoxLogicalWidth());
+        auto shapeMargin = floatValueForLength(style.shapeMargin(), containingBlock.contentBoxLogicalWidth(), style.usedZoom());
         return isnan(shapeMargin) ? 0.0f : shapeMargin;
     }();
 

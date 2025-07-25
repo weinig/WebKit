@@ -516,7 +516,7 @@ Ref<CSSPrimitiveValue> CSSPrimitiveValue::create(const Length& length, const Ren
     case LengthType::Percent:
         return create(length);
     case LengthType::Fixed:
-        return create(adjustFloatForAbsoluteZoom(length.value(), style), CSSUnitType::CSS_PX);
+        return create(length.fixed().evaluate(1.0f), CSSUnitType::CSS_PX);
     case LengthType::Calculated:
         return create(CSSCalcValue::create(length.protectedCalculationValue(), style));
     case LengthType::Relative:

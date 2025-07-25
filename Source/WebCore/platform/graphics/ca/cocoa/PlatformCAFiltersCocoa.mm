@@ -332,7 +332,7 @@ void PlatformCAFilters::setFiltersOnLayer(PlatformLayer* layer, const FilterOper
         case FilterOperation::Type::Blur: {
             const auto& blurOperation = downcast<BlurFilterOperation>(filterOperation);
             CAFilter *filter = [CAFilter filterWithType:kCAFilterGaussianBlur];
-            [filter setValue:[NSNumber numberWithFloat:floatValueForLength(blurOperation.stdDeviation(), 0)] forKey:@"inputRadius"];
+            [filter setValue:[NSNumber numberWithFloat:floatValueForLength(blurOperation.stdDeviation(), 0, 1.0 /*FIXME HANDLE ZOOM*/)] forKey:@"inputRadius"];
             if (is_objc<CABackdropLayer>(layer)) {
 #if PLATFORM(VISION)
                 // FIXME: https://bugs.webkit.org/show_bug.cgi?id=275965
@@ -442,7 +442,7 @@ RetainPtr<NSValue> PlatformCAFilters::filterValueForOperation(const FilterOperat
         // CAFilter: inputRadius
         double amount = 0;
         if (operation)
-            amount = floatValueForLength(downcast<BlurFilterOperation>(*operation).stdDeviation(), 0);
+            amount = floatValueForLength(downcast<BlurFilterOperation>(*operation).stdDeviation(), 0, 1.0 /*FIXME HANDLE ZOOM*/);
 
         value = @(amount);
         break;

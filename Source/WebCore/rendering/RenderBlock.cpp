@@ -847,9 +847,9 @@ LayoutUnit RenderBlock::marginIntrinsicLogicalWidthForChild(RenderBox& child) co
     auto& marginRight = child.style().marginEnd(writingMode());
     LayoutUnit margin;
     if (auto fixedMarginLeft = marginLeft.tryFixed(); fixedMarginLeft && !shouldTrimChildMargin(MarginTrimType::InlineStart, child))
-        margin += fixedMarginLeft->value;
+        margin += fixedMarginLeft->evaluate(child.style());
     if (auto fixedMarginRight = marginRight.tryFixed(); fixedMarginRight && !shouldTrimChildMargin(MarginTrimType::InlineEnd, child))
-        margin += fixedMarginRight->value;
+        margin += fixedMarginRight->evaluate(child.style());
     return margin;
 }
 
@@ -1912,10 +1912,10 @@ bool RenderBlock::isContainingBlockAncestorFor(RenderObject& renderer) const
 
 LayoutUnit RenderBlock::textIndentOffset() const
 {
-    LayoutUnit cw;
+    LayoutUnit containingBlockWidth;
     if (style().textIndent().length.isPercentOrCalculated())
-        cw = contentBoxLogicalWidth();
-    return Style::evaluate(style().textIndent().length, cw);
+        containingBlockWidth = contentBoxLogicalWidth();
+    return Style::evaluate(style().textIndent().length, containingBlockWidth, style());
 }
 
 LayoutUnit RenderBlock::logicalLeftOffsetForContent() const
@@ -2298,7 +2298,7 @@ void RenderBlock::computePreferredLogicalWidths()
 
     auto& styleToUse = style();
     auto logicalWidth = overridingLogicalWidthForFlexBasisComputation().value_or(styleToUse.logicalWidth());
-    if (auto fixedLogicalWidth = logicalWidth.tryFixed(); !isRenderTableCell() && fixedLogicalWidth && fixedLogicalWidth->value >= 0 && !(isDeprecatedFlexItem() && !static_cast<int>(fixedLogicalWidth->value))) {
+    if (auto fixedLogicalWidth = logicalWidth.tryFixed(); !isRenderTableCell() && fixedLogicalWidth && fixedLogicalWidth->evaluate(styleToUse) >= 0 && !(isDeprecatedFlexItem() && !static_cast<int>(fixedLogicalWidth->evaluate(styleToUse)))) {
         m_minPreferredLogicalWidth = adjustContentBoxLogicalWidthForBoxSizing(*fixedLogicalWidth);
         m_maxPreferredLogicalWidth = m_minPreferredLogicalWidth;
     } else if (logicalWidth.isMaxContent()) {
@@ -2364,9 +2364,9 @@ void RenderBlock::computeBlockPreferredLogicalWidths(LayoutUnit& minLogicalWidth
         LayoutUnit marginStart;
         LayoutUnit marginEnd;
         if (auto fixedMarginStart = childStyle.marginStart(writingMode()).tryFixed())
-            marginStart += fixedMarginStart->value;
+            marginStart += fixedMarginStart->evaluate(childStyle);
         if (auto fixedMarginEnd = childStyle.marginEnd(writingMode()).tryFixed())
-            marginEnd += fixedMarginEnd->value;
+            marginEnd += fixedMarginEnd->evaluate(childStyle);
         auto margin = marginStart + marginEnd;
 
         LayoutUnit childMinPreferredLogicalWidth;
@@ -2440,7 +2440,7 @@ void RenderBlock::computeChildPreferredLogicalWidths(RenderBox& childBox, Layout
                 childBox.verticalBorderAndPaddingExtent(),
                 LayoutUnit { childBoxStyle.logicalAspectRatio() },
                 childBoxStyle.boxSizingForAspectRatio(),
-                LayoutUnit { fixedChildBoxStyleLogicalWidth->value },
+                LayoutUnit { fixedChildBoxStyleLogicalWidth->evaluate(childBoxStyle) },
                 style().aspectRatio(),
                 isRenderReplaced()
             );
@@ -3119,7 +3119,7 @@ std::optional<LayoutUnit> RenderBlock::availableLogicalHeightForPercentageComput
 
         auto& style = this->style();
         if (auto fixedLogicalHeight = style.logicalHeight().tryFixed()) {
-            auto contentBoxHeight = adjustContentBoxLogicalHeightForBoxSizing(LayoutUnit { fixedLogicalHeight->value });
+            auto contentBoxHeight = adjustContentBoxLogicalHeightForBoxSizing(LayoutUnit { fixedLogicalHeight->evaluate(style) });
             return std::max(0_lu, constrainContentBoxLogicalHeightByMinMax(contentBoxHeight - scrollbarLogicalHeight(), { }));
         }
 
@@ -3392,9 +3392,9 @@ bool RenderBlock::computePreferredWidthsForExcludedChildren(LayoutUnit& minWidth
     LayoutUnit marginStart;
     LayoutUnit marginEnd;
     if (auto fixedMarginStart = childStyle.marginStart(writingMode()).tryFixed())
-        marginStart += fixedMarginStart->value;
+        marginStart += fixedMarginStart->evaluate(childStyle);
     if (auto fixedMarginEnd = childStyle.marginEnd(writingMode()).tryFixed())
-        marginEnd += fixedMarginEnd->value;
+        marginEnd += fixedMarginEnd->evaluate(childStyle);
 
     auto margin = marginStart + marginEnd;
 

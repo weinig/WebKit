@@ -380,12 +380,12 @@ RefPtr<FilterOperation> BlurFilterOperation::blend(const FilterOperation* from, 
 
 bool BlurFilterOperation::isIdentity() const
 {
-    return floatValueForLength(m_stdDeviation, 0) <= 0;
+    return floatValueForLength(m_stdDeviation, 0, 1.0f /*FIXME FIND ZOOM*/) <= 0;
 }
 
 IntOutsets BlurFilterOperation::outsets() const
 {
-    float stdDeviation = floatValueForLength(m_stdDeviation, 0);
+    float stdDeviation = floatValueForLength(m_stdDeviation, 0, 1.0f /*FIXME FIND ZOOM*/);
     return FEGaussianBlur::calculateOutsets({ stdDeviation, stdDeviation });
 }
 
@@ -477,7 +477,7 @@ TextStream& operator<<(TextStream& ts, const FilterOperation& filter)
     }
     case FilterOperation::Type::Blur: {
         const auto& blurFilter = downcast<BlurFilterOperation>(filter);
-        ts << "blur("_s << blurFilter.stdDeviation().value() << ')'; // FIXME: should call floatValueForLength() but that's outisde of platform/.
+        ts << "blur("_s << floatValueForLength(blurFilter.stdDeviation(), 0, 1.0 /*FIXME HANDLE ZOOM*/) << ')';
         break;
     }
     case FilterOperation::Type::DropShadow:

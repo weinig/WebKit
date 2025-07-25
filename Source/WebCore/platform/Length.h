@@ -148,11 +148,24 @@ public:
     CalculationValue& calculationValue() const;
     Ref<CalculationValue> protectedCalculationValue() const;
 
-    struct Fixed { float value; };
-    std::optional<Fixed> tryFixed() const { return isFixed() ? std::make_optional(Fixed { value() }) : std::nullopt; }
+    struct Fixed {
+        constexpr Fixed(float value) : value { value } { }
 
-    struct Percentage { float value; };
+        constexpr auto evaluate(float zoom) const { return value * zoom; }
+
+    private:
+        float value;
+    };
+    std::optional<Fixed> tryFixed() const { return isFixed() ? std::make_optional(Fixed { value() }) : std::nullopt; }
+    Fixed fixed() const { ASSERT(isFixed()); return Fixed { value() }; }
+
+    struct Percentage {
+        constexpr Percentage(float value) : value { value } { }
+
+        float value;
+    };
     std::optional<Percentage> tryPercentage() const { return isPercent() ? std::make_optional(Percentage { value() }) : std::nullopt; }
+    Percentage percentage() const { ASSERT(isPercent()); return Percentage { value() }; }
 
     LengthType type() const;
     WEBCORE_EXPORT IPCData ipcData() const;

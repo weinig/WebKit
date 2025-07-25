@@ -393,8 +393,12 @@ void SVGImage::computeIntrinsicDimensions(Length& intrinsicWidth, Length& intrin
         return;
 
     intrinsicRatio = rootElement->viewBox().size();
-    if (intrinsicRatio.isEmpty() && intrinsicWidth.isFixed() && intrinsicHeight.isFixed())
-        intrinsicRatio = FloatSize(floatValueForLength(intrinsicWidth, 0), floatValueForLength(intrinsicHeight, 0));
+    if (intrinsicRatio.isEmpty() && intrinsicWidth.isFixed() && intrinsicHeight.isFixed()) {
+        intrinsicRatio = FloatSize {
+            floatValueForLength(intrinsicWidth, 0, 1.0f /*FIXME IS THIS THE ZOOM*/),
+            floatValueForLength(intrinsicHeight, 0, 1.0f /*FIXME IS THIS THE ZOOM*/)
+        };
+    }
 }
 
 void SVGImage::startAnimationTimerFired()

@@ -58,12 +58,5 @@ float canonicalizeAndClampLength(double value, CSS::LengthUnit unit, const CSSTo
     return clampLengthToAllowedLimits(canonicalizeLength(value, unit, conversionData));
 }
 
-// MARK: ToCSS utilities
-
-float adjustForZoom(float value, const RenderStyle& style)
-{
-    return adjustFloatForAbsoluteZoom(value, style);
-}
-
 } // namespace Style
 } // namespace WebCore

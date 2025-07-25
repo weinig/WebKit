@@ -304,8 +304,8 @@ void RenderTable::updateLogicalWidth()
         setLogicalWidth(convertStyleLogicalWidthToComputedWidth(styleLogicalWidth, containerWidthInInlineDirection));
     else {
         // Subtract out any fixed margins from our available width for auto width tables.
-        LayoutUnit marginStart = Style::evaluateMinimum(style().marginStart(), availableLogicalWidth);
-        LayoutUnit marginEnd = Style::evaluateMinimum(style().marginEnd(), availableLogicalWidth);
+        LayoutUnit marginStart = Style::evaluateMinimum(style().marginStart(), availableLogicalWidth, style());
+        LayoutUnit marginEnd = Style::evaluateMinimum(style().marginEnd(), availableLogicalWidth, style());
         LayoutUnit marginTotal = marginStart + marginEnd;
 
         // Subtract out our margins to get the available content width.
@@ -358,8 +358,8 @@ void RenderTable::updateLogicalWidth()
         setMarginStart(marginValues.m_start);
         setMarginEnd(marginValues.m_end);
     } else {
-        setMarginStart(Style::evaluateMinimum(style().marginStart(), availableLogicalWidth));
-        setMarginEnd(Style::evaluateMinimum(style().marginEnd(), availableLogicalWidth));
+        setMarginStart(Style::evaluateMinimum(style().marginStart(), availableLogicalWidth, style()));
+        setMarginEnd(Style::evaluateMinimum(style().marginEnd(), availableLogicalWidth, style()));
     }
 }
 
@@ -391,7 +391,7 @@ template<typename SizeType> LayoutUnit RenderTable::convertStyleLogicalHeightToC
         if (is<HTMLTableElement>(element()) || style().boxSizing() == BoxSizing::BorderBox) {
             borders = borderAndPadding;
         }
-        return LayoutUnit(fixedStyleLogicalHeight->value - borders);
+        return LayoutUnit(fixedStyleLogicalHeight->evaluate(style()) - borders);
     } else if (styleLogicalHeight.isPercentOrCalculated())
         return computePercentageLogicalHeight(styleLogicalHeight).value_or(0);
     else if (styleLogicalHeight.isIntrinsic())
@@ -960,7 +960,7 @@ void RenderTable::computePreferredLogicalWidths()
 
     auto& styleToUse = style();
     // FIXME: This should probably be checking for isSpecified since you should be able to use percentage or calc values for min-width.
-    if (auto fixedLogicalMinWidth = styleToUse.logicalMinWidth().tryFixed(); fixedLogicalMinWidth && fixedLogicalMinWidth->value > 0) {
+    if (auto fixedLogicalMinWidth = styleToUse.logicalMinWidth().tryFixed(); fixedLogicalMinWidth && fixedLogicalMinWidth->isPositive()) {
         m_maxPreferredLogicalWidth = std::max(m_maxPreferredLogicalWidth, adjustContentBoxLogicalWidthForBoxSizing(*fixedLogicalMinWidth));
         m_minPreferredLogicalWidth = std::max(m_minPreferredLogicalWidth, adjustContentBoxLogicalWidthForBoxSizing(*fixedLogicalMinWidth));
     }
@@ -1249,7 +1249,7 @@ LayoutUnit RenderTable::calcBorderStart() const
     if (tableStartBorder.style() == BorderStyle::Hidden)
         return 0;
     if (tableStartBorder.style() > BorderStyle::Hidden)
-        borderWidth = tableStartBorder.width();
+        borderWidth = tableStartBorder.width().evaluate(style());
 
     if (RenderTableCol* column = colElement(0)) {
         // FIXME: We don't account for direction on columns and column groups.
@@ -1257,7 +1257,7 @@ LayoutUnit RenderTable::calcBorderStart() const
         if (columnAdjoiningBorder.style() == BorderStyle::Hidden)
             return 0;
         if (columnAdjoiningBorder.style() > BorderStyle::Hidden)
-            borderWidth = std::max(borderWidth, columnAdjoiningBorder.width());
+            borderWidth = std::max(borderWidth, columnAdjoiningBorder.width().evaluate(column->style()));
         // FIXME: This logic doesn't properly account for the first column in the first column-group case.
     }
 
@@ -1267,7 +1267,7 @@ LayoutUnit RenderTable::calcBorderStart() const
             return 0;
 
         if (sectionAdjoiningBorder.style() > BorderStyle::Hidden)
-            borderWidth = std::max(borderWidth, sectionAdjoiningBorder.width());
+            borderWidth = std::max(borderWidth, sectionAdjoiningBorder.width(topNonEmptySection->style()));
 
         if (const RenderTableCell* adjoiningStartCell = topNonEmptySection->cellAt(0, 0).primaryCell()) {
             // FIXME: Make this work with perpendicular and flipped cells.
@@ -1280,9 +1280,9 @@ LayoutUnit RenderTable::calcBorderStart() const
                 return 0;
 
             if (startCellAdjoiningBorder.style() > BorderStyle::Hidden)
-                borderWidth = std::max(borderWidth, startCellAdjoiningBorder.width());
+                borderWidth = std::max(borderWidth, startCellAdjoiningBorder.width(adjoiningStartCell->style()));
             if (firstRowAdjoiningBorder.style() > BorderStyle::Hidden)
-                borderWidth = std::max(borderWidth, firstRowAdjoiningBorder.width());
+                borderWidth = std::max(borderWidth, firstRowAdjoiningBorder.width(adjoiningStartCell->row()->style()));
         }
     }
     return CollapsedBorderValue::adjustedCollapsedBorderWidth(borderWidth, document().deviceScaleFactor(), writingMode().isInlineFlipped());
@@ -1303,7 +1303,7 @@ LayoutUnit RenderTable::calcBorderEnd() const
     if (tableEndBorder.style() == BorderStyle::Hidden)
         return 0;
     if (tableEndBorder.style() > BorderStyle::Hidden)
-        borderWidth = tableEndBorder.width();
+        borderWidth = tableEndBorder.width().evaluate(style());
 
     unsigned endColumn = numEffCols() - 1;
     if (RenderTableCol* column = colElement(endColumn)) {

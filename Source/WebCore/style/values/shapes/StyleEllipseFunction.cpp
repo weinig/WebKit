@@ -61,17 +61,17 @@ static const WebCore::Path& cachedEllipsePath(const FloatRect& rect)
 
 // MARK: - Path Generation
 
-FloatPoint resolvePosition(const Ellipse& value, FloatSize boundingBox)
+FloatPoint resolvePosition(const Ellipse& value, FloatSize boundingBox, const RenderStyle& style)
 {
-    return value.position ? evaluate(*value.position, boundingBox) : FloatPoint { boundingBox.width() / 2, boundingBox.height() / 2 };
+    return value.position ? evaluate(*value.position, boundingBox, style) : FloatPoint { boundingBox.width() / 2, boundingBox.height() / 2 };
 }
 
-FloatSize resolveRadii(const Ellipse& value, FloatSize boxSize, FloatPoint center)
+FloatSize resolveRadii(const Ellipse& value, FloatSize boxSize, FloatPoint center, const RenderStyle& style)
 {
     auto sizeForAxis = [&](const Ellipse::RadialSize& radius, float centerValue, float dimensionSize) {
         return WTF::switchOn(radius,
             [&](const Ellipse::Length& length) -> float {
-                return evaluate(length, std::abs(dimensionSize));
+                return evaluate(length, std::abs(dimensionSize), style);
             },
             [&](const Ellipse::Extent& extent) -> float {
                 return WTF::switchOn(extent,
@@ -98,9 +98,9 @@ FloatSize resolveRadii(const Ellipse& value, FloatSize boxSize, FloatPoint cente
     };
 }
 
-WebCore::Path pathForCenterCoordinate(const Ellipse& value, const FloatRect& boundingBox, FloatPoint center)
+WebCore::Path pathForCenterCoordinate(const Ellipse& value, const FloatRect& boundingBox, FloatPoint center, const RenderStyle& style)
 {
-    auto radii = resolveRadii(value, boundingBox.size(), center);
+    auto radii = resolveRadii(value, boundingBox.size(), center, style);
     auto bounding = FloatRect {
         center.x() - radii.width() + boundingBox.x(),
         center.y() - radii.height() + boundingBox.y(),
@@ -110,9 +110,9 @@ WebCore::Path pathForCenterCoordinate(const Ellipse& value, const FloatRect& bou
     return cachedEllipsePath(bounding);
 }
 
-WebCore::Path PathComputation<Ellipse>::operator()(const Ellipse& value, const FloatRect& boundingBox)
+WebCore::Path PathComputation<Ellipse>::operator()(const Ellipse& value, const FloatRect& boundingBox, const RenderStyle& style)
 {
-    return pathForCenterCoordinate(value, boundingBox, resolvePosition(value, boundingBox.size()));
+    return pathForCenterCoordinate(value, boundingBox, resolvePosition(value, boundingBox.size(), style), style);
 }
 
 // MARK: - Blending

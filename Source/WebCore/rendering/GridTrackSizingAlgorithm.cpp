@@ -263,7 +263,7 @@ LayoutUnit GridTrackSizingAlgorithm::initialBaseSize(const Style::GridTrackSize&
 
     auto& trackLength = gridLength.length();
     if (trackLength.isSpecified())
-        return Style::evaluate(trackLength, std::max<LayoutUnit>(availableSpace().value_or(0), 0));
+        return Style::evaluate(trackLength, std::max<LayoutUnit>(availableSpace().value_or(0), 0), 1.0f /*FIXME FIND STYLE*/);
 
     ASSERT(trackLength.isMinContent() || trackLength.isAuto() || trackLength.isMaxContent());
     return 0;
@@ -277,7 +277,7 @@ LayoutUnit GridTrackSizingAlgorithm::initialGrowthLimit(const Style::GridTrackSi
 
     auto& trackLength = gridLength.length();
     if (trackLength.isSpecified())
-        return Style::evaluate(trackLength, std::max<LayoutUnit>(availableSpace().value_or(0), 0));
+        return Style::evaluate(trackLength, std::max<LayoutUnit>(availableSpace().value_or(0), 0), 1.0f /*FIXME FIND STYLE*/);
 
     ASSERT(trackLength.isMinContent() || trackLength.isAuto() || trackLength.isMaxContent());
     return infinity;
@@ -300,7 +300,7 @@ void GridTrackSizingAlgorithm::sizeTrackToFitSingleSpanMasonryGroup(const GridSp
     else if (trackSize.hasMaxContentOrAutoMaxTrackBreadth()) {
         auto growthLimit = masonryIndefiniteItems.maxContentSize;
         if (trackSize.isFitContent())
-            growthLimit = std::min(growthLimit, Style::evaluate(trackSize.fitContentTrackLength(), availableSpace().value_or(0)));
+            growthLimit = std::min(growthLimit, Style::evaluate(trackSize.fitContentTrackLength(), availableSpace().value_or(0), 1.0f /*FIXME FIND STYLE*/));
         track.setGrowthLimit(std::max(track.growthLimit(), growthLimit));
     }
 }
@@ -323,7 +323,7 @@ void GridTrackSizingAlgorithm::sizeTrackToFitNonSpanningItem(const GridSpan& spa
     } else if (trackSize.hasMaxContentOrAutoMaxTrackBreadth()) {
         LayoutUnit growthLimit = m_strategy->maxContentContributionForGridItem(gridItem, gridLayoutState);
         if (trackSize.isFitContent())
-            growthLimit = std::min(growthLimit, Style::evaluate(trackSize.fitContentTrackLength(), availableSpace().value_or(0)));
+            growthLimit = std::min(growthLimit, Style::evaluate(trackSize.fitContentTrackLength(), availableSpace().value_or(0), 1.0f /*FIXME FIND STYLE*/));
         track.setGrowthLimit(std::max(track.growthLimit(), growthLimit));
     }
 }
@@ -828,7 +828,7 @@ std::optional<LayoutUnit> GridTrackSizingAlgorithm::estimatedGridAreaBreadthForG
         if (maxTrackSize.isContentSized() || maxTrackSize.isFlex() || isRelativeGridTrackBreadthAsAuto(maxTrackSize, direction))
             gridAreaIsIndefinite = true;
         else
-            gridAreaSize += Style::evaluate(maxTrackSize.length(), availableSize.value_or(0_lu));
+            gridAreaSize += Style::evaluate(maxTrackSize.length(), availableSize.value_or(0_lu), 1.0f /*FIXME FIND STYLE*/);
     }
 
     gridAreaSize += m_renderGrid->guttersSize(direction, span.startLine(), span.integerSpan(), availableSize);
@@ -1118,7 +1118,7 @@ LayoutUnit GridTrackSizingAlgorithmStrategy::minContentContributionForGridItem(R
             auto gridItemLogicalMinWidth = gridItem.style().logicalMinWidth();
 
             if (auto fixedFridItemLogicalMinWidth = gridItemLogicalMinWidth.tryFixed())
-                return LayoutUnit { fixedFridItemLogicalMinWidth->value };
+                return LayoutUnit { fixedFridItemLogicalMinWidth->evaluate(gridItem.style()) };
             if (gridItemLogicalMinWidth.isMaxContent())
                 return gridItem.maxPreferredLogicalWidth();
 
@@ -1135,7 +1135,7 @@ LayoutUnit GridTrackSizingAlgorithmStrategy::minContentContributionForGridItem(R
         if (auto& intrinsicLogicalHeightsForRowSizingFirstPass = renderGrid()->intrinsicLogicalHeightsForRowSizingFirstPass())
             intrinsicLogicalHeightsForRowSizingFirstPass->invalidateSizeForItem(gridItem);
 
-        // For a grid item with relative width constraints to the grid area, such as percentaged paddings, we reset the overridingContainingBlockContentSizeForGridItem value for columns when we are executing a definite strategy
+        // For a grid item with relative width constraints to the grid area, such as percentage paddings, we reset the overridingContainingBlockContentSizeForGridItem value for columns when we are executing a definite strategy
         // for columns. Since we have updated the overridingContainingBlockContentSizeForGridItem inline-axis/width value here, we might need to recompute the grid item's relative width. For some cases, we probably will not
         // be able to do it during the RenderGrid::layoutGridItems() function as the grid area does't change there any more. Also, as we are doing a layout inside GridTrackSizingAlgorithmStrategy::logicalHeightForGridItem()
         // function, let's take the advantage and set it here.
@@ -1198,7 +1198,7 @@ LayoutUnit GridTrackSizingAlgorithmStrategy::minContributionForGridItem(RenderBo
             if (!trackSize.hasFixedMaxTrackBreadth())
                 allFixed = false;
             else if (allFixed)
-                maxBreadth += Style::evaluate(trackSize.maxTrackBreadth().length(), availableSpace().value_or(0_lu));
+                maxBreadth += Style::evaluate(trackSize.maxTrackBreadth().length(), availableSpace().value_or(0_lu), 1.0f /*FIXME FIND STYLE*/);
         }
         if (!allFixed)
             return minSize;
@@ -1652,7 +1652,7 @@ void GridTrackSizingAlgorithm::initializeTrackSizes()
         track.setInfinitelyGrowable(false);
 
         if (trackSize.isFitContent())
-            track.setGrowthLimitCap(Style::evaluate(trackSize.fitContentTrackLength(), maxSize));
+            track.setGrowthLimitCap(Style::evaluate(trackSize.fitContentTrackLength(), maxSize, 1.0f /*FIXME FIND STYLE*/));
         if (trackSize.isContentSized())
             m_contentSizedTracksIndex.append(i);
         if (trackSize.maxTrackBreadth().isFlex())
@@ -2046,7 +2046,23 @@ void GridTrackSizingAlgorithm::setup(Style::GridTrackSizingDirection direction, 
             const auto subgridSpan = m_renderGrid->gridSpanForGridItem(subgrid, Style::GridTrackSizingDirection::Columns);
             auto& subgridRowStartMargin = subgrid.style().marginBefore(m_renderGrid->writingMode());
             if (!subgridRowStartMargin.isAuto())
-                m_renderGrid->setMarginBeforeForChild(subgrid, Style::evaluateMinimum(subgridRowStartMargin, computeGridSpanSize(tracks(Style::GridTrackSizingDirection::Columns), subgridSpan, std::make_optional(m_renderGrid->gridItemOffset(direction)), m_renderGrid->guttersSize(Style::GridTrackSizingDirection::Columns, subgridSpan.startLine(), subgridSpan.integerSpan(), this->availableSpace(Style::GridTrackSizingDirection::Columns)))));
+                m_renderGrid->setMarginBeforeForChild(subgrid,
+                    Style::evaluateMinimum(
+                        subgridRowStartMargin,
+                        computeGridSpanSize(
+                            tracks(Style::GridTrackSizingDirection::Columns),
+                            subgridSpan,
+                            std::make_optional(m_renderGrid->gridItemOffset(direction)),
+                            m_renderGrid->guttersSize(
+                                Style::GridTrackSizingDirection::Columns,
+                                subgridSpan.startLine(),
+                                subgridSpan.integerSpan(),
+                                this->availableSpace(Style::GridTrackSizingDirection::Columns)
+                            )
+                        ),
+                        subgrid.style()
+                    )
+                );
         }
     };
     if (m_direction == Style::GridTrackSizingDirection::Rows && (m_sizingState == SizingState::RowSizingFirstIteration || m_sizingState == SizingState::RowSizingSecondIteration))

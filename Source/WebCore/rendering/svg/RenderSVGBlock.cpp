@@ -135,7 +135,7 @@ void RenderSVGBlock::computeOverflow(LayoutUnit oldClientAfterEdge, bool recompu
         return;
 
     auto borderRect = borderBoxRect();
-    Style::adjustRectForShadow(borderRect, textShadow);
+    Style::adjustRectForShadow(borderRect, textShadow, style());
     addVisualOverflow(snappedIntRect(borderRect));
 }
 

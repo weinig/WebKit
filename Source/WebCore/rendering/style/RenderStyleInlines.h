@@ -118,7 +118,7 @@ inline bool RenderStyle::borderBottomIsTransparent() const { return border().bot
 inline const Style::BorderRadiusValue& RenderStyle::borderBottomLeftRadius() const { return border().bottomLeftRadius(); }
 inline const Style::BorderRadiusValue& RenderStyle::borderBottomRightRadius() const { return border().bottomRightRadius(); }
 inline BorderStyle RenderStyle::borderBottomStyle() const { return border().bottom().style(); }
-inline float RenderStyle::borderBottomWidth() const { return border().borderBottomWidth(); }
+inline float RenderStyle::borderBottomWidth() const { return border().borderBottomWidth(*this); }
 inline const NinePieceImage& RenderStyle::borderImage() const { return border().image(); }
 inline NinePieceImageRule RenderStyle::borderImageHorizontalRule() const { return border().image().horizontalRule(); }
 inline const LengthBox& RenderStyle::borderImageOutset() const { return border().image().outset(); }
@@ -131,21 +131,21 @@ inline const BorderValue& RenderStyle::borderLeft() const { return border().left
 inline const Style::Color& RenderStyle::borderLeftColor() const { return border().left().color(); }
 inline bool RenderStyle::borderLeftIsTransparent() const { return border().left().isTransparent(); }
 inline BorderStyle RenderStyle::borderLeftStyle() const { return border().left().style(); }
-inline float RenderStyle::borderLeftWidth() const { return border().borderLeftWidth(); }
+inline float RenderStyle::borderLeftWidth() const { return border().borderLeftWidth(*this); }
 inline const Style::BorderRadius& RenderStyle::borderRadii() const { return border().radii(); }
 inline const BorderValue& RenderStyle::borderRight() const { return border().right(); }
 inline const Style::Color& RenderStyle::borderRightColor() const { return border().right().color(); }
 inline bool RenderStyle::borderRightIsTransparent() const { return border().right().isTransparent(); }
 inline BorderStyle RenderStyle::borderRightStyle() const { return border().right().style(); }
-inline float RenderStyle::borderRightWidth() const { return border().borderRightWidth(); }
+inline float RenderStyle::borderRightWidth() const { return border().borderRightWidth(*this); }
 inline const BorderValue& RenderStyle::borderTop() const { return border().top(); }
 inline const Style::Color& RenderStyle::borderTopColor() const { return border().top().color(); }
 inline bool RenderStyle::borderTopIsTransparent() const { return border().top().isTransparent(); }
 inline const Style::BorderRadiusValue& RenderStyle::borderTopLeftRadius() const { return border().topLeftRadius(); }
 inline const Style::BorderRadiusValue& RenderStyle::borderTopRightRadius() const { return border().topRightRadius(); }
 inline BorderStyle RenderStyle::borderTopStyle() const { return border().top().style(); }
-inline float RenderStyle::borderTopWidth() const { return border().borderTopWidth(); }
-inline FloatBoxExtent RenderStyle::borderWidth() const { return border().borderWidth(); }
+inline float RenderStyle::borderTopWidth() const { return border().borderTopWidth(*this); }
+inline FloatBoxExtent RenderStyle::borderWidth() const { return border().borderWidth(*this); }
 inline const Style::InsetEdge& RenderStyle::bottom() const { return m_nonInheritedData->surroundData->inset.bottom(); }
 inline BoxAlignment RenderStyle::boxAlign() const { return static_cast<BoxAlignment>(m_nonInheritedData->miscData->deprecatedFlexibleBox->align); }
 inline float RenderStyle::boxFlex() const { return m_nonInheritedData->miscData->deprecatedFlexibleBox->flex; }
@@ -175,7 +175,7 @@ inline ColumnProgression RenderStyle::columnProgression() const { return static_
 inline const Style::Color& RenderStyle::columnRuleColor() const { return m_nonInheritedData->miscData->multiCol->rule.color(); }
 inline bool RenderStyle::columnRuleIsTransparent() const { return m_nonInheritedData->miscData->multiCol->rule.isTransparent(); }
 inline BorderStyle RenderStyle::columnRuleStyle() const { return m_nonInheritedData->miscData->multiCol->rule.style(); }
-inline unsigned short RenderStyle::columnRuleWidth() const { return m_nonInheritedData->miscData->multiCol->ruleWidth(); }
+inline unsigned short RenderStyle::columnRuleWidth() const { return m_nonInheritedData->miscData->multiCol->ruleWidth(*this); }
 inline ColumnSpan RenderStyle::columnSpan() const { return static_cast<ColumnSpan>(m_nonInheritedData->miscData->multiCol->columnSpan); }
 inline float RenderStyle::columnWidth() const { return m_nonInheritedData->miscData->multiCol->width; }
 inline const AtomString& RenderStyle::computedLocale() const { return fontDescription().computedLocale(); }
@@ -762,7 +762,7 @@ inline const AnimationList* RenderStyle::transitions() const { return m_nonInher
 inline AnimationList* RenderStyle::transitions() { return m_nonInheritedData->miscData->transitions.get(); }
 inline const Style::Translate& RenderStyle::translate() const { return m_nonInheritedData->rareData->translate; }
 inline Style::ScrollBehavior RenderStyle::scrollBehavior() const { return static_cast<Style::ScrollBehavior>(m_nonInheritedData->rareData->scrollBehavior); }
-inline float RenderStyle::usedPerspective() const { return perspective().usedPerspective(); }
+inline float RenderStyle::usedPerspective() const { return perspective().usedPerspective(*this); }
 inline TransformStyle3D RenderStyle::usedTransformStyle3D() const { return static_cast<bool>(m_nonInheritedData->rareData->transformStyleForcedToFlat) ? TransformStyle3D::Flat : transformStyle3D(); }
 inline int RenderStyle::usedZIndex() const { return m_nonInheritedData->boxData->usedZIndex(); }
 inline UserDrag RenderStyle::userDrag() const { return static_cast<UserDrag>(m_nonInheritedData->miscData->userDrag); }
@@ -1020,11 +1020,6 @@ inline double RenderStyle::logicalAspectRatio() const
 constexpr bool RenderStyle::preserveNewline(WhiteSpaceCollapse mode)
 {
     return mode == WhiteSpaceCollapse::Preserve || mode == WhiteSpaceCollapse::PreserveBreaks || mode == WhiteSpaceCollapse::BreakSpaces;
-}
-
-inline float adjustFloatForAbsoluteZoom(float value, const RenderStyle& style)
-{
-    return value / style.usedZoom();
 }
 
 inline int adjustForAbsoluteZoom(int value, const RenderStyle& style)

@@ -321,7 +321,7 @@ float ScrollTimeline::floatValueForOffset(const Length& offset, float maxValue)
 {
     if (offset.isNormal() || offset.isAuto())
         return 0.f;
-    return floatValueForLength(offset, maxValue);
+    return floatValueForLength(offset, maxValue, 1.0f /* FIXME FIND ZOOM */);
 }
 
 TimelineRange ScrollTimeline::defaultRange() const

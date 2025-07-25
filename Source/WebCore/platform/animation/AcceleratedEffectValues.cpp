@@ -100,8 +100,8 @@ static LengthPoint resolveCalculateValuesFor(const LengthPoint& lengthPoint, Int
     if (!lengthPoint.x.isCalculated() && !lengthPoint.y.isCalculated())
         return lengthPoint;
     return {
-        { floatValueForLength(lengthPoint.x, borderBoxSize.width()), LengthType::Fixed },
-        { floatValueForLength(lengthPoint.y, borderBoxSize.height()), LengthType::Fixed }
+        { floatValueForLength(lengthPoint.x, borderBoxSize.width(), 1.0 /*FIXME HANDLE ZOOM*/), LengthType::Fixed },
+        { floatValueForLength(lengthPoint.y, borderBoxSize.height(), 1.0 /*FIXME HANDLE ZOOM*/), LengthType::Fixed }
     };
 }
 

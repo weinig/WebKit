@@ -53,8 +53,8 @@ ShadowApplier::ShadowApplier(const RenderStyle& style, GraphicsContext& context,
         return;
     }
 
-    auto shadowOffset = TextBoxPainter::rotateShadowOffset(shadow->location, ignoreWritingMode ? WritingMode() : style.writingMode());
-    auto shadowRadius = shadow->blur.value;
+    auto shadowOffset = TextBoxPainter::rotateShadowOffset(shadow->location, ignoreWritingMode ? WritingMode() : style.writingMode(), style);
+    auto shadowRadius = shadow->blur.evaluate(style);
     auto shadowColor = style.colorResolvingCurrentColor(shadow->color);
     if (colorFilter)
         colorFilter->transformColor(shadowColor);
@@ -64,7 +64,7 @@ ShadowApplier::ShadowApplier(const RenderStyle& style, GraphicsContext& context,
     // often draw the *last* shadow and the text itself in a single call.
     if (m_onlyDrawsShadow) {
         FloatRect shadowRect(textRect);
-        shadowRect.inflate(Style::paintingExtent(*shadow) + 3 * textRect.height());
+        shadowRect.inflate(Style::paintingExtent(*shadow, style) + 3 * textRect.height());
         shadowRect.move(shadowOffset);
         context.save();
         context.clip(shadowRect);

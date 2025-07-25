@@ -59,20 +59,20 @@ static const WebCore::Path& cachedRoundedInsetPath(const FloatRoundedRect& rect)
 
 // MARK: - Path
 
-WebCore::Path PathComputation<Inset>::operator()(const Inset& value, const FloatRect& boundingBox)
+WebCore::Path PathComputation<Inset>::operator()(const Inset& value, const FloatRect& boundingBox, const RenderStyle& style)
 {
     auto boundingSize = boundingBox.size();
 
-    auto left = evaluate(value.insets.left(), boundingSize.width());
-    auto top = evaluate(value.insets.top(), boundingSize.height());
+    auto left = evaluate(value.insets.left(), boundingSize.width(), style);
+    auto top = evaluate(value.insets.top(), boundingSize.height(), style);
     auto rect = FloatRect {
         left + boundingBox.x(),
         top + boundingBox.y(),
-        std::max<float>(boundingSize.width() - left - evaluate(value.insets.right(), boundingSize.width()), 0),
-        std::max<float>(boundingSize.height() - top - evaluate(value.insets.bottom(), boundingSize.height()), 0)
+        std::max<float>(boundingSize.width() - left - evaluate(value.insets.right(), boundingSize.width(), style), 0),
+        std::max<float>(boundingSize.height() - top - evaluate(value.insets.bottom(), boundingSize.height(), style), 0)
     };
 
-    auto radii = evaluate(value.radii, boundingSize);
+    auto radii = evaluate(value.radii, boundingSize, style);
     radii.scale(calcBorderRadiiConstraintScaleFor(rect, radii));
 
     return cachedRoundedInsetPath(FloatRoundedRect { rect, radii });

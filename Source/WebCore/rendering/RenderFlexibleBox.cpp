@@ -1079,7 +1079,7 @@ template<typename SizeType> LayoutUnit RenderFlexibleBox::computeMainSizeFromAsp
 
     auto crossSizeOptional = WTF::switchOn(crossSizeLength,
         [&](const SizeType::Fixed& fixedCrossSizeLength) -> std::optional<LayoutUnit> {
-            return LayoutUnit(fixedCrossSizeLength.value);
+            return LayoutUnit(fixedCrossSizeLength.evaluate(style() /*FIXME IS THIS STYLE RIGHT*/));
         },
         [&](const SizeType::Percentage& percentageCrossSizeLength) -> std::optional<LayoutUnit> {
             return mainAxisIsFlexItemInlineAxis(flexItem)
@@ -1609,7 +1609,7 @@ LayoutUnit RenderFlexibleBox::computeFlexItemMarginValue(const Style::MarginEdge
 {
     // When resolving the margins, we use the content size for resolving percent and calc (for percents in calc expressions) margins.
     // Fortunately, percent margins are always computed with respect to the block's width, even for margin-top and margin-bottom.
-    return Style::evaluateMinimum(margin, contentBoxLogicalWidth());
+    return Style::evaluateMinimum(margin, contentBoxLogicalWidth(), style());
 }
 
 void RenderFlexibleBox::prepareOrderIteratorAndMargins()
@@ -2075,17 +2075,17 @@ LayoutUnit RenderFlexibleBox::computeCrossSizeForFlexItemUsingContainerCrossSize
         ASSERT(size.isFixed() || (size.isPercent() && availableLogicalHeightForPercentageComputation()));
         LayoutUnit definiteValue;
         if (auto fixedSize = size.tryFixed())
-            definiteValue = LayoutUnit { fixedSize->value };
+            definiteValue = LayoutUnit { fixedSize->evaluate(style()) };
         else if (size.isPercent())
             definiteValue = availableLogicalHeightForPercentageComputation().value_or(0_lu);
 
         auto maximumSize = isHorizontal ? style().maxHeight() : style().maxWidth();
         if (auto fixedMaximumSize = maximumSize.tryFixed())
-            definiteValue = std::min(definiteValue, LayoutUnit { fixedMaximumSize->value });
+            definiteValue = std::min(definiteValue, LayoutUnit { fixedMaximumSize->evaluate(style()) });
 
         auto minimumSize = isHorizontal ? style().minHeight() : style().minWidth();
         if (auto fixedMinimumSize = minimumSize.tryFixed())
-            definiteValue = std::max(definiteValue, LayoutUnit { fixedMinimumSize->value });
+            definiteValue = std::max(definiteValue, LayoutUnit { fixedMinimumSize->evaluate(style()) });
 
         return definiteValue;
     };
@@ -2743,7 +2743,7 @@ LayoutUnit RenderFlexibleBox::computeGap(RenderFlexibleBox::GapType gapType) con
         return { };
 
     auto availableSize = usesRowGap ? availableLogicalHeightForPercentageComputation().value_or(0_lu) : contentBoxLogicalWidth();
-    return Style::evaluateMinimum(gap, availableSize);
+    return Style::evaluateMinimum(gap, availableSize, style());
 }
 
 bool RenderFlexibleBox::layoutUsingFlexFormattingContext()

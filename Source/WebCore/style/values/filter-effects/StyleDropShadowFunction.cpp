@@ -51,9 +51,9 @@ CSS::DropShadow toCSSDropShadow(Ref<DropShadowFilterOperationWithStyleColor> ope
 
 Ref<FilterOperation> createFilterOperation(const CSS::DropShadow& filter, const Document& document, RenderStyle& style, const CSSToLengthConversionData& conversionData)
 {
-    int x = roundForImpreciseConversion<int>(toStyle(filter.location.x(), conversionData).value);
-    int y = roundForImpreciseConversion<int>(toStyle(filter.location.y(), conversionData).value);
-    int stdDeviation = filter.stdDeviation ? roundForImpreciseConversion<int>(toStyle(*filter.stdDeviation, conversionData).value) : 0;
+    int x = roundForImpreciseConversion<int>(toStyle(filter.location.x(), conversionData).evaluate(1.0f));
+    int y = roundForImpreciseConversion<int>(toStyle(filter.location.y(), conversionData).evaluate(1.0f));
+    int stdDeviation = filter.stdDeviation ? roundForImpreciseConversion<int>(toStyle(*filter.stdDeviation, conversionData).evaluate(1.0f)) : 0;
     auto color = filter.color ? toStyleColor(*filter.color, document, style, conversionData, ForVisitedLink::No) : Style::Color { CurrentColor { } };
 
     return DropShadowFilterOperationWithStyleColor::create(

@@ -27,6 +27,7 @@
 
 #include "RenderStyleConstants.h"
 #include "StyleColor.h"
+#include "StylePrimitiveNumeric.h"
 
 namespace WebCore {
 
@@ -41,7 +42,7 @@ public:
     }
 
     const Style::Color& color() const { return m_color; }
-    float width() const { return m_width; }
+    Style::Length<CSS::Nonnegative> width() const { return m_width; }
     BorderStyle style() const { return static_cast<BorderStyle>(m_style); }
 
     bool isVisible() const;
@@ -52,13 +53,13 @@ public:
 
 protected:
     Style::Color m_color { Style::Color::currentColor() };
-    float m_width { 3 };
+    Style::Length<CSS::Nonnegative> m_width { 3 };
     PREFERRED_TYPE(BorderStyle) unsigned m_style : 4;
 };
 
 inline bool BorderValue::nonZero() const
 {
-    return width() && style() != BorderStyle::None;
+    return !m_width.isZero() && style() != BorderStyle::None;
 }
 
 TextStream& operator<<(TextStream&, const BorderValue&);

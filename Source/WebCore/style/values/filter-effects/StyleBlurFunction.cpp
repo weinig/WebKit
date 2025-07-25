@@ -42,7 +42,7 @@ Ref<FilterOperation> createFilterOperation(const CSS::Blur& filter, const Docume
 {
     WebCore::Length stdDeviation;
     if (auto parameter = filter.value)
-        stdDeviation = WebCore::Length { toStyle(*parameter, conversionData).value, LengthType::Fixed };
+        stdDeviation = WebCore::Length { toStyle(*parameter, conversionData).evaluate(1.0f) /* zoom should be evaluated at use */, LengthType::Fixed };
     else
         stdDeviation = WebCore::Length { filterFunctionDefaultValue<CSS::BlurFunction::name>().value, LengthType::Fixed };
 

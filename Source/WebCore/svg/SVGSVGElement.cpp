@@ -618,7 +618,12 @@ FloatRect SVGSVGElement::currentViewBoxRect() const
 
     // If no viewBox is specified but non-relative width/height values, then we
     // should always synthesize a viewBox if we're embedded through a SVGImage.
-    return { 0, 0, floatValueForLength(intrinsicWidth, 0), floatValueForLength(intrinsicHeight, 0) };
+    return {
+        0,
+        0,
+        floatValueForLength(intrinsicWidth, 0, 1.0f /*FIXME IS THIS THE ZOOM*/),
+        floatValueForLength(intrinsicHeight, 0, 1.0f /*FIXME IS THIS THE ZOOM*/)
+    };
 }
 
 FloatSize SVGSVGElement::currentViewportSizeExcludingZoom() const
@@ -646,7 +651,10 @@ FloatSize SVGSVGElement::currentViewportSizeExcludingZoom() const
     if (!(hasIntrinsicWidth() && hasIntrinsicHeight()))
         return { };
 
-    return FloatSize(floatValueForLength(intrinsicWidth(), 0), floatValueForLength(intrinsicHeight(), 0));
+    return {
+        floatValueForLength(intrinsicWidth(), 0, 1.0f /*FIXME IS THIS THE ZOOM*/),
+        floatValueForLength(intrinsicHeight(), 0, 1.0f /*FIXME IS THIS THE ZOOM*/)
+    };
 }
 
 bool SVGSVGElement::hasIntrinsicWidth() const

@@ -58,6 +58,29 @@ template<auto R, typename V> constexpr LayoutUnit evaluate(const Percentage<R, V
     return LayoutUnit(static_cast<float>(percentage.value / 100.0 * referenceLength));
 }
 
+// MARK: - Length
+
+template<auto R, typename V> struct Evaluation<Length<R, V>> {
+    using StyleType = Length<R, V>;
+
+    constexpr double operator()(const StyleType& value, float zoom)
+    {
+        return static_cast<double>(value.evaluate(zoom));
+    }
+    constexpr double operator()(const StyleType& value, const RenderStyle& style)
+    {
+        return static_cast<double>(value.evaluate(style));
+    }
+    template<typename Reference> constexpr auto operator()(const StyleType& value, Reference, float zoom) -> Reference
+    {
+        return static_cast<Reference>(value.evaluate(zoom));
+    }
+    template<typename Reference> constexpr auto operator()(const StyleType& value, Reference, const RenderStyle& style) -> Reference
+    {
+        return static_cast<Reference>(value.evaluate(style));
+    }
+};
+
 // MARK: - Numeric
 
 template<NonCompositeNumeric StyleType> struct Evaluation<StyleType> {
@@ -74,7 +97,7 @@ template<NonCompositeNumeric StyleType> struct Evaluation<StyleType> {
 // MARK: - Calculation
 
 template<> struct Evaluation<Ref<CalculationValue>> {
-    template<typename Reference> auto operator()(Ref<CalculationValue> calculation, Reference referenceLength)
+    template<typename Reference> auto operator()(Ref<CalculationValue> calculation, Reference referenceLength) -> Reference
     {
         return static_cast<Reference>(calculation->evaluate(referenceLength));
     }
@@ -90,18 +113,32 @@ template<Calc Calculation> struct Evaluation<Calculation> {
 // MARK: - SpaceSeparatedPoint
 
 template<typename T> struct Evaluation<SpaceSeparatedPoint<T>> {
-    FloatPoint operator()(const SpaceSeparatedPoint<T>& value, FloatSize referenceBox)
+    FloatPoint operator()(const SpaceSeparatedPoint<T>& value, FloatSize referenceBox, const RenderStyle& style)
     {
         return {
-            evaluate(value.x(), referenceBox.width()),
-            evaluate(value.y(), referenceBox.height())
+            evaluate(value.x(), referenceBox.width(), style),
+            evaluate(value.y(), referenceBox.height(), style),
         };
     }
-    LayoutPoint operator()(const SpaceSeparatedPoint<T>& value, LayoutSize referenceBox)
+    FloatPoint operator()(const SpaceSeparatedPoint<T>& value, FloatSize referenceBox, float zoom)
     {
         return {
-            evaluate(value.x(), referenceBox.width()),
-            evaluate(value.y(), referenceBox.height())
+            evaluate(value.x(), referenceBox.width(), zoom),
+            evaluate(value.y(), referenceBox.height(), zoom),
+        };
+    }
+    LayoutPoint operator()(const SpaceSeparatedPoint<T>& value, LayoutSize referenceBox, const RenderStyle& style)
+    {
+        return {
+            evaluate(value.x(), referenceBox.width(), style),
+            evaluate(value.y(), referenceBox.height(), style),
+        };
+    }
+    LayoutPoint operator()(const SpaceSeparatedPoint<T>& value, LayoutSize referenceBox, float zoom)
+    {
+        return {
+            evaluate(value.x(), referenceBox.width(), zoom),
+            evaluate(value.y(), referenceBox.height(), zoom),
         };
     }
 };
@@ -109,18 +146,32 @@ template<typename T> struct Evaluation<SpaceSeparatedPoint<T>> {
 // MARK: - SpaceSeparatedSize
 
 template<typename T> struct Evaluation<SpaceSeparatedSize<T>> {
-    FloatSize operator()(const SpaceSeparatedSize<T>& value, FloatSize referenceBox)
+    FloatSize operator()(const SpaceSeparatedSize<T>& value, FloatSize referenceBox, const RenderStyle& style)
     {
         return {
-            evaluate(value.width(), referenceBox.width()),
-            evaluate(value.height(), referenceBox.height())
+            evaluate(value.width(), referenceBox.width(), style),
+            evaluate(value.height(), referenceBox.height(), style),
         };
     }
-    LayoutSize operator()(const SpaceSeparatedSize<T>& value, LayoutSize referenceBox)
+    FloatSize operator()(const SpaceSeparatedSize<T>& value, FloatSize referenceBox, float zoom)
     {
         return {
-            evaluate(value.width(), referenceBox.width()),
-            evaluate(value.height(), referenceBox.height())
+            evaluate(value.width(), referenceBox.width(), zoom),
+            evaluate(value.height(), referenceBox.height(), zoom),
+        };
+    }
+    LayoutSize operator()(const SpaceSeparatedSize<T>& value, LayoutSize referenceBox, const RenderStyle& style)
+    {
+        return {
+            evaluate(value.width(), referenceBox.width(), style),
+            evaluate(value.height(), referenceBox.height(), style),
+        };
+    }
+    LayoutSize operator()(const SpaceSeparatedSize<T>& value, LayoutSize referenceBox, float zoom)
+    {
+        return {
+            evaluate(value.width(), referenceBox.width(), zoom),
+            evaluate(value.height(), referenceBox.height(), zoom),
         };
     }
 };
@@ -128,18 +179,32 @@ template<typename T> struct Evaluation<SpaceSeparatedSize<T>> {
 // MARK: - MinimallySerializingSpaceSeparatedSize
 
 template<typename T> struct Evaluation<MinimallySerializingSpaceSeparatedSize<T>> {
-    FloatSize operator()(const MinimallySerializingSpaceSeparatedSize<T>& value, FloatSize referenceBox)
+    FloatSize operator()(const MinimallySerializingSpaceSeparatedSize<T>& value, FloatSize referenceBox, const RenderStyle& style)
     {
         return {
-            evaluate(value.width(), referenceBox.width()),
-            evaluate(value.height(), referenceBox.height())
+            evaluate(value.width(), referenceBox.width(), style),
+            evaluate(value.height(), referenceBox.height(), style),
         };
     }
-    LayoutSize operator()(const MinimallySerializingSpaceSeparatedSize<T>& value, LayoutSize referenceBox)
+    FloatSize operator()(const MinimallySerializingSpaceSeparatedSize<T>& value, FloatSize referenceBox, float zoom)
     {
         return {
-            evaluate(value.width(), referenceBox.width()),
-            evaluate(value.height(), referenceBox.height())
+            evaluate(value.width(), referenceBox.width(), zoom),
+            evaluate(value.height(), referenceBox.height(), zoom),
+        };
+    }
+    LayoutSize operator()(const MinimallySerializingSpaceSeparatedSize<T>& value, LayoutSize referenceBox, const RenderStyle& style)
+    {
+        return {
+            evaluate(value.width(), referenceBox.width(), style),
+            evaluate(value.height(), referenceBox.height(), style),
+        };
+    }
+    LayoutSize operator()(const MinimallySerializingSpaceSeparatedSize<T>& value, LayoutSize referenceBox, float zoom)
+    {
+        return {
+            evaluate(value.width(), referenceBox.width(), zoom),
+            evaluate(value.height(), referenceBox.height(), zoom),
         };
     }
 };

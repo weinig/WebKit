@@ -46,8 +46,8 @@ struct ExtractorState;
 struct ScrollMarginEdge {
     using Fixed = Length<>;
 
-    ScrollMarginEdge(Fixed&& fixed) : m_value(fixed.value, WebCore::LengthType::Fixed) { }
-    ScrollMarginEdge(const Fixed& fixed) : m_value(fixed.value, WebCore::LengthType::Fixed) { }
+    ScrollMarginEdge(Fixed&& fixed) : m_value(fixed.evaluate(1.0f), WebCore::LengthType::Fixed) { }
+    ScrollMarginEdge(const Fixed& fixed) : m_value(fixed.evaluate(1.0f), WebCore::LengthType::Fixed) { }
 
     ScrollMarginEdge(CSS::ValueLiteral<CSS::LengthUnit::Px> literal) : m_value(static_cast<float>(literal.value), WebCore::LengthType::Fixed) { }
 
@@ -108,13 +108,13 @@ template<> struct CSSValueConversion<ScrollMarginEdge> { auto operator()(Builder
 // MARK: - Evaluation
 
 template<> struct Evaluation<ScrollMarginEdge> {
-    auto operator()(const ScrollMarginEdge&, LayoutUnit referenceLength) -> LayoutUnit;
-    auto operator()(const ScrollMarginEdge&, float referenceLength) -> float;
+    auto operator()(const ScrollMarginEdge&, LayoutUnit referenceLength, const RenderStyle&) -> LayoutUnit;
+    auto operator()(const ScrollMarginEdge&, float referenceLength, const RenderStyle&) -> float;
 };
 
 // MARK: - Extent
 
-LayoutBoxExtent extentForRect(const ScrollMarginBox&, const LayoutRect&);
+LayoutBoxExtent extentForRect(const ScrollMarginBox&, const LayoutRect&, const RenderStyle&);
 
 // MARK: - Logging
 

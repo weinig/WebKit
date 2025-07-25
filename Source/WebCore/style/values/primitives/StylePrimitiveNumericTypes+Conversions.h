@@ -232,14 +232,11 @@ template<auto R, typename V, typename... Rest> LengthPercentage<R, V> canonicali
 
 // MARK: - Conversion from "Style to "CSS"
 
-// Out of line to avoid inclusion of RenderStyleInlines.h
-float adjustForZoom(float, const RenderStyle&);
-
 // Length requires a specialized implementation due to zoom adjustment.
 template<auto R, typename V> struct ToCSS<Length<R, V>> {
-    auto operator()(const Length<R, V>& value, const RenderStyle& style) -> CSS::Length<R, V>
+    auto operator()(const Length<R, V>& value, const RenderStyle&) -> CSS::Length<R, V>
     {
-        return CSS::LengthRaw<R, V> { value.unit, adjustForZoom(value.value, style) };
+        return CSS::LengthRaw<R, V> { value.unit, value.evaluate(1.0f) };
     }
 };
 
@@ -280,7 +277,7 @@ template<auto R, typename V> struct ToCSS<LengthPercentage<R, V>> {
     {
         return WTF::switchOn(value,
             [&](const typename LengthPercentage<R, V>::Dimension& length) -> CSS::LengthPercentage<R, V> {
-                return typename CSS::LengthPercentage<R, V>::Raw { length.unit, adjustForZoom(length.value, style) };
+                return typename CSS::LengthPercentage<R, V>::Raw { length.unit, length.evaluate(1.0) };
             },
             [&](const typename LengthPercentage<R, V>::Percentage& percentage) -> CSS::LengthPercentage<R, V> {
                 return typename CSS::LengthPercentage<R, V>::Raw { percentage.unit, percentage.value };

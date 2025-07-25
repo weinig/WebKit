@@ -32,7 +32,7 @@ namespace WebCore {
 
 bool OutlineValue::nonZero() const
 {
-    return width() && style() != OutlineStyle::None;
+    return !m_width.isZero() && style() != OutlineStyle::None;
 }
 
 bool OutlineValue::isTransparent() const

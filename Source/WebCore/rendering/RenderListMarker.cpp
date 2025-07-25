@@ -268,9 +268,9 @@ void RenderListMarker::layout()
     setMarginEnd(0);
 
     if (auto fixedStartMargin = style().marginStart().tryFixed())
-        setMarginStart(LayoutUnit(fixedStartMargin->value));
+        setMarginStart(LayoutUnit(fixedStartMargin->evaluate(style())));
     if (auto fixedEndMargin = style().marginEnd().tryFixed())
-        setMarginEnd(LayoutUnit(fixedEndMargin->value));
+        setMarginEnd(LayoutUnit(fixedEndMargin->evaluate(style())));
 
     clearNeedsLayout();
 }

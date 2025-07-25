@@ -194,10 +194,10 @@ void TextDecorationPainter::paintBackgroundDecorations(const RenderStyle& style,
     if (clipping) {
         auto clipRect = FloatRect { boxOrigin, FloatSize { decorationGeometry.textBoxWidth, decorationGeometry.clippingOffset } };
         for (const auto& shadow : m_shadow) {
-            auto shadowExtent = Style::paintingExtent(shadow);
+            auto shadowExtent = Style::paintingExtent(shadow, style);
             auto shadowRect = clipRect;
             shadowRect.inflate(shadowExtent);
-            auto shadowOffset = TextBoxPainter::rotateShadowOffset(shadow.location, m_writingMode);
+            auto shadowOffset = TextBoxPainter::rotateShadowOffset(shadow.location, m_writingMode, style);
             shadowRect.move(shadowOffset);
             clipRect.unite(shadowRect);
             extraOffset = std::max(extraOffset, std::max(0.f, shadowOffset.height()) + shadowExtent);
@@ -240,9 +240,9 @@ void TextDecorationPainter::paintBackgroundDecorations(const RenderStyle& style,
             if (m_shadowColorFilter)
                 m_shadowColorFilter->transformColor(shadowColor);
 
-            auto shadowOffset = TextBoxPainter::rotateShadowOffset(shadow.location, m_writingMode);
+            auto shadowOffset = TextBoxPainter::rotateShadowOffset(shadow.location, m_writingMode, style);
             shadowOffset.expand(0, -extraOffset);
-            m_context.setDropShadow({ shadowOffset, shadow.blur.value, shadowColor, ShadowRadiusMode::Default });
+            m_context.setDropShadow({ shadowOffset, shadow.blur.evaluate(style), shadowColor, ShadowRadiusMode::Default });
 
             draw(&shadow);
         }

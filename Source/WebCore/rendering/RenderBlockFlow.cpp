@@ -331,7 +331,7 @@ void RenderBlockFlow::computeIntrinsicLogicalWidths(LayoutUnit& minLogicalWidth,
 
     if (auto* cell = dynamicDowncast<RenderTableCell>(*this)) {
         auto tableCellWidth = cell->styleOrColLogicalWidth();
-        if (auto fixedTableCellWidth = tableCellWidth.tryFixed(); fixedTableCellWidth && fixedTableCellWidth->value > 0)
+        if (auto fixedTableCellWidth = tableCellWidth.tryFixed(); fixedTableCellWidth && fixedTableCellWidth->evaluate(1.0f /*FIXME FIND STYLE*/) > 0)
             maxLogicalWidth = std::max(minLogicalWidth, adjustContentBoxLogicalWidthForBoxSizing(*fixedTableCellWidth));
     }
 
@@ -354,7 +354,7 @@ LayoutUnit RenderBlockFlow::columnGap() const
 {
     if (style().columnGap().isNormal())
         return LayoutUnit(style().fontDescription().computedSize()); // "1em" is recommended as the normal gap setting. Matches <p> margins.
-    return Style::evaluate(style().columnGap(), contentBoxLogicalWidth());
+    return Style::evaluate(style().columnGap(), contentBoxLogicalWidth(), style());
 }
 
 void RenderBlockFlow::computeColumnCountAndWidth()
@@ -4465,28 +4465,28 @@ RenderObject* InlineMinMaxIterator::next()
 
 static LayoutUnit getBorderPaddingMargin(const RenderBoxModelObject& child, bool endOfInline)
 {
-    auto borderMarginWidth = [](LayoutUnit childValue, const Style::MarginEdge& margin) -> LayoutUnit {
+    auto borderMarginWidth = [](const RenderStyle& style, LayoutUnit childValue, const Style::MarginEdge& margin) -> LayoutUnit {
         if (auto fixed = margin.tryFixed())
-            return LayoutUnit(fixed->value);
+            return LayoutUnit(fixed->evaluate(style));
         if (margin.isAuto())
             return { };
         return childValue;
     };
 
-    auto borderPaddingWidth = [](LayoutUnit childValue, const Style::PaddingEdge& padding) -> LayoutUnit {
+    auto borderPaddingWidth = [](const RenderStyle& style, LayoutUnit childValue, const Style::PaddingEdge& padding) -> LayoutUnit {
         if (auto fixed = padding.tryFixed())
-            return LayoutUnit(fixed->value);
+            return LayoutUnit(fixed->evaluate(style));
         return childValue;
     };
 
     auto& childStyle = child.style();
     if (endOfInline) {
-        return borderMarginWidth(child.marginEnd(), childStyle.marginEnd()) +
-            borderPaddingWidth(child.paddingEnd(), childStyle.paddingEnd()) +
+        return borderMarginWidth(childStyle, child.marginEnd(), childStyle.marginEnd()) +
+            borderPaddingWidth(childStyle, child.paddingEnd(), childStyle.paddingEnd()) +
             child.borderEnd();
     }
-    return borderMarginWidth(child.marginStart(), childStyle.marginStart()) +
-        borderPaddingWidth(child.paddingStart(), childStyle.paddingStart()) +
+    return borderMarginWidth(childStyle, child.marginStart(), childStyle.marginStart()) +
+        borderPaddingWidth(childStyle, child.paddingStart(), childStyle.paddingStart()) +
         child.borderStart();
 }
 
@@ -4572,14 +4572,14 @@ static inline std::optional<LayoutUnit> textIndentForBlockContainer(const Render
 {
     auto& style = renderer.style();
     if (auto fixedTextIndent = style.textIndent().length.tryFixed())
-        return fixedTextIndent->value ? std::make_optional(LayoutUnit { fixedTextIndent->value }) : std::nullopt;
+        return !fixedTextIndent->isZero() ? std::make_optional(LayoutUnit { fixedTextIndent->evaluate(style) }) : std::nullopt;
 
     auto indentValue = LayoutUnit { };
     if (auto* containingBlock = renderer.containingBlock()) {
         if (auto containingBlockFixedLogicalWidth = containingBlock->style().logicalWidth().tryFixed()) {
             // At this point of the shrink-to-fit computation, we don't have a used value for the containing block width
             // (that's exactly to what we try to contribute here) unless the computed value is fixed.
-            indentValue = Style::evaluate(style.textIndent().length, containingBlockFixedLogicalWidth->value);
+            indentValue = Style::evaluate(style.textIndent().length, containingBlockFixedLogicalWidth->evaluate(containingBlock->style()), style);
         }
     }
     return indentValue ? std::make_optional(indentValue) : std::nullopt;
@@ -4739,9 +4739,9 @@ void RenderBlockFlow::computeInlinePreferredLogicalWidths(LayoutUnit& minLogical
                         lastText = nullptr;
                     LayoutUnit margins;
                     if (auto fixedMarginStart = childStyle.marginStart(writingMode()).tryFixed())
-                        margins += LayoutUnit::fromFloatCeil(fixedMarginStart->value);
+                        margins += LayoutUnit::fromFloatCeil(fixedMarginStart->evaluate(childStyle));
                     if (auto fixedMarginEnd = childStyle.marginEnd(writingMode()).tryFixed())
-                        margins += LayoutUnit::fromFloatCeil(fixedMarginEnd->value);
+                        margins += LayoutUnit::fromFloatCeil(fixedMarginEnd->evaluate(childStyle));
                     childMin += margins.ceilToFloat();
                     childMax += margins.ceilToFloat();
                 }

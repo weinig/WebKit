@@ -301,18 +301,11 @@ void IntersectionObserver::rootDestroyed()
 
 static void expandRootBoundsWithRootMargin(FloatRect& rootBounds, const LengthBox& rootMargin, float zoomFactor)
 {
-    auto zoomAdjustedLength = [](const Length& length, float maximumValue, float zoomFactor) {
-        if (length.isPercent())
-            return floatValueForLength(length, maximumValue);
-
-        return floatValueForLength(length, maximumValue) * zoomFactor;
-    };
-
     auto rootMarginEdges = FloatBoxExtent {
-        zoomAdjustedLength(rootMargin.top(), rootBounds.height(), zoomFactor),
-        zoomAdjustedLength(rootMargin.right(), rootBounds.width(), zoomFactor),
-        zoomAdjustedLength(rootMargin.bottom(), rootBounds.height(), zoomFactor),
-        zoomAdjustedLength(rootMargin.left(), rootBounds.width(), zoomFactor)
+        floatValueForLength(rootMargin.top(), rootBounds.height(), zoomFactor),
+        floatValueForLength(rootMargin.right(), rootBounds.width(), zoomFactor),
+        floatValueForLength(rootMargin.bottom(), rootBounds.height(), zoomFactor),
+        floatValueForLength(rootMargin.left(), rootBounds.width(), zoomFactor)
     };
 
     rootBounds.expand(rootMarginEdges);
@@ -336,10 +329,10 @@ static std::optional<LayoutRect> computeClippedRectInRootContentsSpace(const Lay
 
     auto frameRect = renderer->view().frameView().layoutViewportRect();
     auto scrollMarginEdges = LayoutBoxExtent {
-        LayoutUnit(intValueForLength(scrollMargin.top(), frameRect.height())),
-        LayoutUnit(intValueForLength(scrollMargin.right(), frameRect.width())),
-        LayoutUnit(intValueForLength(scrollMargin.bottom(), frameRect.height())),
-        LayoutUnit(intValueForLength(scrollMargin.left(), frameRect.width()))
+        LayoutUnit(intValueForLength(scrollMargin.top(), frameRect.height(), 1.0f /*FIXME HANDLE ZOOM*/)),
+        LayoutUnit(intValueForLength(scrollMargin.right(), frameRect.width(), 1.0f /*FIXME HANDLE ZOOM*/)),
+        LayoutUnit(intValueForLength(scrollMargin.bottom(), frameRect.height(), 1.0f /*FIXME HANDLE ZOOM*/)),
+        LayoutUnit(intValueForLength(scrollMargin.left(), frameRect.width(), 1.0f /*FIXME HANDLE ZOOM*/))
     };
     frameRect.expand(scrollMarginEdges);
 

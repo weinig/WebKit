@@ -361,7 +361,7 @@ static ResolvedFontSize fontSizeFromUnresolvedFontSize(const CSSPropertyParserHe
                         return { .size = 0.0f, .keyword = CSSValueInvalid };
 
                     return {
-                        .size = Style::evaluate(Style::toStyleNoConversionDataRequired(calc), parentSize),
+                        .size = static_cast<float>(Style::evaluate(Style::toStyleNoConversionDataRequired(calc), parentSize, 1.0f)),
                         .keyword = CSSValueInvalid
                     };
                 }

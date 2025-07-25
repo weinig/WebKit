@@ -54,11 +54,11 @@ template<size_t I> const auto& get(const Ellipse& value)
 
 DEFINE_TYPE_MAPPING(CSS::Ellipse, Ellipse)
 
-FloatPoint resolvePosition(const Ellipse& value, FloatSize boxSize);
-FloatSize resolveRadii(const Ellipse&, FloatSize boxSize, FloatPoint center);
-WebCore::Path pathForCenterCoordinate(const Ellipse&, const FloatRect&, FloatPoint);
+FloatPoint resolvePosition(const Ellipse& value, FloatSize boxSize, const RenderStyle&);
+FloatSize resolveRadii(const Ellipse&, FloatSize boxSize, FloatPoint center, const RenderStyle&);
+WebCore::Path pathForCenterCoordinate(const Ellipse&, const FloatRect&, FloatPoint, const RenderStyle&);
 
-template<> struct PathComputation<Ellipse> { WebCore::Path operator()(const Ellipse&, const FloatRect&); };
+template<> struct PathComputation<Ellipse> { WebCore::Path operator()(const Ellipse&, const FloatRect&, const RenderStyle&); };
 
 template<> struct Blending<Ellipse> {
     auto canBlend(const Ellipse&, const Ellipse&) -> bool;

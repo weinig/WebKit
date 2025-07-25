@@ -45,9 +45,9 @@ Ref<StylePathData> StylePathData::clone() const
     return StylePathData::create(m_path);
 }
 
-Path StylePathData::path(const FloatRect& rect) const
+Path StylePathData::path(const FloatRect& rect, const RenderStyle& style) const
 {
-    return Style::path(m_path, rect);
+    return Style::path(m_path, rect, style);
 }
 
 WindRule StylePathData::windRule() const

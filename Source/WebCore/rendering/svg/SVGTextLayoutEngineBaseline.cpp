@@ -46,7 +46,7 @@ float SVGTextLayoutEngineBaseline::calculateBaselineShift(const SVGRenderStyle& 
     case BaselineShift::Super:
         return m_font->metricsOfPrimaryFont().height() / 2;
     case BaselineShift::Length:
-        return floatValueForLength(style.baselineShiftValue(), m_font->size());
+        return floatValueForLength(style.baselineShiftValue(), m_font->size(), 1.0f /* FIXME FIND ZOOM */);
     }
     ASSERT_NOT_REACHED();
     return 0;

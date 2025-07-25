@@ -40,18 +40,18 @@ namespace Style {
 template<typename StyleType> struct PathComputation;
 
 struct PathComputationInvoker {
-    template<typename StyleType, typename Reference> WebCore::Path operator()(const StyleType& value, const Reference& reference) const
+    template<typename StyleType, typename Reference> WebCore::Path operator()(const StyleType& value, const Reference& reference, const RenderStyle& style) const
     {
-        return PathComputation<StyleType>{}(value, reference);
+        return PathComputation<StyleType>{}(value, reference, style);
     }
 };
 inline constexpr PathComputationInvoker path{};
 
 // Specialization for `FunctionNotation`.
 template<CSSValueID Name, typename StyleType> struct PathComputation<FunctionNotation<Name, StyleType>> {
-    template<typename Reference> WebCore::Path operator()(const FunctionNotation<Name, StyleType>& value, const Reference& reference)
+    template<typename Reference> WebCore::Path operator()(const FunctionNotation<Name, StyleType>& value, const Reference& reference, const RenderStyle& style)
     {
-        return WebCore::Style::path(value.parameters, reference);
+        return WebCore::Style::path(value.parameters, reference, style);
     }
 };
 

@@ -35,7 +35,7 @@ struct TextUnderlineOffset : LengthWrapperBase<LengthPercentage<>, CSS::Keyword:
     using Base::Base;
 
     float resolve(const RenderStyle&, float autoValue = 0.0f) const;
-    float resolve(float fontSize, float autoValue = 0.0f) const;
+    float resolve(float fontSize, float zoom, float autoValue /* = 0.0f FIXME: Add back defaults*/) const;
 };
 
 // MARK: - Blending

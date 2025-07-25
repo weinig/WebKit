@@ -288,7 +288,7 @@ void RenderMarquee::timerFired()
         }
         bool positive = range > 0;
         int clientSize = (isHorizontal() ? roundToInt(renderBox->clientWidth()) : roundToInt(renderBox->clientHeight()));
-        int increment = std::abs(intValueForLength(m_layer->renderer().style().marqueeIncrement(), clientSize));
+        int increment = std::abs(intValueForLength(m_layer->renderer().style().marqueeIncrement(), clientSize, m_layer->renderer().style().usedZoom()));
         int currentPos = (isHorizontal() ? scrollableArea->scrollOffset().x() : scrollableArea->scrollOffset().y());
         newPos =  currentPos + (addIncrement ? increment : -increment);
         if (positive)

@@ -334,8 +334,8 @@ inline Ref<CSSPrimitiveValue> ExtractorConverter::convertLength(ExtractorState& 
 
 inline Ref<CSSPrimitiveValue> ExtractorConverter::convertLength(const RenderStyle& style, const WebCore::Length& length)
 {
-    if (length.isFixed())
-        return CSSPrimitiveValue::create(adjustFloatForAbsoluteZoom(length.value(), style), CSSUnitType::CSS_PX);
+    if (auto fixedLength = length.tryFixed())
+        return CSSPrimitiveValue::create(fixedLength->evaluate(1.0f), CSSUnitType::CSS_PX);
     return CSSPrimitiveValue::create(length, style);
 }
 
@@ -356,9 +356,9 @@ template<typename T> Ref<CSSPrimitiveValue> ExtractorConverter::convertNumber(Ex
     return convert(state, number);
 }
 
-template<typename T> Ref<CSSPrimitiveValue> ExtractorConverter::convertNumberAsPixels(ExtractorState& state, T number)
+template<typename T> Ref<CSSPrimitiveValue> ExtractorConverter::convertNumberAsPixels(ExtractorState&, T number)
 {
-    return CSSPrimitiveValue::create(adjustFloatForAbsoluteZoom(number, state.style), CSSUnitType::CSS_PX);
+    return CSSPrimitiveValue::create(number, CSSUnitType::CSS_PX);
 }
 
 template<typename T> Ref<CSSPrimitiveValue> ExtractorConverter::convertComputedLength(ExtractorState& state, T number)

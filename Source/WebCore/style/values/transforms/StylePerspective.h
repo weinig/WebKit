@@ -37,7 +37,7 @@ struct Perspective {
     Perspective(CSS::Keyword::None) : m_value { } { }
     Perspective(Length value) : m_value { value } { }
 
-    float usedPerspective() const { return m_value ? std::max(1.0f, m_value->value) : 1.0f; }
+    float usedPerspective(const RenderStyle& style) const { return m_value ? std::max(1.0f, m_value->evaluate(style)) : 1.0f; }
 
     bool isNone() const { return !m_value; }
     bool isLength() const { return !!m_value; }

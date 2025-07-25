@@ -445,7 +445,7 @@ LayoutUnit RenderMultiColumnSet::columnGap() const
     auto& parentBlockGap = parentBlock.style().columnGap();
     if (parentBlockGap.isNormal())
         return LayoutUnit(parentBlock.style().fontDescription().computedSize()); // "1em" is recommended as the normal gap setting. Matches <p> margins.
-    return Style::evaluate(parentBlockGap, parentBlock.contentBoxLogicalWidth());
+    return Style::evaluate(parentBlockGap, parentBlock.contentBoxLogicalWidth(), parentBlock.style());
 }
 
 unsigned RenderMultiColumnSet::columnCount() const

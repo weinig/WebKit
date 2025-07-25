@@ -2474,7 +2474,6 @@ private:
 
 // Map from computed style values (which take zoom into account) to web-exposed values, which are zoom-independent.
 inline int adjustForAbsoluteZoom(int, const RenderStyle&);
-inline float adjustFloatForAbsoluteZoom(float, const RenderStyle&);
 inline LayoutUnit adjustLayoutUnitForAbsoluteZoom(LayoutUnit, const RenderStyle&);
 inline LayoutSize adjustLayoutSizeForAbsoluteZoom(LayoutSize, const RenderStyle&);
 

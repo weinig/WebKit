@@ -197,7 +197,7 @@ void RenderFrameSet::layOutAxis(GridAxis& axis, std::span<const Length> grid, in
         // Count the total percentage of all of the percentage columns/rows -> totalPercent
         // Count the number of columns/rows which are percentages -> countPercent
         if (grid[i].isPercentOrCalculated()) {
-            gridLayout[i] = std::max(intValueForLength(grid[i], availableLen), 0);
+            gridLayout[i] = std::max(intValueForLength(grid[i], availableLen, 1.0f /*FIXME FIND STYLE*/), 0);
             totalPercent += gridLayout[i];
             countPercent++;
         }

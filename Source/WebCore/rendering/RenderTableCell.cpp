@@ -192,7 +192,7 @@ Style::PreferredSize RenderTableCell::logicalWidthFromColumns(RenderTableCol* fi
             return colWidth;
         }
 
-        colWidthSum += fixedColWidth->value;
+        colWidthSum += fixedColWidth->evaluate(tableCol->style());
         tableCol = tableCol->nextColumn();
         // If no next <col> tag found for the span we just return what we have for now.
         if (!tableCol)
@@ -233,7 +233,7 @@ void RenderTableCell::computePreferredLogicalWidths()
         // to make the minwidth of the cell into the fixed width. They do this
         // even in strict mode, so do not make this a quirk. Affected the top
         // of hiptop.com.
-        m_minPreferredLogicalWidth = std::max(LayoutUnit(fixedLogicalWidth->value), m_minPreferredLogicalWidth);
+        m_minPreferredLogicalWidth = std::max(LayoutUnit(fixedLogicalWidth->evaluate(1.0f /*FIXME FIND STYLE*/)), m_minPreferredLogicalWidth);
     }
 }
 

@@ -75,18 +75,18 @@ public:
     ComputedHorizontalMargin computedHorizontalMargin(const Box&, const HorizontalConstraints&) const;
     ComputedVerticalMargin computedVerticalMargin(const Box&, const HorizontalConstraints&) const;
 
-    std::optional<LayoutUnit> computedValue(const Style::InsetEdge&, LayoutUnit containingBlockWidth) const;
-    std::optional<LayoutUnit> computedValue(const Style::MarginEdge&, LayoutUnit containingBlockWidth) const;
-    std::optional<LayoutUnit> computedValue(const Style::PreferredSize&, LayoutUnit containingBlockWidth) const;
-    std::optional<LayoutUnit> computedValue(const Style::MinimumSize&, LayoutUnit containingBlockWidth) const;
-    std::optional<LayoutUnit> computedValue(const Style::MaximumSize&, LayoutUnit containingBlockWidth) const;
-    std::optional<LayoutUnit> computedValue(const Length& geometryProperty, LayoutUnit containingBlockWidth) const;
-    std::optional<LayoutUnit> fixedValue(const Style::MarginEdge&) const;
-    std::optional<LayoutUnit> fixedValue(const Style::PaddingEdge&) const;
-    std::optional<LayoutUnit> fixedValue(const Style::PreferredSize&) const;
-    std::optional<LayoutUnit> fixedValue(const Style::MinimumSize&) const;
-    std::optional<LayoutUnit> fixedValue(const Style::MaximumSize&) const;
-    std::optional<LayoutUnit> fixedValue(const Length& geometryProperty) const;
+    std::optional<LayoutUnit> computedValue(const Style::InsetEdge&, LayoutUnit containingBlockWidth, const RenderStyle&) const;
+    std::optional<LayoutUnit> computedValue(const Style::MarginEdge&, LayoutUnit containingBlockWidth, const RenderStyle&) const;
+    std::optional<LayoutUnit> computedValue(const Style::PreferredSize&, LayoutUnit containingBlockWidth, const RenderStyle&) const;
+    std::optional<LayoutUnit> computedValue(const Style::MinimumSize&, LayoutUnit containingBlockWidth, const RenderStyle&) const;
+    std::optional<LayoutUnit> computedValue(const Style::MaximumSize&, LayoutUnit containingBlockWidth, const RenderStyle&) const;
+    std::optional<LayoutUnit> computedValue(const Length& geometryProperty, LayoutUnit containingBlockWidth, const RenderStyle&) const;
+    std::optional<LayoutUnit> fixedValue(const Style::MarginEdge&, const RenderStyle&) const;
+    std::optional<LayoutUnit> fixedValue(const Style::PaddingEdge&, const RenderStyle&) const;
+    std::optional<LayoutUnit> fixedValue(const Style::PreferredSize&, const RenderStyle&) const;
+    std::optional<LayoutUnit> fixedValue(const Style::MinimumSize&, const RenderStyle&) const;
+    std::optional<LayoutUnit> fixedValue(const Style::MaximumSize&, const RenderStyle&) const;
+    std::optional<LayoutUnit> fixedValue(const Length& geometryProperty, const RenderStyle&) const;
 
     std::optional<LayoutUnit> computedMinHeight(const Box&, std::optional<LayoutUnit> containingBlockHeight = std::nullopt) const;
     std::optional<LayoutUnit> computedMaxHeight(const Box&, std::optional<LayoutUnit> containingBlockHeight = std::nullopt) const;

@@ -74,10 +74,10 @@ public:
     Style::MarginEdge marginAfter() const { return m_marginAfter; }
     Style::InsetEdge insetBefore() const { return m_insetBefore; }
     Style::InsetEdge insetAfter() const { return m_insetAfter; }
-    LayoutUnit marginBeforeValue() const { return Style::evaluateMinimum(m_marginBefore, m_containingInlineSize); }
-    LayoutUnit marginAfterValue() const { return Style::evaluateMinimum(m_marginAfter, m_containingInlineSize); }
-    LayoutUnit insetBeforeValue() const { return Style::evaluateMinimum(m_insetBefore, containingSize()); }
-    LayoutUnit insetAfterValue() const { return Style::evaluateMinimum(m_insetAfter, containingSize()); }
+    LayoutUnit marginBeforeValue() const { return Style::evaluateMinimum(m_marginBefore, m_containingInlineSize, m_style); }
+    LayoutUnit marginAfterValue() const { return Style::evaluateMinimum(m_marginAfter, m_containingInlineSize, m_style); }
+    LayoutUnit insetBeforeValue() const { return Style::evaluateMinimum(m_insetBefore, containingSize(), m_style); }
+    LayoutUnit insetAfterValue() const { return Style::evaluateMinimum(m_insetAfter, containingSize(), m_style); }
 
     LayoutUnit insetModifiedContainingSize() const { return m_insetModifiedContainingRange.size(); }
     LayoutUnit availableContentSpace() const { return insetModifiedContainingSize() - marginBeforeValue() - bordersPlusPadding() - marginAfterValue(); } // This may be negative.

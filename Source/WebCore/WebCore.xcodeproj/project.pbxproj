@@ -18000,6 +18000,7 @@
 		BC092A042E2D5110002ACB2C /* StyleCursor.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = StyleCursor.cpp; sourceTree = "<group>"; };
 		BC092A0C2E2D75E6002ACB2C /* StyleTextDecorationThickness.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = StyleTextDecorationThickness.cpp; sourceTree = "<group>"; };
 		BC092A1B2E2DBC36002ACB2C /* StyleViewTransitionName.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = StyleViewTransitionName.cpp; sourceTree = "<group>"; };
+		BC092ADA2E329A6B002ACB2C /* StylePrimitiveNumeric.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = StylePrimitiveNumeric.cpp; sourceTree = "<group>"; };
 		BC0CA74C264AED0A004FDC62 /* PixelBufferConversion.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PixelBufferConversion.h; sourceTree = "<group>"; };
 		BC0CA74D264AED0A004FDC62 /* PixelBufferConversion.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = PixelBufferConversion.cpp; sourceTree = "<group>"; };
 		BC10137B25C3624B00DC773C /* ColorModels.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ColorModels.h; sourceTree = "<group>"; };
@@ -35954,6 +35955,7 @@
 				BC2A0D332E05D43F003CBA0E /* StylePrimitiveKeyword+CSSValueCreation.h */,
 				BC2A0D312E05D409003CBA0E /* StylePrimitiveKeyword+Serialization.h */,
 				BC2A0E322E0B6642003CBA0E /* StylePrimitiveNumeric+Forward.h */,
+				BC092ADA2E329A6B002ACB2C /* StylePrimitiveNumeric.cpp */,
 				BC2C0C912D32F46F00FCFBA0 /* StylePrimitiveNumeric.h */,
 				BC6AFC732DFE6FA10065FA1D /* StylePrimitiveNumericAdaptors.h */,
 				BCD67C1B2D1F35840079EB9C /* StylePrimitiveNumericConcepts.h */,

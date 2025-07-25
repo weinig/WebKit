@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 Samuel Weinig <sam@webkit.org>
+ * Copyright (C) 2024-2025 Samuel Weinig <sam@webkit.org>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -22,50 +22,17 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#pragma once
+#include "config.h"
+#include "StylePrimitiveNumeric.h"
 
-#include "CalculationValue.h"
-#include "StylePrimitiveNumericTypes.h"
-#include <wtf/Forward.h>
+#include "RenderStyle.h"
 
 namespace WebCore {
 namespace Style {
 
-// MARK: - Conversion to `Calculation::Child`.
-
-inline Calculation::Child copyCalculation(Ref<CalculationValue> value)
+float applyZoom(const RenderStyle& style, float value)
 {
-    return value->copyRoot();
-}
-
-inline Calculation::Child copyCalculation(Calc auto const& value)
-{
-    return value.protectedCalculation()->copyRoot();
-}
-
-template<auto R, typename V> Calculation::Child copyCalculation(const Number<R, V>& value)
-{
-    return Calculation::number(value.value);
-}
-
-template<auto R, typename V> Calculation::Child copyCalculation(const Percentage<R, V>& value)
-{
-    return Calculation::percentage(value.value);
-}
-
-template<auto R, typename V> Calculation::Child copyCalculation(const Length<R, V>& value)
-{
-    return Calculation::dimension(value.evaluate(1.0f /*FIXME DOES THIS MAKE SENSE*/));
-}
-
-inline Calculation::Child copyCalculation(Numeric auto const& value)
-{
-    return Calculation::dimension(value.value);
-}
-
-inline Calculation::Child copyCalculation(DimensionPercentageNumeric auto const& value)
-{
-    return WTF::switchOn(value, [](const auto& value) { return copyCalculation(value); });
+    return style.usedZoom() * value;
 }
 
 } // namespace Style

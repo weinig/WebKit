@@ -31,9 +31,10 @@
 namespace WebCore {
 
 class BoxPathOperation;
-class RenderElement;
 class PathOperation;
 class RayPathOperation;
+class RenderElement;
+class RenderStyle;
 class ShapePathOperation;
 
 struct TransformOperationData;
@@ -53,7 +54,7 @@ public:
     static void applyMotionPathTransform(const RenderStyle&, const TransformOperationData&, TransformationMatrix&);
 
     static std::optional<Path> computePathForBox(const BoxPathOperation&, const TransformOperationData&);
-    static std::optional<Path> computePathForShape(const ShapePathOperation&, const TransformOperationData&);
+    static std::optional<Path> computePathForShape(const ShapePathOperation&, const TransformOperationData&, const RenderStyle&);
     static std::optional<Path> computePathForRay(const RayPathOperation&, const TransformOperationData&);
 };
 

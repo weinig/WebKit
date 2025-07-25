@@ -39,6 +39,7 @@
 #include "ShadowRoot.h"
 #include "SliderThumbElement.h"
 #include "StepRange.h"
+#include "StylePrimitiveNumericTypes+Evaluation.h"
 #include "StyleResolver.h"
 #include <wtf/MathExtras.h>
 #include <wtf/Ref.h>
@@ -83,8 +84,8 @@ void RenderSlider::computeIntrinsicLogicalWidths(LayoutUnit& minLogicalWidth, La
     }
     maxLogicalWidth = defaultTrackLength * style().usedZoom();
     auto& logicalWidth = style().logicalWidth();
-    if (logicalWidth.isCalculated())
-        minLogicalWidth = std::max(0_lu, Style::evaluate(logicalWidth, 0_lu));
+    if (auto calculatedLogicalWidth = logicalWidth.tryCalc())
+        minLogicalWidth = std::max(0_lu, Style::evaluate(calculatedLogicalWidth, 0_lu));
     else if (!logicalWidth.isPercent())
         minLogicalWidth = maxLogicalWidth;
 }

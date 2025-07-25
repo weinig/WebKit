@@ -49,11 +49,11 @@ public:
     void dumpDifferences(TextStream&, const StyleMultiColData&) const;
 #endif
 
-    unsigned short ruleWidth() const
+    unsigned short ruleWidth(const RenderStyle& style) const
     {
         if (rule.style() == BorderStyle::None || rule.style() == BorderStyle::Hidden)
             return 0; 
-        return rule.width();
+        return rule.width().evaluate(style);
     }
 
     float width { 0 };

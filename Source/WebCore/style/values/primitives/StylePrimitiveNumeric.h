@@ -34,6 +34,9 @@
 #include <wtf/Forward.h>
 
 namespace WebCore {
+
+class RenderStyle;
+
 namespace Style {
 
 template<typename> struct DimensionPercentageMapping;
@@ -69,6 +72,8 @@ template<CSS::Numeric CSSType> struct PrimitiveNumeric {
     }
 
     constexpr bool isZero() const { return !value; }
+    constexpr bool isPositive() const { return value > 0; }
+    constexpr bool isNegative() const { return value < 0; }
 
     constexpr bool operator==(const PrimitiveNumeric&) const = default;
     constexpr bool operator==(ResolvedValueType other) const { return value == other; };
@@ -86,6 +91,60 @@ private:
     {
         return std::isnan(value);
     }
+};
+
+template<typename T> concept LengthNumeric = CSS::Numeric<T> && std::same_as<typename T::UnitType, CSS::LengthUnit>;
+
+// Out-of-line to avoid inclusion of RenderStyle.
+float applyZoom(const RenderStyle&, float value);
+
+// Specialization for <length> types.
+template<LengthNumeric CSSType> struct PrimitiveNumeric<CSSType> {
+    using CSS = CSSType;
+    using Raw = typename CSS::Raw;
+    using UnitType = typename CSS::UnitType;
+    using UnitTraits = typename CSS::UnitTraits;
+    using ResolvedValueType = typename CSS::ResolvedValueType;
+    static constexpr auto range = CSS::range;
+    static constexpr auto category = CSS::category;
+
+    static constexpr auto unit = UnitTraits::canonical;
+
+    constexpr PrimitiveNumeric(ResolvedValueType value)
+        : value { value }
+    {
+    }
+
+    constexpr PrimitiveNumeric(WebCore::CSS::ValueLiteral<UnitTraits::canonical> value)
+        : value { clampTo<ResolvedValueType>(value.value) }
+    {
+    }
+
+    constexpr bool isZero() const { return !value; }
+    constexpr bool isPositive() const { return value > 0; }
+    constexpr bool isNegative() const { return value < 0; }
+
+    constexpr auto evaluate(float zoom) const { return value * zoom; }
+    auto evaluate(const RenderStyle& style) const { return applyZoom(style, value); }
+
+    constexpr bool operator==(const PrimitiveNumeric&) const = default;
+    constexpr bool operator==(ResolvedValueType other) const { return value == other; };
+
+private:
+    template<typename> friend struct PrimitiveNumericMarkableTraits;
+
+    PrimitiveNumeric(PrimitiveNumericEmptyToken) requires std::floating_point<ResolvedValueType>
+        : value { std::numeric_limits<ResolvedValueType>::quiet_NaN() }
+    {
+    }
+
+    bool isEmpty() const
+        requires std::floating_point<ResolvedValueType>
+    {
+        return std::isnan(value);
+    }
+
+    ResolvedValueType value { 0 };
 };
 
 // Specialization of `PrimitiveNumeric` for composite dimension-percentage types.

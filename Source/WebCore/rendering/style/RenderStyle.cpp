@@ -616,7 +616,7 @@ bool RenderStyle::isIdempotentTextAutosizingCandidate(AutosizeStatus status) con
                     return false;
                 if (auto fixedHeight = height().tryFixed(); fixedHeight && specifiedLineHeight().isFixed()) {
                     float specifiedSize = specifiedFontSize();
-                    if (fixedHeight->value == specifiedSize && specifiedLineHeight().value() == specifiedSize)
+                    if (fixedHeight->evaluate(*this) == specifiedSize && specifiedLineHeight().value() == specifiedSize)
                         return false;
                 }
                 return true;
@@ -625,7 +625,7 @@ bool RenderStyle::isIdempotentTextAutosizingCandidate(AutosizeStatus status) con
                 if (auto fixedHeight = height().tryFixed(); specifiedLineHeight().isFixed() && fixedHeight) {
                     float specifiedSize = specifiedFontSize();
                     if (specifiedLineHeight().value() - specifiedSize > smallMinimumDifferenceThresholdBetweenLineHeightAndSpecifiedFontSizeForBoostingText
-                        && fixedHeight->value - specifiedSize > smallMinimumDifferenceThresholdBetweenLineHeightAndSpecifiedFontSizeForBoostingText) {
+                        && fixedHeight->evaluate(*this) - specifiedSize > smallMinimumDifferenceThresholdBetweenLineHeightAndSpecifiedFontSizeForBoostingText) {
                         return true;
                     }
                 }
@@ -2275,7 +2275,7 @@ bool RenderStyle::affectedByTransformOrigin() const
 
 FloatPoint RenderStyle::computePerspectiveOrigin(const FloatRect& boundingBox) const
 {
-    return boundingBox.location() + Style::evaluate(perspectiveOrigin(), boundingBox.size());
+    return boundingBox.location() + Style::evaluate(perspectiveOrigin(), boundingBox.size(), *this);
 }
 
 void RenderStyle::applyPerspective(TransformationMatrix& transform, const FloatPoint& originTranslate) const
@@ -2297,7 +2297,7 @@ void RenderStyle::applyPerspective(TransformationMatrix& transform, const FloatP
 FloatPoint3D RenderStyle::computeTransformOrigin(const FloatRect& boundingBox) const
 {
     FloatPoint3D originTranslate;
-    originTranslate.setXY(boundingBox.location() + floatPointForLengthPoint(Style::toPlatform(transformOrigin().xy()), boundingBox.size()));
+    originTranslate.setXY(boundingBox.location() + floatPointForLengthPoint(Style::toPlatform(transformOrigin().xy()), boundingBox.size(), usedZoom()));
     originTranslate.setZ(transformOriginZ().value);
     return originTranslate;
 }
@@ -2651,7 +2651,7 @@ float RenderStyle::computeLineHeight(const Length& lineHeightLength) const
         return metricsOfPrimaryFont().lineSpacing();
 
     if (lineHeightLength.isPercentOrCalculated())
-        return minimumValueForLength(lineHeightLength, computedFontSize()).toFloat();
+        return minimumValueForLength(lineHeightLength, computedFontSize(), usedZoom()).toFloat();
 
     return lineHeightLength.value();
 }
@@ -3583,16 +3583,16 @@ float RenderStyle::outlineWidth() const
     if (outline.style() == OutlineStyle::None)
         return 0;
     if (outlineStyle() == OutlineStyle::Auto)
-        return std::max(outline.width(), RenderTheme::platformFocusRingWidth());
-    return outline.width();
+        return std::max(outline.width().evaluate(*this), RenderTheme::platformFocusRingWidth());
+    return outline.width().evaluate(*this);
 }
 
 float RenderStyle::outlineOffset() const
 {
     auto& outline = m_nonInheritedData->backgroundData->outline;
     if (outlineStyle() == OutlineStyle::Auto)
-        return (outline.offset() + RenderTheme::platformFocusRingOffset(outlineWidth()));
-    return outline.offset();
+        return (outline.offset().evaluate(*this) + RenderTheme::platformFocusRingOffset(outlineWidth().evaluate(*this)));
+    return outline.offset().evaluate(*this);
 }
 
 CheckedRef<const FontCascade> RenderStyle::checkedFontCascade() const
@@ -3654,7 +3654,7 @@ float RenderStyle::computedStrokeWidth(const IntSize& viewportSize) const
     if (length.isAuto() || !length.isSpecified())
         return 0;
     
-    return floatValueForLength(length, viewportSize.width());
+    return floatValueForLength(length, viewportSize.width(), usedZoom());
 }
 
 bool RenderStyle::hasPositiveStrokeWidth() const

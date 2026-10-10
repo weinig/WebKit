@@ -16,6 +16,7 @@
  * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL APPLE INC. OR
  * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
  * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
  * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
  * OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
@@ -24,32 +25,26 @@
 
 #pragma once
 
-#include <WebCore/FloatSize.h>
+#include <WebCore/ImageSizingContext.h>
 
 namespace WebCore {
 
-// https://drafts.csswg.org/css-images-3/#concrete-object-size
-class ConcreteObjectSize {
+// https://w3c.github.io/mediasession/#mediametadata-artwork-images
+//
+//   Specified size:      none
+//   Default object size: the ideal artwork size
+//   Algorithm:           the default sizing algorithm
+//
+// FIXME: The spec does not currently say how to size artwork without dimensions. This is being tracked via https://github.com/w3c/mediasession/issues/379.
+class MediaSessionArtworkSizing final : public ImageSizingContext {
 public:
-    constexpr static ConcreteObjectSize fixed(FloatSize size, float zoom = 1) { return { size, zoom }; }
-    constexpr static ConcreteObjectSize zero() { return { { }, 1 }; }
-
-    constexpr FloatSize size() const { return m_size; }
-    constexpr float zoom() const { return m_zoom; }
-
-    constexpr bool isEmpty() const { return m_size.isEmpty(); }
-
-    constexpr bool operator==(const ConcreteObjectSize&) const = default;
+    static constexpr FloatSize minimumSize { 128, 128 };
+    static constexpr FloatSize idealSize { 512, 512 };
+    static_assert(minimumSize.maxDimension() < idealSize.maxDimension());
 
 private:
-    constexpr ConcreteObjectSize(FloatSize size, float zoom)
-        : m_size(size)
-        , m_zoom(zoom)
-    {
-    }
-
-    FloatSize m_size;
-    float m_zoom { 1 };
+    ObjectSizeNegotiation::SpecifiedSize specifiedSize() const final { return ObjectSizeNegotiation::SpecifiedSize::none(); }
+    FloatSize defaultObjectSize() const final { return idealSize; }
 };
 
 } // namespace WebCore

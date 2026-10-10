@@ -16,40 +16,32 @@
  * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL APPLE INC. OR
  * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
  * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
  * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
  * OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#pragma once
+#include "config.h"
+#include "NowPlayingInfo.h"
 
-#include <WebCore/FloatSize.h>
+#include "ShareableBitmap.h"
 
 namespace WebCore {
 
-// https://drafts.csswg.org/css-images-3/#concrete-object-size
-class ConcreteObjectSize {
-public:
-    constexpr static ConcreteObjectSize fixed(FloatSize size, float zoom = 1) { return { size, zoom }; }
-    constexpr static ConcreteObjectSize zero() { return { { }, 1 }; }
+RefPtr<ShareableBitmap> NowPlayingInfoArtwork::shareableBitmap() const
+{
+    RefPtr image = this->image;
+    return image ? ShareableBitmap::createFromImageDraw(*image, image->colorSpace()) : nullptr;
+}
 
-    constexpr FloatSize size() const { return m_size; }
-    constexpr float zoom() const { return m_zoom; }
-
-    constexpr bool isEmpty() const { return m_size.isEmpty(); }
-
-    constexpr bool operator==(const ConcreteObjectSize&) const = default;
-
-private:
-    constexpr ConcreteObjectSize(FloatSize size, float zoom)
-        : m_size(size)
-        , m_zoom(zoom)
-    {
-    }
-
-    FloatSize m_size;
-    float m_zoom { 1 };
-};
+NowPlayingInfoArtwork NowPlayingInfoArtwork::fromIPCData(String&& src, String&& mimeType, RefPtr<ShareableBitmap>&& bitmap)
+{
+    RefPtr<NativeImage> image;
+    if (bitmap)
+        image = NativeImage::create(bitmap->createPlatformImage());
+    return { WTF::move(src), WTF::move(mimeType), WTF::move(image) };
+}
 
 } // namespace WebCore

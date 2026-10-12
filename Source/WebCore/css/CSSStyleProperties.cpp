@@ -125,11 +125,11 @@ static CSSPropertyID parseJavaScriptCSSPropertyName(const AtomString& propertyNa
 
     RefPtr propertyNameString = propertyName.impl();
     if (!propertyNameString)
-        return CSSPropertyInvalid;
+        return CSSPropertyID::Invalid;
 
     unsigned length = propertyNameString->length();
     if (!length)
-        return CSSPropertyInvalid;
+        return CSSPropertyID::Invalid;
 
     if (auto id = propertyIDCache.get().get(propertyName); id != CSSPropertyID::Invalid)
         return id;
@@ -143,7 +143,7 @@ static CSSPropertyID parseJavaScriptCSSPropertyName(const AtomString& propertyNa
     switch (propertyNamePrefix(*propertyNameString)) {
     case PropertyNamePrefix::None:
         if (isASCIIUpper((*propertyNameString)[0]))
-            return CSSPropertyInvalid;
+            return CSSPropertyID::Invalid;
         break;
     case PropertyNamePrefix::Epub:
         writeEpubPrefix(bufferSpan);
@@ -161,17 +161,17 @@ static CSSPropertyID parseJavaScriptCSSPropertyName(const AtomString& propertyNa
     size_t bufferSizeLeft = stringEnd - bufferSpan.data();
     size_t propertySizeLeft = length - i;
     if (propertySizeLeft > bufferSizeLeft)
-        return CSSPropertyInvalid;
+        return CSSPropertyID::Invalid;
 
     for (; i < length; ++i) {
         char16_t c = (*propertyNameString)[i];
         if (!c || !isASCII(c))
-            return CSSPropertyInvalid; // illegal character
+            return CSSPropertyID::Invalid; // illegal character
         if (isASCIIUpper(c)) {
             size_t bufferSizeLeft = stringEnd - bufferSpan.data();
             size_t propertySizeLeft = length - i + 1;
             if (propertySizeLeft > bufferSizeLeft)
-                return CSSPropertyInvalid;
+                return CSSPropertyID::Invalid;
             bufferSpan[0] = '-';
             bufferSpan[1] = toASCIILowerUnchecked(c);
             skip(bufferSpan, 2);
@@ -184,7 +184,7 @@ static CSSPropertyID parseJavaScriptCSSPropertyName(const AtomString& propertyNa
     unsigned outputLength = bufferSpan.data() - buffer.data();
     auto id = findCSSProperty(name, outputLength);
     // FIXME: Why aren't we memoizing CSS property names we fail to find?
-    if (id != CSSPropertyInvalid)
+    if (id != CSSPropertyID::Invalid)
         propertyIDCache.get().add(propertyName, id);
     return id;
 }
@@ -196,7 +196,7 @@ CSSPropertyID CSSStyleProperties::getCSSPropertyIDFromJavaScriptPropertyName(con
     // FIXME: This exposes properties disabled by settings. Pass result of CSSStyleProperties::settings instead of null?
     Settings* settings = nullptr;
     auto property = parseJavaScriptCSSPropertyName(propertyName);
-    return isExposed(property, settings) ? property : CSSPropertyInvalid;
+    return isExposed(property, settings) ? property : CSSPropertyID::Invalid;
 }
 
 enum class CSSPropertyLookupMode { ConvertUsingDashPrefix, ConvertUsingNoDashPrefix, NoConversion };
@@ -240,7 +240,7 @@ template<CSSPropertyLookupMode mode> static CSSPropertyID lookupCSSPropertyFromI
     }
 
     auto id = findCSSProperty(outputBuffer.data(), outputIndex);
-    ASSERT_WITH_MESSAGE(id != CSSPropertyInvalid, "Invalid property name: %s", attribute.string().utf8());
+    ASSERT_WITH_MESSAGE(id != CSSPropertyID::Invalid, "Invalid property name: %s", attribute.string().utf8());
     cache.get().add(attribute, id);
     return id;
 }
@@ -248,67 +248,67 @@ template<CSSPropertyLookupMode mode> static CSSPropertyID lookupCSSPropertyFromI
 String CSSStyleProperties::propertyValueForCamelCasedIDLAttribute(const AtomString& attribute)
 {
     auto propertyID = lookupCSSPropertyFromIDLAttribute<CSSPropertyLookupMode::ConvertUsingNoDashPrefix>(attribute);
-    ASSERT_WITH_MESSAGE(propertyID != CSSPropertyInvalid, "Invalid attribute: %s", attribute.string().utf8());
+    ASSERT_WITH_MESSAGE(propertyID != CSSPropertyID::Invalid, "Invalid attribute: %s", attribute.string().utf8());
     return getPropertyValueInternal(propertyID);
 }
 
 ExceptionOr<void> CSSStyleProperties::setPropertyValueForCamelCasedIDLAttribute(const AtomString& attribute, const String& value)
 {
     auto propertyID = lookupCSSPropertyFromIDLAttribute<CSSPropertyLookupMode::ConvertUsingNoDashPrefix>(attribute);
-    ASSERT_WITH_MESSAGE(propertyID != CSSPropertyInvalid, "Invalid attribute: %s", attribute.string().utf8());
+    ASSERT_WITH_MESSAGE(propertyID != CSSPropertyID::Invalid, "Invalid attribute: %s", attribute.string().utf8());
     return setPropertyInternal(propertyID, value, IsImportant::No);
 }
 
 String CSSStyleProperties::propertyValueForWebKitCasedIDLAttribute(const AtomString& attribute)
 {
     auto propertyID = lookupCSSPropertyFromIDLAttribute<CSSPropertyLookupMode::ConvertUsingDashPrefix>(attribute);
-    ASSERT_WITH_MESSAGE(propertyID != CSSPropertyInvalid, "Invalid attribute: %s", attribute.string().utf8());
+    ASSERT_WITH_MESSAGE(propertyID != CSSPropertyID::Invalid, "Invalid attribute: %s", attribute.string().utf8());
     return getPropertyValueInternal(propertyID);
 }
 
 ExceptionOr<void> CSSStyleProperties::setPropertyValueForWebKitCasedIDLAttribute(const AtomString& attribute, const String& value)
 {
     auto propertyID = lookupCSSPropertyFromIDLAttribute<CSSPropertyLookupMode::ConvertUsingDashPrefix>(attribute);
-    ASSERT_WITH_MESSAGE(propertyID != CSSPropertyInvalid, "Invalid attribute: %s", attribute.string().utf8());
+    ASSERT_WITH_MESSAGE(propertyID != CSSPropertyID::Invalid, "Invalid attribute: %s", attribute.string().utf8());
     return setPropertyInternal(propertyID, value, IsImportant::No);
 }
 
 String CSSStyleProperties::propertyValueForDashedIDLAttribute(const AtomString& attribute)
 {
     auto propertyID = lookupCSSPropertyFromIDLAttribute<CSSPropertyLookupMode::NoConversion>(attribute);
-    ASSERT_WITH_MESSAGE(propertyID != CSSPropertyInvalid, "Invalid attribute: %s", attribute.string().utf8());
+    ASSERT_WITH_MESSAGE(propertyID != CSSPropertyID::Invalid, "Invalid attribute: %s", attribute.string().utf8());
     return getPropertyValueInternal(propertyID);
 }
 
 ExceptionOr<void> CSSStyleProperties::setPropertyValueForDashedIDLAttribute(const AtomString& attribute, const String& value)
 {
     auto propertyID = lookupCSSPropertyFromIDLAttribute<CSSPropertyLookupMode::NoConversion>(attribute);
-    ASSERT_WITH_MESSAGE(propertyID != CSSPropertyInvalid, "Invalid attribute: %s", attribute.string().utf8());
+    ASSERT_WITH_MESSAGE(propertyID != CSSPropertyID::Invalid, "Invalid attribute: %s", attribute.string().utf8());
     return setPropertyInternal(propertyID, value, IsImportant::No);
 }
 
 String CSSStyleProperties::propertyValueForEpubCasedIDLAttribute(const AtomString& attribute)
 {
     auto propertyID = lookupCSSPropertyFromIDLAttribute<CSSPropertyLookupMode::ConvertUsingDashPrefix>(attribute);
-    ASSERT_WITH_MESSAGE(propertyID != CSSPropertyInvalid, "Invalid attribute: %s", attribute.string().utf8());
+    ASSERT_WITH_MESSAGE(propertyID != CSSPropertyID::Invalid, "Invalid attribute: %s", attribute.string().utf8());
     return getPropertyValueInternal(propertyID);
 }
 
 ExceptionOr<void> CSSStyleProperties::setPropertyValueForEpubCasedIDLAttribute(const AtomString& attribute, const String& value)
 {
     auto propertyID = lookupCSSPropertyFromIDLAttribute<CSSPropertyLookupMode::ConvertUsingDashPrefix>(attribute);
-    ASSERT_WITH_MESSAGE(propertyID != CSSPropertyInvalid, "Invalid attribute: %s", attribute.string().utf8());
+    ASSERT_WITH_MESSAGE(propertyID != CSSPropertyID::Invalid, "Invalid attribute: %s", attribute.string().utf8());
     return setPropertyInternal(propertyID, value, IsImportant::No);
 }
 
 String CSSStyleProperties::cssFloat()
 {
-    return getPropertyValueInternal(CSSPropertyFloat);
+    return getPropertyValueInternal(CSSPropertyID::Float);
 }
 
 ExceptionOr<void> CSSStyleProperties::setCssFloat(const String& value)
 {
-    return setPropertyInternal(CSSPropertyFloat, value, IsImportant::No);
+    return setPropertyInternal(CSSPropertyID::Float, value, IsImportant::No);
 }
 
 // MARK: - PropertySetCSSStyleProperties
@@ -420,7 +420,7 @@ ExceptionOr<void> PropertySetCSSStyleProperties::setProperty(const String& prope
 
     CSSPropertyID propertyID = cssPropertyID(propertyName);
     if (isCustomPropertyName(propertyName))
-        propertyID = CSSPropertyCustom;
+        propertyID = CSSPropertyID::Custom;
 
     if (!isExposed(propertyID))
         return { };
@@ -433,7 +433,7 @@ ExceptionOr<void> PropertySetCSSStyleProperties::setProperty(const String& prope
         return { };
 
     bool changed;
-    if (propertyID == CSSPropertyCustom) [[unlikely]]
+    if (propertyID == CSSPropertyID::Custom) [[unlikely]]
         changed = protect(m_propertySet)->setCustomProperty(propertyName, value, cssParserContext(), important ? IsImportant::Yes : IsImportant::No);
     else
         changed = protect(m_propertySet)->setProperty(propertyID, value, cssParserContext(), important ? IsImportant::Yes : IsImportant::No);
@@ -454,7 +454,7 @@ ExceptionOr<String> PropertySetCSSStyleProperties::removeProperty(const String& 
     StyleAttributeMutationScope mutationScope { parentElement() };
     CSSPropertyID propertyID = cssPropertyID(propertyName);
     if (isCustomPropertyName(propertyName))
-        propertyID = CSSPropertyCustom;
+        propertyID = CSSPropertyID::Custom;
     if (!isExposed(propertyID))
         return String();
 
@@ -462,7 +462,7 @@ ExceptionOr<String> PropertySetCSSStyleProperties::removeProperty(const String& 
         return String();
 
     String result;
-    bool changed = propertyID != CSSPropertyCustom ? protect(m_propertySet)->removeProperty(propertyID, &result) : protect(m_propertySet)->removeCustomProperty(propertyName, &result);
+    bool changed = propertyID != CSSPropertyID::Custom ? protect(m_propertySet)->removeProperty(propertyID, &result) : protect(m_propertySet)->removeCustomProperty(propertyName, &result);
 
     didMutate(changed ? MutationType::PropertyChanged : MutationType::NoChanges);
 
@@ -504,7 +504,7 @@ ExceptionOr<void> PropertySetCSSStyleProperties::setPropertyInternal(CSSProperty
 
 bool PropertySetCSSStyleProperties::isExposed(CSSPropertyID propertyID) const
 {
-    if (propertyID == CSSPropertyInvalid)
+    if (propertyID == CSSPropertyID::Invalid)
         return false;
 
     auto parserContext = cssParserContext();

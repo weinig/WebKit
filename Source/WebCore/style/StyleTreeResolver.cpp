@@ -977,7 +977,7 @@ ElementUpdate TreeResolver::createAnimatedElementUpdate(ResolvedStyle&& resolved
             return false;
         if (unanimatedDisplay != animatedDisplay)
             return true;
-        return keyframeEffectStack->containsProperty(CSSPropertyDisplay);
+        return keyframeEffectStack->containsProperty(CSSPropertyID::Display);
     }();
 
     SUPPRESS_UNCOUNTED_ARG if (!affectsRenderedSubtree(styleable.element, *newStyle) && !animationsAffectedDisplay) {

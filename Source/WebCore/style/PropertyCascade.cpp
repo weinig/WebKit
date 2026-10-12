@@ -108,8 +108,8 @@ PropertyCascade::AnimationLayer::AnimationLayer(const HashMap<AnimatableCSSPrope
         }
     }
 
-    hasFontSize = properties.contains(CSSPropertyFontSize);
-    hasLineHeight = properties.contains(CSSPropertyLineHeight);
+    hasFontSize = properties.contains(CSSPropertyID::FontSize);
+    hasLineHeight = properties.contains(CSSPropertyID::LineHeight);
 }
 
 void PropertyCascade::buildCascade()
@@ -230,14 +230,14 @@ void PropertyCascade::setDelayingForRuleRollback(CSSPropertyID propertyID, CSSVa
 
 bool PropertyCascade::hasProperty(CSSPropertyID propertyID, const CSSValue& value)
 {
-    if (propertyID == CSSPropertyCustom)
+    if (propertyID == CSSPropertyID::Custom)
         return hasCustomProperty(downcast<CSSCustomPropertyValue>(value).name());
     return propertyID < firstLogicalGroupProperty ? hasNormalProperty(propertyID) : hasLogicalGroupProperty(propertyID);
 }
 
 bool PropertyCascade::mayOverrideExistingProperty(CSSPropertyID propertyID, const CSSValue& value)
 {
-    if (propertyID == CSSPropertyCustom)
+    if (propertyID == CSSPropertyID::Custom)
         return hasCustomProperty(downcast<CSSCustomPropertyValue>(value).name());
     if (propertyID < firstLogicalGroupProperty)
         return hasNormalProperty(propertyID);
@@ -249,8 +249,8 @@ bool PropertyCascade::mayOverrideExistingProperty(CSSPropertyID propertyID, cons
 
 const PropertyCascade::Property& PropertyCascade::functionResultProperty() const
 {
-    ASSERT(hasNormalProperty(CSSPropertyResult));
-    return normalProperty(CSSPropertyResult);
+    ASSERT(hasNormalProperty(CSSPropertyID::Result));
+    return normalProperty(CSSPropertyID::Result);
 }
 
 const PropertyCascade::Property* PropertyCascade::lastPropertyResolvingLogicalPropertyPair(CSSPropertyID propertyID, WritingMode writingMode) const
@@ -262,7 +262,7 @@ const PropertyCascade::Property* PropertyCascade::lastPropertyResolvingLogicalPr
             return CSSProperty::resolveDirectionAwareProperty(propertyID, writingMode);
         return CSSProperty::unresolvePhysicalProperty(propertyID, writingMode);
     }();
-    ASSERT(pairID != CSSPropertyInvalid);
+    ASSERT(pairID != CSSPropertyID::Invalid);
 
     auto indexForPropertyID = logicalGroupPropertyIndex(propertyID);
     auto indexForPairID = logicalGroupPropertyIndex(pairID);
@@ -416,9 +416,9 @@ bool PropertyCascade::shouldApplyAfterAnimation(const StyleProperties::PropertyR
     // Check for 'em' units and similar property dependencies.
     if (m_animationLayer->hasFontSize || m_animationLayer->hasLineHeight) {
         auto dependencies = protect(property.value())->computedStyleDependencies();
-        if (m_animationLayer->hasFontSize && dependencies.properties.contains(CSSPropertyFontSize))
+        if (m_animationLayer->hasFontSize && dependencies.properties.contains(CSSPropertyID::FontSize))
             return true;
-        if (m_animationLayer->hasLineHeight && dependencies.properties.contains(CSSPropertyLineHeight))
+        if (m_animationLayer->hasLineHeight && dependencies.properties.contains(CSSPropertyID::LineHeight))
             return true;
     }
 

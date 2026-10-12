@@ -72,22 +72,22 @@ static const CSSPropertyID firstLowPriorityProperty = static_cast<CSSPropertyID>
 inline bool NODELETE isValidVisitedLinkProperty(CSSPropertyID id)
 {
     switch (id) {
-    case CSSPropertyBackgroundColor:
-    case CSSPropertyBorderLeftColor:
-    case CSSPropertyBorderRightColor:
-    case CSSPropertyBorderTopColor:
-    case CSSPropertyBorderBottomColor:
-    case CSSPropertyCaretColor:
-    case CSSPropertyColor:
-    case CSSPropertyOutlineColor:
-    case CSSPropertyColumnRuleColor:
-    case CSSPropertyTextDecorationColor:
-    case CSSPropertyTextEmphasisColor:
-    case CSSPropertyWebkitTextFillColor:
-    case CSSPropertyWebkitTextStrokeColor:
-    case CSSPropertyFill:
-    case CSSPropertyStroke:
-    case CSSPropertyStrokeColor:
+    case CSSPropertyID::BackgroundColor:
+    case CSSPropertyID::BorderLeftColor:
+    case CSSPropertyID::BorderRightColor:
+    case CSSPropertyID::BorderTopColor:
+    case CSSPropertyID::BorderBottomColor:
+    case CSSPropertyID::CaretColor:
+    case CSSPropertyID::Color:
+    case CSSPropertyID::OutlineColor:
+    case CSSPropertyID::ColumnRuleColor:
+    case CSSPropertyID::TextDecorationColor:
+    case CSSPropertyID::TextEmphasisColor:
+    case CSSPropertyID::WebkitTextFillColor:
+    case CSSPropertyID::WebkitTextStrokeColor:
+    case CSSPropertyID::Fill:
+    case CSSPropertyID::Stroke:
+    case CSSPropertyID::StrokeColor:
         return true;
     default:
         break;
@@ -154,7 +154,7 @@ void Builder::applyHighPriorityProperties()
     applyProperties(firstHighPriorityProperty, lastHighPriorityProperty);
     m_state->updateFont();
     // This needs to apply before other properties for the `lh` unit, but after updating the font.
-    applyProperties(CSSPropertyLineHeight, CSSPropertyLineHeight);
+    applyProperties(CSSPropertyID::LineHeight, CSSPropertyID::LineHeight);
 }
 
 void Builder::applyNonHighPriorityProperties()
@@ -194,7 +194,7 @@ inline void Builder::applyPropertiesImpl(CSSPropertyID firstProperty, CSSPropert
 {
     auto applyProperty = [&](size_t index) ALWAYS_INLINE_LAMBDA {
         CSSPropertyID propertyID = static_cast<CSSPropertyID>(index);
-        ASSERT(propertyID != CSSPropertyCustom);
+        ASSERT(propertyID != CSSPropertyID::Custom);
         auto& property = m_cascade.normalProperty(propertyID);
 
         if constexpr (trackCycles == CustomPropertyCycleTracking::Enabled) {
@@ -335,7 +335,7 @@ inline void Builder::applyCascadeProperty(const PropertyCascade::Property& prope
 
 bool Builder::applyRollbackCascadeProperty(const PropertyCascade& rollbackCascade, CSSPropertyID propertyID, SelectorChecker::LinkMatchMask linkMatchMask)
 {
-    ASSERT(propertyID != CSSPropertyCustom);
+    ASSERT(propertyID != CSSPropertyID::Custom);
 
     auto* rollbackProperty = [&]() -> const PropertyCascade::Property* {
         if (propertyID < firstLogicalGroupProperty) {
@@ -379,7 +379,7 @@ bool Builder::applyRollbackCascadeCustomProperty(const PropertyCascade& rollback
 void Builder::applyProperty(CSSPropertyID id, CSSValue& value, SelectorChecker::LinkMatchMask linkMatchMask, PropertyCascade::Origin cascadeOrigin)
 {
     ASSERT_WITH_MESSAGE(!isShorthand(id), "Shorthand property id = %d wasn't expanded at parsing time", std::to_underlying(id));
-    ASSERT_WITH_MESSAGE(id != CSSPropertyCustom, "Custom property should be handled by applyCustomProperty");
+    ASSERT_WITH_MESSAGE(id != CSSPropertyID::Custom, "Custom property should be handled by applyCustomProperty");
 
     auto& style = m_state->style();
 
@@ -469,7 +469,7 @@ void Builder::applyProperty(CSSPropertyID id, CSSValue& value, SelectorChecker::
         }
     }
 
-    if (id == CSSPropertyPageSize && valueType == ApplyValueType::Value) [[unlikely]] {
+    if (id == CSSPropertyID::PageSize && valueType == ApplyValueType::Value) [[unlikely]] {
         applyPageSizeDescriptor(valueToApply.get());
         return;
     }
@@ -705,7 +705,7 @@ std::optional<Builder::CustomPropertyOrKeyword> Builder::resolveFunctionResult()
     // resolveFunctionResult is only called while evaluating a custom function.
     ASSERT(m_state->callingContextBuilder());
 
-    if (!m_cascade.hasNormalProperty(CSSPropertyResult))
+    if (!m_cascade.hasNormalProperty(CSSPropertyID::Result))
         return { };
 
     BuilderStatePropertyScope resultScope(m_state, &m_cascade.functionResultProperty());
@@ -795,7 +795,7 @@ std::optional<Builder::CustomPropertyOrKeyword> Builder::computeCustomPropertyVa
                 m_state->m_invalidAtComputedValueTimeProperties.set(std::to_underlying(property));
                 hasCycles = true;
             }
-            if (property == CSSPropertyFontSize)
+            if (property == CSSPropertyID::FontSize)
                 isFontDependent = true;
         }
     };

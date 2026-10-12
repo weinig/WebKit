@@ -216,7 +216,7 @@ void CSSCounterStyleRule::setName(const String& text)
 
 void CSSCounterStyleRule::setSystem(const String& text)
 {
-    auto systemValue = cssValueFromText(CSSPropertySystem, text);
+    auto systemValue = cssValueFromText(CSSPropertyID::System, text);
     if (!systemValue)
         return;
     auto system = toCounterStyleSystemEnum(systemValue.get());
@@ -231,7 +231,7 @@ void CSSCounterStyleRule::setSystem(const String& text)
 
 void CSSCounterStyleRule::setNegative(const String& text)
 {
-    auto newValue = cssValueFromText(CSSPropertyNegative, text);
+    auto newValue = cssValueFromText(CSSPropertyID::Negative, text);
     if (!newValue)
         return;
     CSSStyleSheet::RuleMutationScope mutationScope(this);
@@ -240,7 +240,7 @@ void CSSCounterStyleRule::setNegative(const String& text)
 
 void CSSCounterStyleRule::setPrefix(const String& text)
 {
-    auto newValue = cssValueFromText(CSSPropertyPrefix, text);
+    auto newValue = cssValueFromText(CSSPropertyID::Prefix, text);
     if (!newValue)
         return;
     CSSStyleSheet::RuleMutationScope mutationScope(this);
@@ -249,7 +249,7 @@ void CSSCounterStyleRule::setPrefix(const String& text)
 
 void CSSCounterStyleRule::setSuffix(const String& text)
 {
-    auto newValue = cssValueFromText(CSSPropertySuffix, text);
+    auto newValue = cssValueFromText(CSSPropertyID::Suffix, text);
     if (!newValue)
         return;
     CSSStyleSheet::RuleMutationScope mutationScope(this);
@@ -258,7 +258,7 @@ void CSSCounterStyleRule::setSuffix(const String& text)
 
 void CSSCounterStyleRule::setRange(const String& text)
 {
-    auto newValue = cssValueFromText(CSSPropertyRange, text);
+    auto newValue = cssValueFromText(CSSPropertyID::Range, text);
     if (!newValue)
         return;
     CSSStyleSheet::RuleMutationScope mutationScope(this);
@@ -267,7 +267,7 @@ void CSSCounterStyleRule::setRange(const String& text)
 
 void CSSCounterStyleRule::setPad(const String& text)
 {
-    auto newValue = cssValueFromText(CSSPropertyPad, text);
+    auto newValue = cssValueFromText(CSSPropertyID::Pad, text);
     if (!newValue)
         return;
     CSSStyleSheet::RuleMutationScope mutationScope(this);
@@ -276,7 +276,7 @@ void CSSCounterStyleRule::setPad(const String& text)
 
 void CSSCounterStyleRule::setFallback(const String& text)
 {
-    auto newValue = cssValueFromText(CSSPropertyFallback, text);
+    auto newValue = cssValueFromText(CSSPropertyID::Fallback, text);
     if (!newValue)
         return;
     CSSStyleSheet::RuleMutationScope mutationScope(this);
@@ -285,7 +285,7 @@ void CSSCounterStyleRule::setFallback(const String& text)
 
 void CSSCounterStyleRule::setSymbols(const String& text)
 {
-    auto newValue = cssValueFromText(CSSPropertySymbols, text);
+    auto newValue = cssValueFromText(CSSPropertyID::Symbols, text);
     if (!newValue)
         return;
     CSSStyleSheet::RuleMutationScope mutationScope(this);
@@ -294,7 +294,7 @@ void CSSCounterStyleRule::setSymbols(const String& text)
 
 void CSSCounterStyleRule::setAdditiveSymbols(const String& text)
 {
-    auto newValue = cssValueFromText(CSSPropertyAdditiveSymbols, text);
+    auto newValue = cssValueFromText(CSSPropertyID::AdditiveSymbols, text);
     if (!newValue)
         return;
     CSSStyleSheet::RuleMutationScope mutationScope(this);

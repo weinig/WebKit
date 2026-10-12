@@ -445,12 +445,12 @@ template<CSSPropertyID property> static RefPtr<CSSValue> consumeBackgroundSize(C
             vertical = CSSPrimitiveValueResolver<CSS::LengthPercentage<CSS::Nonnegative>>::consumeAndResolve(range, state);
     }
     if (!vertical) {
-        if constexpr (property == CSSPropertyWebkitBackgroundSize) {
+        if constexpr (property == CSSPropertyID::WebkitBackgroundSize) {
             // Legacy syntax: "-webkit-background-size: 10px" is equivalent to "background-size: 10px 10px".
             vertical = horizontal;
-        } else if constexpr (property == CSSPropertyBackgroundSize) {
+        } else if constexpr (property == CSSPropertyID::BackgroundSize) {
             vertical = CSSKeywordValue::create(CSSValueAuto);
-        } else if constexpr (property == CSSPropertyMaskSize) {
+        } else if constexpr (property == CSSPropertyID::MaskSize) {
             return horizontal;
         }
     }
@@ -465,13 +465,13 @@ RefPtr<CSSValue> consumeSingleBackgroundSize(CSSParserTokenRange& range, CSS::Pr
     // <single-background-size> = <bg-size>
     // https://drafts.csswg.org/css-backgrounds/#background-size
 
-    return consumeBackgroundSize<CSSPropertyBackgroundSize>(range, state);
+    return consumeBackgroundSize<CSSPropertyID::BackgroundSize>(range, state);
 }
 
 RefPtr<CSSValue> consumeSingleWebkitBackgroundSize(CSSParserTokenRange& range, CSS::PropertyParserState& state)
 {
     // Non-standard.
-    return consumeBackgroundSize<CSSPropertyWebkitBackgroundSize>(range, state);
+    return consumeBackgroundSize<CSSPropertyID::WebkitBackgroundSize>(range, state);
 }
 
 RefPtr<CSSValue> consumeSingleMaskSize(CSSParserTokenRange& range, CSS::PropertyParserState& state)
@@ -479,7 +479,7 @@ RefPtr<CSSValue> consumeSingleMaskSize(CSSParserTokenRange& range, CSS::Property
     // <single-mask-size> = <bg-size>
     // https://drafts.fxtf.org/css-masking/#the-mask-size
 
-    return consumeBackgroundSize<CSSPropertyMaskSize>(range, state);
+    return consumeBackgroundSize<CSSPropertyID::MaskSize>(range, state);
 }
 
 // MARK: - Background Repeat

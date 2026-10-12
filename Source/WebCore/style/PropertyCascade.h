@@ -168,7 +168,7 @@ private:
     HashMap<std::pair<unsigned, AtomString>, Deque<DelayedRollbackProperty>> m_delayedRollbackProperties;
 
     // The CSSPropertyID enum is sorted like this:
-    // 1. CSSPropertyInvalid and CSSPropertyCustom.
+    // 1. CSSPropertyID::Invalid and CSSPropertyID::Custom.
     // 2. Normal longhand properties (high priority ones followed by low priority ones).
     // 3. Longhand properties in a logical property group.
     // 4. Shorthand properties.

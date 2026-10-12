@@ -361,7 +361,7 @@ class VisibilityWrapper final : public Wrapper<Visibility> {
     WTF_DEPRECATED_MAKE_FAST_ALLOCATED_WITH_HEAP_IDENTIFIER(VisibilityWrapper, Animation);
 public:
     VisibilityWrapper()
-        : Wrapper(CSSPropertyVisibility, &ComputedStyleProperties::visibility, &ComputedStyleProperties::setVisibility)
+        : Wrapper(CSSPropertyID::Visibility, &ComputedStyleProperties::visibility, &ComputedStyleProperties::setVisibility)
     {
     }
 

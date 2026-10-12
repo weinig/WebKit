@@ -224,7 +224,7 @@ bool ShorthandSerializer::commonSerializationChecks(const Style::Extractor& prop
 {
     ASSERT(length() && length() <= maxShorthandLength);
 
-    ASSERT(m_shorthand.id() != CSSPropertyAll);
+    ASSERT(m_shorthand.id() != CSSPropertyID::All);
 
     for (unsigned i = 0; i < length(); ++i) {
         auto longhandValue = properties.propertyValue(longhandProperty(i));
@@ -241,7 +241,7 @@ bool ShorthandSerializer::commonSerializationChecks(const Style::Extractor& prop
 bool ShorthandSerializer::commonSerializationChecks(const StyleProperties& properties)
 {
     ASSERT(length());
-    ASSERT(length() <= maxShorthandLength || m_shorthand.id() == CSSPropertyAll);
+    ASSERT(length() <= maxShorthandLength || m_shorthand.id() == CSSPropertyID::All);
 
     std::optional<CSSValueID> specialKeyword;
     bool allSpecialKeywords = true;
@@ -258,7 +258,7 @@ bool ShorthandSerializer::commonSerializationChecks(const StyleProperties& prope
             // it happens to be absent from the property set — treat it as if it were present and
             // set to its initial value instead.
             if (isInternal(longhand)) {
-                if (m_shorthand.id() != CSSPropertyAll)
+                if (m_shorthand.id() != CSSPropertyID::All)
                     m_longhandValues[i] = initialCSSValueForLonghand(longhand);
                 continue;
             }
@@ -308,7 +308,7 @@ bool ShorthandSerializer::commonSerializationChecks(const StyleProperties& prope
                 return true;
         }
 
-        if (m_shorthand.id() != CSSPropertyAll)
+        if (m_shorthand.id() != CSSPropertyID::All)
             m_longhandValues[i] = WTF::move(value);
     }
     if (specialKeyword) {
@@ -328,185 +328,185 @@ String ShorthandSerializer::serialize()
         return WTF::move(m_result);
 
     switch (m_shorthand.id()) {
-    case CSSPropertyAll:
+    case CSSPropertyID::All:
         return String();
-    case CSSPropertyAnimation:
-    case CSSPropertyBackground:
-    case CSSPropertyBackgroundPosition:
-    case CSSPropertyMask:
-    case CSSPropertyMaskPosition:
-    case CSSPropertyTransition:
-    case CSSPropertyWebkitMask:
-    case CSSPropertyWebkitMaskPosition:
+    case CSSPropertyID::Animation:
+    case CSSPropertyID::Background:
+    case CSSPropertyID::BackgroundPosition:
+    case CSSPropertyID::Mask:
+    case CSSPropertyID::MaskPosition:
+    case CSSPropertyID::Transition:
+    case CSSPropertyID::WebkitMask:
+    case CSSPropertyID::WebkitMaskPosition:
         return serializeLayered();
-    case CSSPropertyBorder:
+    case CSSPropertyID::Border:
         return serializeBorder(4);
-    case CSSPropertyBorderBlock:
-    case CSSPropertyBorderInline:
+    case CSSPropertyID::BorderBlock:
+    case CSSPropertyID::BorderInline:
         return serializeBorder(2);
-    case CSSPropertyBorderBlockColor:
-    case CSSPropertyBorderBlockStyle:
-    case CSSPropertyBorderBlockWidth:
-    case CSSPropertyBorderInlineColor:
-    case CSSPropertyBorderInlineStyle:
-    case CSSPropertyBorderInlineWidth:
-    case CSSPropertyBorderSpacing:
-    case CSSPropertyContainIntrinsicSize:
-    case CSSPropertyCornerBlockEndShape:
-    case CSSPropertyCornerBlockStartShape:
-    case CSSPropertyCornerBottomShape:
-    case CSSPropertyCornerInlineEndShape:
-    case CSSPropertyCornerInlineStartShape:
-    case CSSPropertyCornerLeftShape:
-    case CSSPropertyCornerRightShape:
-    case CSSPropertyCornerTopShape:
-    case CSSPropertyGap:
-    case CSSPropertyInsetBlock:
-    case CSSPropertyInsetInline:
-    case CSSPropertyMarginBlock:
-    case CSSPropertyMarginInline:
-    case CSSPropertyMaxSize:
-    case CSSPropertyMinSize:
-    case CSSPropertyOverflow:
-    case CSSPropertyOverscrollBehavior:
-    case CSSPropertyPaddingBlock:
-    case CSSPropertyPaddingInline:
-    case CSSPropertyPlaceContent:
-    case CSSPropertyPlaceItems:
-    case CSSPropertyPlaceSelf:
-    case CSSPropertyScrollMarginBlock:
-    case CSSPropertyScrollMarginInline:
-    case CSSPropertyScrollPaddingBlock:
-    case CSSPropertyScrollPaddingInline:
-    case CSSPropertySize:
+    case CSSPropertyID::BorderBlockColor:
+    case CSSPropertyID::BorderBlockStyle:
+    case CSSPropertyID::BorderBlockWidth:
+    case CSSPropertyID::BorderInlineColor:
+    case CSSPropertyID::BorderInlineStyle:
+    case CSSPropertyID::BorderInlineWidth:
+    case CSSPropertyID::BorderSpacing:
+    case CSSPropertyID::ContainIntrinsicSize:
+    case CSSPropertyID::CornerBlockEndShape:
+    case CSSPropertyID::CornerBlockStartShape:
+    case CSSPropertyID::CornerBottomShape:
+    case CSSPropertyID::CornerInlineEndShape:
+    case CSSPropertyID::CornerInlineStartShape:
+    case CSSPropertyID::CornerLeftShape:
+    case CSSPropertyID::CornerRightShape:
+    case CSSPropertyID::CornerTopShape:
+    case CSSPropertyID::Gap:
+    case CSSPropertyID::InsetBlock:
+    case CSSPropertyID::InsetInline:
+    case CSSPropertyID::MarginBlock:
+    case CSSPropertyID::MarginInline:
+    case CSSPropertyID::MaxSize:
+    case CSSPropertyID::MinSize:
+    case CSSPropertyID::Overflow:
+    case CSSPropertyID::OverscrollBehavior:
+    case CSSPropertyID::PaddingBlock:
+    case CSSPropertyID::PaddingInline:
+    case CSSPropertyID::PlaceContent:
+    case CSSPropertyID::PlaceItems:
+    case CSSPropertyID::PlaceSelf:
+    case CSSPropertyID::ScrollMarginBlock:
+    case CSSPropertyID::ScrollMarginInline:
+    case CSSPropertyID::ScrollPaddingBlock:
+    case CSSPropertyID::ScrollPaddingInline:
+    case CSSPropertyID::Size:
         return serializePair();
-    case CSSPropertyCornerTopLeft:
-    case CSSPropertyCornerTopRight:
-    case CSSPropertyCornerBottomLeft:
-    case CSSPropertyCornerBottomRight:
-    case CSSPropertyCornerStartStart:
-    case CSSPropertyCornerStartEnd:
-    case CSSPropertyCornerEndStart:
-    case CSSPropertyCornerEndEnd:
+    case CSSPropertyID::CornerTopLeft:
+    case CSSPropertyID::CornerTopRight:
+    case CSSPropertyID::CornerBottomLeft:
+    case CSSPropertyID::CornerBottomRight:
+    case CSSPropertyID::CornerStartStart:
+    case CSSPropertyID::CornerStartEnd:
+    case CSSPropertyID::CornerEndStart:
+    case CSSPropertyID::CornerEndEnd:
         return serializeCornerSingle();
-    case CSSPropertyCornerTop:
-    case CSSPropertyCornerRight:
-    case CSSPropertyCornerBottom:
-    case CSSPropertyCornerLeft:
-    case CSSPropertyCornerBlockStart:
-    case CSSPropertyCornerBlockEnd:
-    case CSSPropertyCornerInlineStart:
-    case CSSPropertyCornerInlineEnd:
+    case CSSPropertyID::CornerTop:
+    case CSSPropertyID::CornerRight:
+    case CSSPropertyID::CornerBottom:
+    case CSSPropertyID::CornerLeft:
+    case CSSPropertyID::CornerBlockStart:
+    case CSSPropertyID::CornerBlockEnd:
+    case CSSPropertyID::CornerInlineStart:
+    case CSSPropertyID::CornerInlineEnd:
         return serializeCornerPair();
-    case CSSPropertyCorner:
+    case CSSPropertyID::Corner:
         return serializeCornerQuad();
-    case CSSPropertyBlockStep:
-    case CSSPropertyBorderBlockEnd:
-    case CSSPropertyBorderBlockStart:
-    case CSSPropertyBorderBottom:
-    case CSSPropertyBorderInlineEnd:
-    case CSSPropertyBorderInlineStart:
-    case CSSPropertyBorderLeft:
-    case CSSPropertyBorderRight:
-    case CSSPropertyBorderTop:
-    case CSSPropertyColumnRule:
-    case CSSPropertyColumns:
-    case CSSPropertyFlexFlow:
-    case CSSPropertyListStyle:
-    case CSSPropertyOutline:
-    case CSSPropertyTextEmphasis:
-    case CSSPropertyTextDecoration:
+    case CSSPropertyID::BlockStep:
+    case CSSPropertyID::BorderBlockEnd:
+    case CSSPropertyID::BorderBlockStart:
+    case CSSPropertyID::BorderBottom:
+    case CSSPropertyID::BorderInlineEnd:
+    case CSSPropertyID::BorderInlineStart:
+    case CSSPropertyID::BorderLeft:
+    case CSSPropertyID::BorderRight:
+    case CSSPropertyID::BorderTop:
+    case CSSPropertyID::ColumnRule:
+    case CSSPropertyID::Columns:
+    case CSSPropertyID::FlexFlow:
+    case CSSPropertyID::ListStyle:
+    case CSSPropertyID::Outline:
+    case CSSPropertyID::TextEmphasis:
+    case CSSPropertyID::TextDecoration:
         return serializeLonghandsOmittingInitialValues();
-    case CSSPropertyWebkitTextStroke:
+    case CSSPropertyID::WebkitTextStroke:
         return serializeLonghands();
-    case CSSPropertyBorderColor:
-    case CSSPropertyBorderStyle:
-    case CSSPropertyBorderWidth:
-    case CSSPropertyCornerShape:
-    case CSSPropertyInset:
-    case CSSPropertyMargin:
-    case CSSPropertyPadding:
-    case CSSPropertyScrollMargin:
-    case CSSPropertyScrollPadding:
+    case CSSPropertyID::BorderColor:
+    case CSSPropertyID::BorderStyle:
+    case CSSPropertyID::BorderWidth:
+    case CSSPropertyID::CornerShape:
+    case CSSPropertyID::Inset:
+    case CSSPropertyID::Margin:
+    case CSSPropertyID::Padding:
+    case CSSPropertyID::ScrollMargin:
+    case CSSPropertyID::ScrollPadding:
         return serializeQuad();
-    case CSSPropertyBorderImage:
-    case CSSPropertyWebkitBorderImage:
+    case CSSPropertyID::BorderImage:
+    case CSSPropertyID::WebkitBorderImage:
         return serializeBorderImage();
-    case CSSPropertyWebkitMaskBoxImage:
-    case CSSPropertyMaskBorder:
+    case CSSPropertyID::WebkitMaskBoxImage:
+    case CSSPropertyID::MaskBorder:
         return serializeMaskBorder();
-    case CSSPropertyBorderRadius:
-    case CSSPropertyWebkitBorderRadius:
+    case CSSPropertyID::BorderRadius:
+    case CSSPropertyID::WebkitBorderRadius:
         return serializeBorderRadius();
-    case CSSPropertyBorderBlockEndRadius:
-    case CSSPropertyBorderBlockStartRadius:
-    case CSSPropertyBorderBottomRadius:
-    case CSSPropertyBorderInlineEndRadius:
-    case CSSPropertyBorderInlineStartRadius:
-    case CSSPropertyBorderLeftRadius:
-    case CSSPropertyBorderRightRadius:
-    case CSSPropertyBorderTopRadius:
+    case CSSPropertyID::BorderBlockEndRadius:
+    case CSSPropertyID::BorderBlockStartRadius:
+    case CSSPropertyID::BorderBottomRadius:
+    case CSSPropertyID::BorderInlineEndRadius:
+    case CSSPropertyID::BorderInlineStartRadius:
+    case CSSPropertyID::BorderLeftRadius:
+    case CSSPropertyID::BorderRightRadius:
+    case CSSPropertyID::BorderTopRadius:
         return serializeBorderRadiusSide();
-    case CSSPropertyContainer:
+    case CSSPropertyID::Container:
         return serializeLonghandsOmittingTrailingInitialValue(" / "_s);
-    case CSSPropertyFlex:
-    case CSSPropertyPerspectiveOrigin:
+    case CSSPropertyID::Flex:
+    case CSSPropertyID::PerspectiveOrigin:
         return serializeLonghands();
-    case CSSPropertyFont:
+    case CSSPropertyID::Font:
         return serializeFont();
-    case CSSPropertyFontVariant:
+    case CSSPropertyID::FontVariant:
         return serializeFontVariant();
-    case CSSPropertyFontSynthesis:
+    case CSSPropertyID::FontSynthesis:
         return serializeFontSynthesis();
-    case CSSPropertyGrid:
+    case CSSPropertyID::Grid:
         return serializeGrid();
-    case CSSPropertyGridArea:
+    case CSSPropertyID::GridArea:
         return serializeGridArea();
-    case CSSPropertyGridColumn:
-    case CSSPropertyGridRow:
+    case CSSPropertyID::GridColumn:
+    case CSSPropertyID::GridRow:
         return serializeGridRowColumn();
-    case CSSPropertyGridTemplate:
+    case CSSPropertyID::GridTemplate:
         return serializeGridTemplate();
-    case CSSPropertyHyphenateLimitChars:
+    case CSSPropertyID::HyphenateLimitChars:
         return serializeHyphenateLimitChars();
-    case CSSPropertyLineClamp:
+    case CSSPropertyID::LineClamp:
         return serializeLineClamp();
-    case CSSPropertyWebkitLineClamp:
+    case CSSPropertyID::WebkitLineClamp:
         return serializeLegacyLineClamp();
-    case CSSPropertyMarker:
+    case CSSPropertyID::Marker:
         return serializeCommonValue();
-    case CSSPropertyOffset:
+    case CSSPropertyID::Offset:
         return serializeOffset();
-    case CSSPropertyPageBreakAfter:
-    case CSSPropertyPageBreakBefore:
+    case CSSPropertyID::PageBreakAfter:
+    case CSSPropertyID::PageBreakBefore:
         return serializePageBreak();
-    case CSSPropertyPageBreakInside:
-    case CSSPropertyWebkitColumnBreakInside:
+    case CSSPropertyID::PageBreakInside:
+    case CSSPropertyID::WebkitColumnBreakInside:
         return serializeBreakInside();
-    case CSSPropertyPositionTry:
+    case CSSPropertyID::PositionTry:
         return serializePositionTry();
-    case CSSPropertyTextDecorationSkip:
-    case CSSPropertyWebkitBackgroundSize:
-    case CSSPropertyWebkitPerspective:
-    case CSSPropertyWebkitTextOrientation:
+    case CSSPropertyID::TextDecorationSkip:
+    case CSSPropertyID::WebkitBackgroundSize:
+    case CSSPropertyID::WebkitPerspective:
+    case CSSPropertyID::WebkitTextOrientation:
         return serializeLonghandValue(0);
-    case CSSPropertyTransformOrigin:
+    case CSSPropertyID::TransformOrigin:
         return serializeLonghandsOmittingTrailingInitialValue();
-    case CSSPropertyTextWrap:
+    case CSSPropertyID::TextWrap:
         return serializeTextWrap();
-    case CSSPropertyTextBox:
+    case CSSPropertyID::TextBox:
         return serializeTextBox();
-    case CSSPropertyWebkitColumnBreakAfter:
-    case CSSPropertyWebkitColumnBreakBefore:
+    case CSSPropertyID::WebkitColumnBreakAfter:
+    case CSSPropertyID::WebkitColumnBreakBefore:
         return serializeColumnBreak();
-    case CSSPropertyWhiteSpace:
+    case CSSPropertyID::WhiteSpace:
         return serializeWhiteSpace();
-    case CSSPropertyScrollTimeline:
-    case CSSPropertyViewTimeline:
+    case CSSPropertyID::ScrollTimeline:
+    case CSSPropertyID::ViewTimeline:
         return serializeCoordinatingListPropertyGroup();
-    case CSSPropertyAnimationRange:
-    case CSSPropertyTimelineTriggerActivationRange:
-    case CSSPropertyTimelineTriggerActiveRange:
+    case CSSPropertyID::AnimationRange:
+    case CSSPropertyID::TimelineTriggerActivationRange:
+    case CSSPropertyID::TimelineTriggerActiveRange:
         return serializeAnimationRange();
     default:
         ASSERT_NOT_REACHED();
@@ -751,7 +751,7 @@ public:
         for (auto [j, longhand] : indexedRange(longhands)) {
             if (allSkipped ? j : m_skipSerializing[j])
                 continue;
-            if (longhand == CSSPropertyBackgroundSize || longhand == CSSPropertyMaskSize)
+            if (longhand == CSSPropertyID::BackgroundSize || longhand == CSSPropertyID::MaskSize)
                 separator = " / "_s;
             if (auto& value = m_values[j])
                 builder.append(separator, serializeLonghandValue(context, longhand, *value));
@@ -824,7 +824,7 @@ String ShorthandSerializer::serializeLayered() const
                 layerValues.set(j, protect(valueList->item(i)));
             else {
                 // Color is only in the last layer. Other singletons are only in the first.
-                auto singletonLayer = longhandProperty(j) == CSSPropertyBackgroundColor ? numLayers - 1 : 0;
+                auto singletonLayer = longhandProperty(j) == CSSPropertyID::BackgroundColor ? numLayers - 1 : 0;
                 layerValues.set(j, value.ptr(), i != singletonLayer);
             }
         }
@@ -836,11 +836,11 @@ String ShorthandSerializer::serializeLayered() const
             // A single box value sets both background-origin and background-clip.
             // A single geometry-box value sets both mask-origin and mask-clip.
             // A single geometry-box value sets both mask-origin and -webkit-mask-clip.
-            if (longhand == CSSPropertyBackgroundClip || longhand == CSSPropertyMaskClip || longhand == CSSPropertyWebkitMaskClip) {
+            if (longhand == CSSPropertyID::BackgroundClip || longhand == CSSPropertyID::MaskClip || longhand == CSSPropertyID::WebkitMaskClip) {
                 // The previous property is origin.
                 ASSERT(j >= 1);
-                ASSERT(longhandProperty(j - 1) == CSSPropertyBackgroundOrigin
-                    || longhandProperty(j - 1) == CSSPropertyMaskOrigin);
+                ASSERT(longhandProperty(j - 1) == CSSPropertyID::BackgroundOrigin
+                    || longhandProperty(j - 1) == CSSPropertyID::MaskOrigin);
                 if (layerValues.equalValueIDs(j - 1, j)) {
                     // If the two are the same, one value sets both.
                     if (!layerValues.skip(j - 1) && !layerValues.skip(j))
@@ -861,10 +861,10 @@ String ShorthandSerializer::serializeLayered() const
             // A single background-position value (identifier or numeric) sets the other value to center.
             // A single mask-position value (identifier or numeric) sets the other value to center.
             // Order matters when one is numeric, but not when both are identifiers.
-            if (longhand == CSSPropertyBackgroundPositionY || longhand == CSSPropertyWebkitMaskPositionY) {
+            if (longhand == CSSPropertyID::BackgroundPositionY || longhand == CSSPropertyID::WebkitMaskPositionY) {
                 // The previous property is X.
                 ASSERT(j >= 1);
-                ASSERT(longhandProperty(j - 1) == CSSPropertyBackgroundPositionX || longhandProperty(j - 1) == CSSPropertyWebkitMaskPositionX);
+                ASSERT(longhandProperty(j - 1) == CSSPropertyID::BackgroundPositionX || longhandProperty(j - 1) == CSSPropertyID::WebkitMaskPositionX);
                 if (length() == 2) {
                     ASSERT(j == 1);
                     layerValues.skip(0) = false;
@@ -881,7 +881,7 @@ String ShorthandSerializer::serializeLayered() const
             // this means that this "animation" shorthand only has initial values for the non
             // reset-only longhands and so we cannot serialize it. We only do this when we deal
             // with multiple layers since the single "none" case would be caught otherwise.
-            if (numLayers > 1 && longhand == CSSPropertyAnimationTimeline && !hasUnskippedValue)
+            if (numLayers > 1 && longhand == CSSPropertyID::AnimationTimeline && !hasUnskippedValue)
                 return String();
 
             if (layerValues.skip(j))
@@ -891,18 +891,18 @@ String ShorthandSerializer::serializeLayered() const
 
             // If we encounter one of the reset-only "animation" longhands and the value was not skipped,
             // then it was set to a non-initial value and we cannot serialize it.
-            if (longhand == CSSPropertyAnimationTimeline || longhand == CSSPropertyAnimationRangeStart || longhand == CSSPropertyAnimationRangeEnd)
+            if (longhand == CSSPropertyID::AnimationTimeline || longhand == CSSPropertyID::AnimationRangeStart || longhand == CSSPropertyID::AnimationRangeEnd)
                 return String();
 
             // The syntax for background-size means that if it is present, background-position must be too.
             // The syntax for mask-size means that if it is present, mask-position must be too.
-            if (longhand == CSSPropertyBackgroundSize || longhand == CSSPropertyMaskSize) {
+            if (longhand == CSSPropertyID::BackgroundSize || longhand == CSSPropertyID::MaskSize) {
                 // The previous properties are X and Y.
                 ASSERT(j >= 2);
-                ASSERT(longhandProperty(j - 2) == CSSPropertyBackgroundPositionX
-                    || longhandProperty(j - 2) == CSSPropertyWebkitMaskPositionX);
-                ASSERT(longhandProperty(j - 1) == CSSPropertyBackgroundPositionY
-                    || longhandProperty(j - 1) == CSSPropertyWebkitMaskPositionY);
+                ASSERT(longhandProperty(j - 2) == CSSPropertyID::BackgroundPositionX
+                    || longhandProperty(j - 2) == CSSPropertyID::WebkitMaskPositionX);
+                ASSERT(longhandProperty(j - 1) == CSSPropertyID::BackgroundPositionY
+                    || longhandProperty(j - 1) == CSSPropertyID::WebkitMaskPositionY);
                 layerValues.skip(j - 2) = false;
                 layerValues.skip(j - 1) = false;
             }
@@ -910,19 +910,19 @@ String ShorthandSerializer::serializeLayered() const
             // The first value in each animation shorthand that can be parsed as a time is assigned to
             // animation-duration, and the second is assigned to animation-delay, so we must serialize
             // both if we are serializing animation-delay.
-            if (longhand == CSSPropertyAnimationDelay)
-                layerValues.skip(longhandIndex(0, CSSPropertyAnimationDuration)) = false;
+            if (longhand == CSSPropertyID::AnimationDelay)
+                layerValues.skip(longhandIndex(0, CSSPropertyID::AnimationDuration)) = false;
         }
 
         // In the animation shorthand, if the value of animation-name could be parsed as one of
         // the other longhands that longhand must be serialized to avoid ambiguity.
-        if (m_shorthand.id() == CSSPropertyAnimation) {
-            auto animationTimingFunctionIndex = longhandIndex(1, CSSPropertyAnimationTimingFunction);
-            auto animationIterationCountIndex = longhandIndex(3, CSSPropertyAnimationIterationCount);
-            auto animationDirectionIndex = longhandIndex(4, CSSPropertyAnimationDirection);
-            auto animationFillModeIndex = longhandIndex(5, CSSPropertyAnimationFillMode);
-            auto animationPlayStateIndex = longhandIndex(6, CSSPropertyAnimationPlayState);
-            auto animationNameIndex = longhandIndex(7, CSSPropertyAnimationName);
+        if (m_shorthand.id() == CSSPropertyID::Animation) {
+            auto animationTimingFunctionIndex = longhandIndex(1, CSSPropertyID::AnimationTimingFunction);
+            auto animationIterationCountIndex = longhandIndex(3, CSSPropertyID::AnimationIterationCount);
+            auto animationDirectionIndex = longhandIndex(4, CSSPropertyID::AnimationDirection);
+            auto animationFillModeIndex = longhandIndex(5, CSSPropertyID::AnimationFillMode);
+            auto animationPlayStateIndex = longhandIndex(6, CSSPropertyID::AnimationPlayState);
+            auto animationNameIndex = longhandIndex(7, CSSPropertyID::AnimationName);
             if (!layerValues.skip(animationNameIndex)) {
                 switch (layerValues.valueIDIncludingCustomIdent(animationNameIndex)) {
                 case CSSValueAlternate:
@@ -1012,13 +1012,13 @@ String ShorthandSerializer::serializeBorderImage() const
     auto separator = ""_s;
     for (auto longhand : longhands()) {
         if (isInitialValue(longhand)) {
-            if (longhand.property == CSSPropertyBorderImageSlice)
+            if (longhand.property == CSSPropertyID::BorderImageSlice)
                 omittedSlice = true;
-            else if (longhand.property == CSSPropertyBorderImageWidth)
+            else if (longhand.property == CSSPropertyID::BorderImageWidth)
                 omittedWidth = true;
             continue;
         }
-        if (omittedSlice && (longhand.property == CSSPropertyBorderImageWidth || longhand.property == CSSPropertyBorderImageOutset))
+        if (omittedSlice && (longhand.property == CSSPropertyID::BorderImageWidth || longhand.property == CSSPropertyID::BorderImageOutset))
             return String();
 
         String valueText;
@@ -1026,7 +1026,7 @@ String ShorthandSerializer::serializeBorderImage() const
         // -webkit-border-image has a legacy behavior that makes fixed border slices also set the border widths.
         if (RefPtr width = dynamicDowncast<CSSBorderImageWidthValue>(longhand.value)) {
             auto& widths = width->widths();
-            bool overridesBorderWidths = m_shorthand.id() == CSSPropertyWebkitBorderImage && widths.values.anyOf([&](auto& edge) { return isLength(edge); });
+            bool overridesBorderWidths = m_shorthand.id() == CSSPropertyID::WebkitBorderImage && widths.values.anyOf([&](auto& edge) { return isLength(edge); });
             if (overridesBorderWidths != widths.overridesBorderWidths())
                 return String();
             valueText = CSS::serializationForCSS(m_serializationContext, widths.values);
@@ -1034,9 +1034,9 @@ String ShorthandSerializer::serializeBorderImage() const
             valueText = serializeValue(longhand);
 
         // Append separator and text.
-        if (longhand.property == CSSPropertyBorderImageWidth)
+        if (longhand.property == CSSPropertyID::BorderImageWidth)
             separator = " / "_s;
-        else if (longhand.property == CSSPropertyBorderImageOutset)
+        else if (longhand.property == CSSPropertyID::BorderImageOutset)
             separator = omittedWidth ? " / / "_s : " / "_s;
         result.append(separator, valueText);
         separator = " "_s;
@@ -1055,21 +1055,21 @@ String ShorthandSerializer::serializeMaskBorder() const
     auto separator = ""_s;
     for (auto longhand : longhands()) {
         if (isInitialValue(longhand)) {
-            if (longhand.property == CSSPropertyMaskBorderSlice)
+            if (longhand.property == CSSPropertyID::MaskBorderSlice)
                 omittedSlice = true;
-            else if (longhand.property == CSSPropertyMaskBorderWidth)
+            else if (longhand.property == CSSPropertyID::MaskBorderWidth)
                 omittedWidth = true;
             continue;
         }
-        if (omittedSlice && (longhand.property == CSSPropertyMaskBorderWidth || longhand.property == CSSPropertyMaskBorderOutset))
+        if (omittedSlice && (longhand.property == CSSPropertyID::MaskBorderWidth || longhand.property == CSSPropertyID::MaskBorderOutset))
             return String();
 
         auto valueText = serializeValue(longhand);
 
         // Append separator and text.
-        if (longhand.property == CSSPropertyMaskBorderWidth)
+        if (longhand.property == CSSPropertyID::MaskBorderWidth)
             separator = " / "_s;
-        else if (longhand.property == CSSPropertyMaskBorderOutset)
+        else if (longhand.property == CSSPropertyID::MaskBorderOutset)
             separator = omittedWidth ? " / / "_s : " / "_s;
         result.append(separator, valueText);
         separator = " "_s;
@@ -1106,7 +1106,7 @@ String ShorthandSerializer::serializeBorderRadius() const
         Ref r3 = *r[3];
         if (!r3->equals(r1))
             result.append(r0->cssText(m_serializationContext), ' ', r1->cssText(m_serializationContext), ' ', r2->cssText(m_serializationContext), ' ', r3->cssText(m_serializationContext));
-        else if (!r2->equals(r0) || (m_shorthand.id() == CSSPropertyWebkitBorderRadius && !serializeBoth && !r1->equals(r0)))
+        else if (!r2->equals(r0) || (m_shorthand.id() == CSSPropertyID::WebkitBorderRadius && !serializeBoth && !r1->equals(r0)))
             result.append(r0->cssText(m_serializationContext), ' ', r1->cssText(m_serializationContext), ' ', r2->cssText(m_serializationContext));
         else if (!r1->equals(r0))
             result.append(r0->cssText(m_serializationContext), ' ', r1->cssText(m_serializationContext));
@@ -1213,13 +1213,13 @@ String ShorthandSerializer::serializeFont() const
     if (specialKeyword)
         return allSpecialKeywords ? nameString(*specialKeyword) : String();
 
-    auto styleIndex = longhandIndex(0, CSSPropertyFontStyle);
-    auto capsIndex = longhandIndex(1, CSSPropertyFontVariantCaps);
-    auto weightIndex = longhandIndex(2, CSSPropertyFontWeight);
-    auto widthIndex = longhandIndex(3, CSSPropertyFontWidth);
-    auto sizeIndex = longhandIndex(4, CSSPropertyFontSize);
-    auto lineHeightIndex = longhandIndex(5, CSSPropertyLineHeight);
-    auto familyIndex = longhandIndex(6, CSSPropertyFontFamily);
+    auto styleIndex = longhandIndex(0, CSSPropertyID::FontStyle);
+    auto capsIndex = longhandIndex(1, CSSPropertyID::FontVariantCaps);
+    auto weightIndex = longhandIndex(2, CSSPropertyID::FontWeight);
+    auto widthIndex = longhandIndex(3, CSSPropertyID::FontWidth);
+    auto sizeIndex = longhandIndex(4, CSSPropertyID::FontSize);
+    auto lineHeightIndex = longhandIndex(5, CSSPropertyID::LineHeight);
+    auto familyIndex = longhandIndex(6, CSSPropertyID::FontFamily);
 
     // Properties after font-family are reset but not represented by the shorthand.
     // If any is not the initial value, serialize as empty string.
@@ -1283,9 +1283,9 @@ String ShorthandSerializer::serializeFontSynthesis() const
     // font-synthesis: none | [ weight || style || small-caps ]
     ASSERT(length() == 3);
 
-    unsigned bits = !isLonghandValueNone(longhandIndex(0, CSSPropertyFontSynthesisWeight)) << 2
-        | !isLonghandValueNone(longhandIndex(1, CSSPropertyFontSynthesisStyle)) << 1
-        | !isLonghandValueNone(longhandIndex(2, CSSPropertyFontSynthesisSmallCaps));
+    unsigned bits = !isLonghandValueNone(longhandIndex(0, CSSPropertyID::FontSynthesisWeight)) << 2
+        | !isLonghandValueNone(longhandIndex(1, CSSPropertyID::FontSynthesisStyle)) << 1
+        | !isLonghandValueNone(longhandIndex(2, CSSPropertyID::FontSynthesisSmallCaps));
 
     switch (bits) {
     case 0b000: return nameString(CSSValueNone);
@@ -1309,9 +1309,9 @@ String ShorthandSerializer::serializeFontVariant() const
     };
 
     // font-variant cannot represent "font-variant-ligatures: none" alongside any other non-normal longhand.
-    if (isLonghandValueNone(longhandIndex(0, CSSPropertyFontVariantLigatures))) {
+    if (isLonghandValueNone(longhandIndex(0, CSSPropertyID::FontVariantLigatures))) {
         for (auto longhand : longhands()) {
-            if (longhand.property != CSSPropertyFontVariantLigatures && !isInitialValue(longhand) && !wasSetBySystemFontShorthand(longhand))
+            if (longhand.property != CSSPropertyID::FontVariantLigatures && !isInitialValue(longhand) && !wasSetBySystemFontShorthand(longhand))
                 return String();
         }
     }
@@ -1403,12 +1403,12 @@ String ShorthandSerializer::serializeGrid() const
 {
     ASSERT(length() == 6);
 
-    auto rowsIndex = longhandIndex(0, CSSPropertyGridTemplateRows);
-    auto columnsIndex = longhandIndex(1, CSSPropertyGridTemplateColumns);
-    auto areasIndex = longhandIndex(2, CSSPropertyGridTemplateAreas);
-    auto autoFlowIndex = longhandIndex(3, CSSPropertyGridAutoFlow);
-    auto autoRowsIndex = longhandIndex(4, CSSPropertyGridAutoRows);
-    auto autoColumnsIndex = longhandIndex(5, CSSPropertyGridAutoColumns);
+    auto rowsIndex = longhandIndex(0, CSSPropertyID::GridTemplateRows);
+    auto columnsIndex = longhandIndex(1, CSSPropertyID::GridTemplateColumns);
+    auto areasIndex = longhandIndex(2, CSSPropertyID::GridTemplateAreas);
+    auto autoFlowIndex = longhandIndex(3, CSSPropertyID::GridAutoFlow);
+    auto autoRowsIndex = longhandIndex(4, CSSPropertyID::GridAutoRows);
+    auto autoColumnsIndex = longhandIndex(5, CSSPropertyID::GridAutoColumns);
 
     Ref autoColumns = longhandValue(autoColumnsIndex);
     Ref autoRows = longhandValue(autoRowsIndex);
@@ -1485,9 +1485,9 @@ String ShorthandSerializer::serializeGridTemplate() const
 {
     ASSERT(length() >= 3);
 
-    auto rowsIndex = longhandIndex(0, CSSPropertyGridTemplateRows);
-    auto columnsIndex = longhandIndex(1, CSSPropertyGridTemplateColumns);
-    auto areasIndex = longhandIndex(2, CSSPropertyGridTemplateAreas);
+    auto rowsIndex = longhandIndex(0, CSSPropertyID::GridTemplateRows);
+    auto columnsIndex = longhandIndex(1, CSSPropertyID::GridTemplateColumns);
+    auto areasIndex = longhandIndex(2, CSSPropertyID::GridTemplateAreas);
 
     Ref rowsValue = longhandValue(rowsIndex);
     Ref columnsValue = longhandValue(columnsIndex);
@@ -1596,11 +1596,11 @@ String ShorthandSerializer::serializeGridTemplate() const
 
 String ShorthandSerializer::serializeOffset() const
 {
-    auto positionIndex = longhandIndex(0, CSSPropertyOffsetPosition);
-    auto pathIndex = longhandIndex(1, CSSPropertyOffsetPath);
-    auto distanceIndex = longhandIndex(2, CSSPropertyOffsetDistance);
-    auto rotateIndex = longhandIndex(3, CSSPropertyOffsetRotate);
-    auto anchorIndex = longhandIndex(4, CSSPropertyOffsetAnchor);
+    auto positionIndex = longhandIndex(0, CSSPropertyID::OffsetPosition);
+    auto pathIndex = longhandIndex(1, CSSPropertyID::OffsetPath);
+    auto distanceIndex = longhandIndex(2, CSSPropertyID::OffsetDistance);
+    auto rotateIndex = longhandIndex(3, CSSPropertyID::OffsetRotate);
+    auto anchorIndex = longhandIndex(4, CSSPropertyID::OffsetAnchor);
 
     bool includeDistance = !isLonghandInitialValue(distanceIndex);
     bool includeRotate = !isLonghandInitialValue(rotateIndex);
@@ -1652,8 +1652,8 @@ String ShorthandSerializer::serializePageBreak() const
 
 String ShorthandSerializer::serializePositionTry() const
 {
-    auto positionTryOrderIndex = longhandIndex(0, CSSPropertyPositionTryOrder);
-    auto positionTryFallbacksIndex = longhandIndex(1, CSSPropertyPositionTryFallbacks);
+    auto positionTryOrderIndex = longhandIndex(0, CSSPropertyID::PositionTryOrder);
+    auto positionTryFallbacksIndex = longhandIndex(1, CSSPropertyID::PositionTryFallbacks);
 
     auto positionTryFallbacksSerialization = serializeLonghandValue(positionTryFallbacksIndex);
     if (isLonghandInitialValue(positionTryOrderIndex))
@@ -1712,7 +1712,7 @@ String ShorthandSerializer::serializeLegacyLineClamp() const
 String ShorthandSerializer::serializeTextBox() const
 {
     auto textBoxTrim = longhandValueID(0);
-    Ref textBoxEdge = longhandValue(longhandIndex(1, CSSPropertyTextBoxEdge));
+    Ref textBoxEdge = longhandValue(longhandIndex(1, CSSPropertyID::TextBoxEdge));
     auto textBoxEdgeIsAuto = isValueID(textBoxEdge, CSSValueAuto);
 
     if (textBoxTrim == CSSValueNone && textBoxEdgeIsAuto)

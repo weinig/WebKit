@@ -70,7 +70,7 @@ private:
     const Style::ComputedStyle* m_parentStyle { nullptr };
     const RenderView* m_renderView { nullptr };
     RefPtr<const Element> m_elementForContainerUnitResolution;
-    CSSPropertyID m_property { CSSPropertyInvalid };
+    CSSPropertyID m_property { CSSPropertyID::Invalid };
     CheckedPtr<Style::BuilderState> m_styleBuilderState;
 };
 

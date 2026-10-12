@@ -85,7 +85,7 @@ auto InlineStylePropertyMap::entries(ScriptExecutionContext* context) const -> V
     return map(*inlineStyle, [&document](auto propertyReference) {
         return StylePropertyMapEntry {
             propertyReference.cssName(),
-            propertyReference.id() == CSSPropertyCustom
+            propertyReference.id() == CSSPropertyID::Custom
                 ? reifyValueToVector(document, RefPtr<CSSValue> { propertyReference.value() }, AtomString { propertyReference.cssName() })
                 : reifyValueToVector(document, RefPtr<CSSValue> { propertyReference.value() }, propertyReference.id()),
         };

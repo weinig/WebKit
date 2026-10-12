@@ -161,17 +161,17 @@ static PseudoElementBoxGeneration computePseudoElementBoxGeneration(const CSSSel
     for (auto property : properties) {
         auto& value = *property.value();
         switch (property.id()) {
-        case CSSPropertyContent: {
+        case CSSPropertyID::Content: {
             auto* contentValue = dynamicDowncast<CSSContentValue>(value);
             if (!contentValue || !(contentValue->content().isNone() || contentValue->content().isNormal()))
                 return PseudoElementBoxGeneration::Normal;
             break;
         }
-        case CSSPropertyAnimationName:
+        case CSSPropertyID::AnimationName:
             if (!isKeywordOrKeywordList(value, CSSValueNone))
                 return PseudoElementBoxGeneration::Normal;
             break;
-        case CSSPropertyTransitionBehavior:
+        case CSSPropertyID::TransitionBehavior:
             // Only allow-discrete transitions can change 'content' or 'display'.
             if (!isKeywordOrKeywordList(value, CSSValueNormal))
                 return PseudoElementBoxGeneration::Normal;

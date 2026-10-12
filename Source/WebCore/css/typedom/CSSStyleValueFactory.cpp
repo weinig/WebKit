@@ -128,7 +128,7 @@ ExceptionOr<Vector<Ref<CSSStyleValue>>> CSSStyleValueFactory::parseStyleValue(Do
          return parseStyleValueForCustomProperty(document, property, cssText, parseMultiple);
 
     auto propertyID = cssPropertyID(property.convertToASCIILowercase());
-    if (propertyID == CSSPropertyInvalid)
+    if (propertyID == CSSPropertyID::Invalid)
         return Exception { ExceptionCode::TypeError, "Property String is not a valid CSS property."_s };
     return parseStyleValueForKnownProperty(document, propertyID, cssText, parseMultiple);
 }
@@ -148,7 +148,7 @@ ExceptionOr<Vector<Ref<CSSStyleValue>>> CSSStyleValueFactory::parseStyleValueFor
 
 ExceptionOr<Vector<Ref<CSSStyleValue>>> CSSStyleValueFactory::parseStyleValueForKnownProperty(Document& document, CSSPropertyID propertyID, const String& cssText, bool parseMultiple)
 {
-    ASSERT(propertyID != CSSPropertyInvalid);
+    ASSERT(propertyID != CSSPropertyID::Invalid);
 
     if (cssText.isEmpty())
         return Exception { ExceptionCode::TypeError, "Value cannot be parsed."_s };
@@ -204,10 +204,10 @@ static bool mayConvertCSSValueListToSingleValue(const AssociatedProperty& proper
 
     // Even though the CSS Parser uses a CSSValueList to represent these, they are not
     // really lists and CSS-Typed-OM does not expect them to treat them as such.
-    return *propertyID != CSSPropertyGridRowStart
-        && *propertyID != CSSPropertyGridRowEnd
-        && *propertyID != CSSPropertyGridColumnStart
-        && *propertyID != CSSPropertyGridColumnEnd;
+    return *propertyID != CSSPropertyID::GridRowStart
+        && *propertyID != CSSPropertyID::GridRowEnd
+        && *propertyID != CSSPropertyID::GridColumnStart
+        && *propertyID != CSSPropertyID::GridColumnEnd;
 }
 
 static bool mayTreatAsListValuedProperty(const AssociatedProperty& property)

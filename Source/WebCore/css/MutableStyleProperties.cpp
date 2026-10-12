@@ -208,10 +208,10 @@ bool MutableStyleProperties::canUpdateInPlace(const CSSProperty& property, CSSPr
 
 bool MutableStyleProperties::setProperty(const CSSProperty& property, CSSProperty* slot)
 {
-    ASSERT(property.id() == CSSPropertyCustom || isLonghand(property.id()));
+    ASSERT(property.id() == CSSPropertyID::Custom || isLonghand(property.id()));
     auto* toReplace = slot;
     if (!slot) {
-        if (property.id() == CSSPropertyCustom) {
+        if (property.id() == CSSPropertyID::Custom) {
             if (property.value())
                 toReplace = findCustomCSSPropertyWithName(downcast<CSSCustomPropertyValue>(*property.value()).name());
         } else
@@ -261,7 +261,7 @@ bool MutableStyleProperties::addParsedProperties(const ParsedPropertyVector& pro
 
 bool MutableStyleProperties::addParsedProperty(const CSSProperty& property)
 {
-    if (property.id() == CSSPropertyCustom) {
+    if (property.id() == CSSPropertyID::Custom) {
         if ((property.value() && !customPropertyIsImportant(downcast<CSSCustomPropertyValue>(*property.value()).name())) || property.isImportant())
             return setProperty(property);
         return false;

@@ -51,14 +51,14 @@ static std::optional<Variant<CSSCalc::Random::Key::PropertyScoped, CSSCalc::Rand
     if (auto lastHyphen = body.reverseFind('-'); lastHyphen != notFound) {
         if (auto index = parseInteger<unsigned>(body.substring(lastHyphen + 1)); index >= 1) {
             auto property = cssPropertyID(body.left(lastHyphen));
-            if (property == CSSPropertyInvalid)
+            if (property == CSSPropertyID::Invalid)
                 return { };
             return { CSSCalc::Random::Key::PropertyIndexScoped { CSSCalc::RandomScopedProperty { property, nullAtom() }, *index - 1 } };
         }
     }
 
     auto property = cssPropertyID(body);
-    if (property == CSSPropertyInvalid)
+    if (property == CSSPropertyID::Invalid)
         return { };
     return { CSSCalc::Random::Key::PropertyScoped { CSSCalc::RandomScopedProperty { property, nullAtom() } } };
 }

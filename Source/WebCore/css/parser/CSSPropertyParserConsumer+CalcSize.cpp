@@ -48,16 +48,16 @@ static bool isValidBasisKeyword(CSSValueID keyword, CSSPropertyID property)
     switch (keyword) {
     case CSSValueAuto:
         switch (property) {
-        case CSSPropertyMaxWidth:
-        case CSSPropertyMaxHeight:
-        case CSSPropertyMaxBlockSize:
-        case CSSPropertyMaxInlineSize:
+        case CSSPropertyID::MaxWidth:
+        case CSSPropertyID::MaxHeight:
+        case CSSPropertyID::MaxBlockSize:
+        case CSSPropertyID::MaxInlineSize:
             return false;
         default:
             return true;
         }
     case CSSValueContent:
-        return property == CSSPropertyFlexBasis;
+        return property == CSSPropertyID::FlexBasis;
     default:
         return true;
     }

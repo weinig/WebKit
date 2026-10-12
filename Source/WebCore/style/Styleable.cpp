@@ -230,11 +230,11 @@ bool Styleable::mayHaveNonZeroOpacity() const
     if (!renderer->style().opacity().isZero())
         return true;
 
-    if (renderer->style().willChange().containsProperty(CSSPropertyOpacity))
+    if (renderer->style().willChange().containsProperty(CSSPropertyID::Opacity))
         return true;
 
     auto* effectStack = keyframeEffectStack();
-    return effectStack && effectStack->containsProperty(CSSPropertyOpacity);
+    return effectStack && effectStack->containsProperty(CSSPropertyID::Opacity);
 }
 
 bool Styleable::isRunningAcceleratedAnimationOfProperty(CSSPropertyID property) const

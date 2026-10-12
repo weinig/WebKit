@@ -297,14 +297,14 @@ void BuilderState::setFontSize(FontCascadeDescription& fontDescription, float si
 
 CSSPropertyID BuilderState::cssPropertyID() const
 {
-    return m_currentProperty ? m_currentProperty->id : CSSPropertyInvalid;
+    return m_currentProperty ? m_currentProperty->id : CSSPropertyID::Invalid;
 }
 
-// Every custom property shares CSSPropertyCustom, so anything keying on cssPropertyID() needs this to
+// Every custom property shares CSSPropertyID::Custom, so anything keying on cssPropertyID() needs this to
 // tell them apart. Null unless a custom property is being applied.
 AtomString BuilderState::customPropertyName() const
 {
-    if (cssPropertyID() != CSSPropertyCustom)
+    if (cssPropertyID() != CSSPropertyID::Custom)
         return nullAtom();
     RefPtr customPropertyValue = dynamicDowncast<CSSCustomPropertyValue>(m_currentProperty->cssValue[SelectorChecker::MatchDefault]);
     return customPropertyValue ? customPropertyValue->name() : nullAtom();

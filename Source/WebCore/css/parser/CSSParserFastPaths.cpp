@@ -58,48 +58,48 @@ namespace WebCore {
 std::optional<CSS::Range> CSSParserFastPaths::lengthValueRangeForPropertiesSupportingSimpleLengths(CSSPropertyID propertyId)
 {
     switch (propertyId) {
-    case CSSPropertyFontSize:
-    case CSSPropertyHeight:
-    case CSSPropertyWidth:
-    case CSSPropertyMinHeight:
-    case CSSPropertyMinWidth:
-    case CSSPropertyPaddingBottom:
-    case CSSPropertyPaddingLeft:
-    case CSSPropertyPaddingRight:
-    case CSSPropertyPaddingTop:
-    case CSSPropertyInlineSize:
-    case CSSPropertyBlockSize:
-    case CSSPropertyMinInlineSize:
-    case CSSPropertyMinBlockSize:
-    case CSSPropertyPaddingBlockEnd:
-    case CSSPropertyPaddingBlockStart:
-    case CSSPropertyPaddingInlineEnd:
-    case CSSPropertyPaddingInlineStart:
-    case CSSPropertyR:
-    case CSSPropertyRx:
-    case CSSPropertyRy:
-    case CSSPropertyShapeMargin:
+    case CSSPropertyID::FontSize:
+    case CSSPropertyID::Height:
+    case CSSPropertyID::Width:
+    case CSSPropertyID::MinHeight:
+    case CSSPropertyID::MinWidth:
+    case CSSPropertyID::PaddingBottom:
+    case CSSPropertyID::PaddingLeft:
+    case CSSPropertyID::PaddingRight:
+    case CSSPropertyID::PaddingTop:
+    case CSSPropertyID::InlineSize:
+    case CSSPropertyID::BlockSize:
+    case CSSPropertyID::MinInlineSize:
+    case CSSPropertyID::MinBlockSize:
+    case CSSPropertyID::PaddingBlockEnd:
+    case CSSPropertyID::PaddingBlockStart:
+    case CSSPropertyID::PaddingInlineEnd:
+    case CSSPropertyID::PaddingInlineStart:
+    case CSSPropertyID::R:
+    case CSSPropertyID::Rx:
+    case CSSPropertyID::Ry:
+    case CSSPropertyID::ShapeMargin:
         return CSS::Nonnegative;
-    case CSSPropertyBottom:
-    case CSSPropertyCx:
-    case CSSPropertyCy:
-    case CSSPropertyLeft:
-    case CSSPropertyInsetBlockEnd:
-    case CSSPropertyInsetBlockStart:
-    case CSSPropertyInsetInlineEnd:
-    case CSSPropertyInsetInlineStart:
-    case CSSPropertyMarginBottom:
-    case CSSPropertyMarginLeft:
-    case CSSPropertyMarginRight:
-    case CSSPropertyMarginTop:
-    case CSSPropertyRight:
-    case CSSPropertyTop:
-    case CSSPropertyMarginBlockEnd:
-    case CSSPropertyMarginBlockStart:
-    case CSSPropertyMarginInlineEnd:
-    case CSSPropertyMarginInlineStart:
-    case CSSPropertyX:
-    case CSSPropertyY:
+    case CSSPropertyID::Bottom:
+    case CSSPropertyID::Cx:
+    case CSSPropertyID::Cy:
+    case CSSPropertyID::Left:
+    case CSSPropertyID::InsetBlockEnd:
+    case CSSPropertyID::InsetBlockStart:
+    case CSSPropertyID::InsetInlineEnd:
+    case CSSPropertyID::InsetInlineStart:
+    case CSSPropertyID::MarginBottom:
+    case CSSPropertyID::MarginLeft:
+    case CSSPropertyID::MarginRight:
+    case CSSPropertyID::MarginTop:
+    case CSSPropertyID::Right:
+    case CSSPropertyID::Top:
+    case CSSPropertyID::MarginBlockEnd:
+    case CSSPropertyID::MarginBlockStart:
+    case CSSPropertyID::MarginInlineEnd:
+    case CSSPropertyID::MarginInlineStart:
+    case CSSPropertyID::X:
+    case CSSPropertyID::Y:
         return CSS::All;
     default:
         return { };
@@ -1046,14 +1046,14 @@ RefPtr<CSSValue> CSSParserFastPaths::maybeParseValue(CSSPropertyID property, Str
         return nullptr;
 
     switch (property) {
-    case CSSPropertyDisplay:
+    case CSSPropertyID::Display:
         return parseDisplay(string);
-    case CSSPropertyOpacity:
+    case CSSPropertyID::Opacity:
         return parseOpacity(string);
-    case CSSPropertyTransform:
+    case CSSPropertyID::Transform:
         return parseSimpleTransform(string);
-    case CSSPropertyCaretColor:
-    case CSSPropertyAccentColor:
+    case CSSPropertyID::CaretColor:
+    case CSSPropertyID::AccentColor:
         if (isExposed(property, &state.context.propertySettings))
             return parseColorWithAuto(string, state.context);
         break;

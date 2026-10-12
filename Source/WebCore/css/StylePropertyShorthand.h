@@ -48,7 +48,7 @@ public:
 
 private:
     std::span<const CSSPropertyID> m_properties;
-    CSSPropertyID m_shorthandID { CSSPropertyInvalid };
+    CSSPropertyID m_shorthandID { CSSPropertyID::Invalid };
 };
 
 // Custom StylePropertyShorthand function.

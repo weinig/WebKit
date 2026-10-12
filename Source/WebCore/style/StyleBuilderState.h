@@ -282,7 +282,7 @@ private:
             m_cssToLengthConversionData.m_property = m_currentProperty->id;
         } else {
             m_currentProperty = nullptr;
-            m_cssToLengthConversionData.m_property = CSSPropertyInvalid;
+            m_cssToLengthConversionData.m_property = CSSPropertyID::Invalid;
         }
     }
 

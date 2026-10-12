@@ -53,12 +53,12 @@ StyleRuleEnvironmentMap::StyleRuleEnvironmentMap(Ref<StyleProperties>&& properti
     : StyleRuleBase(StyleRuleType::EnvironmentMap)
     , m_properties(WTF::move(properties))
 {
-    if (RefPtr name = dynamicDowncast<CSSStringValue>(m_properties->getPropertyCSSValue(CSSPropertyName).get()))
+    if (RefPtr name = dynamicDowncast<CSSStringValue>(m_properties->getPropertyCSSValue(CSSPropertyID::Name).get()))
         m_name = AtomString { name->string().value };
 
-    m_format = toEnvironmentMapFormat(m_properties->getPropertyCSSValue(CSSPropertyFormat).get());
+    m_format = toEnvironmentMapFormat(m_properties->getPropertyCSSValue(CSSPropertyID::Format).get());
 
-    if (RefPtr src = dynamicDowncast<CSSURLValue>(m_properties->getPropertyCSSValue(CSSPropertySrc).get()))
+    if (RefPtr src = dynamicDowncast<CSSURLValue>(m_properties->getPropertyCSSValue(CSSPropertyID::Src).get()))
         m_src = src->url();
 }
 

@@ -46,34 +46,34 @@ WTF_MAKE_TZONE_ALLOCATED_IMPL(WillChangeAnimatableFeatures::Data);
 bool WillChangeAnimatableFeature::propertyCreatesStackingContext(CSSPropertyID property)
 {
     switch (property) {
-    case CSSPropertyPerspective:
-    case CSSPropertyWebkitPerspective:
-    case CSSPropertyScale:
-    case CSSPropertyRotate:
-    case CSSPropertyTranslate:
-    case CSSPropertyTransform:
-    case CSSPropertyTransformStyle:
-    case CSSPropertyOffsetPath:
-    case CSSPropertyClipPath:
-    case CSSPropertyMask:
-    case CSSPropertyWebkitMask:
-    case CSSPropertyOpacity:
-    case CSSPropertyPosition:
-    case CSSPropertyZIndex:
-    case CSSPropertyWebkitBoxReflect:
-    case CSSPropertyMixBlendMode:
-    case CSSPropertyIsolation:
-    case CSSPropertyFilter:
-    case CSSPropertyBackdropFilter:
-    case CSSPropertyWebkitBackdropFilter:
-    case CSSPropertyMaskImage:
-    case CSSPropertyMaskBorder:
-    case CSSPropertyWebkitMaskBoxImage:
+    case CSSPropertyID::Perspective:
+    case CSSPropertyID::WebkitPerspective:
+    case CSSPropertyID::Scale:
+    case CSSPropertyID::Rotate:
+    case CSSPropertyID::Translate:
+    case CSSPropertyID::Transform:
+    case CSSPropertyID::TransformStyle:
+    case CSSPropertyID::OffsetPath:
+    case CSSPropertyID::ClipPath:
+    case CSSPropertyID::Mask:
+    case CSSPropertyID::WebkitMask:
+    case CSSPropertyID::Opacity:
+    case CSSPropertyID::Position:
+    case CSSPropertyID::ZIndex:
+    case CSSPropertyID::WebkitBoxReflect:
+    case CSSPropertyID::MixBlendMode:
+    case CSSPropertyID::Isolation:
+    case CSSPropertyID::Filter:
+    case CSSPropertyID::BackdropFilter:
+    case CSSPropertyID::WebkitBackdropFilter:
+    case CSSPropertyID::MaskImage:
+    case CSSPropertyID::MaskBorder:
+    case CSSPropertyID::WebkitMaskBoxImage:
 #if ENABLE(WEBKIT_OVERFLOW_SCROLLING_CSS_PROPERTY)
-    case CSSPropertyWebkitOverflowScrolling:
+    case CSSPropertyID::WebkitOverflowScrolling:
 #endif
-    case CSSPropertyViewTransitionName:
-    case CSSPropertyContain:
+    case CSSPropertyID::ViewTransitionName:
+    case CSSPropertyID::Contain:
         return true;
     default:
         return false;
@@ -83,10 +83,10 @@ bool WillChangeAnimatableFeature::propertyCreatesStackingContext(CSSPropertyID p
 bool WillChangeAnimatableFeature::propertyTriggersCompositing(CSSPropertyID property)
 {
     switch (property) {
-    case CSSPropertyOpacity:
-    case CSSPropertyFilter:
-    case CSSPropertyBackdropFilter:
-    case CSSPropertyWebkitBackdropFilter:
+    case CSSPropertyID::Opacity:
+    case CSSPropertyID::Filter:
+    case CSSPropertyID::BackdropFilter:
+    case CSSPropertyID::WebkitBackdropFilter:
         return true;
     default:
         return false;
@@ -101,11 +101,11 @@ bool WillChangeAnimatableFeature::propertyTriggersCompositingOnBoxesOnly(CSSProp
     // Similarly, we don't want -webkit-overflow-scrolling-touch to
     // always composite if there's no scrollable overflow.
     switch (property) {
-    case CSSPropertyScale:
-    case CSSPropertyRotate:
-    case CSSPropertyTranslate:
-    case CSSPropertyTransform:
-    case CSSPropertyOffsetPath:
+    case CSSPropertyID::Scale:
+    case CSSPropertyID::Rotate:
+    case CSSPropertyID::Translate:
+    case CSSPropertyID::Transform:
+    case CSSPropertyID::OffsetPath:
         return true;
     default:
         return false;
@@ -158,38 +158,38 @@ bool WillChangeAnimatableFeatures::Data::containsProperty(CSSPropertyID property
 bool WillChangeAnimatableFeatures::Data::createsContainingBlockForAbsolutelyPositioned(bool isRootElement) const
 {
     return createsContainingBlockForOutOfFlowPositioned(isRootElement)
-        || containsProperty(CSSPropertyPosition);
+        || containsProperty(CSSPropertyID::Position);
 }
 
 bool WillChangeAnimatableFeatures::Data::createsContainingBlockForOutOfFlowPositioned(bool isRootElement) const
 {
-    return containsProperty(CSSPropertyPerspective)
-        || containsProperty(CSSPropertyWebkitPerspective)
+    return containsProperty(CSSPropertyID::Perspective)
+        || containsProperty(CSSPropertyID::WebkitPerspective)
         // CSS transforms
-        || containsProperty(CSSPropertyTransform)
-        || containsProperty(CSSPropertyTransformStyle)
-        || containsProperty(CSSPropertyTranslate)
-        || containsProperty(CSSPropertyRotate)
-        || containsProperty(CSSPropertyScale)
-        || containsProperty(CSSPropertyOffsetPath)
+        || containsProperty(CSSPropertyID::Transform)
+        || containsProperty(CSSPropertyID::TransformStyle)
+        || containsProperty(CSSPropertyID::Translate)
+        || containsProperty(CSSPropertyID::Rotate)
+        || containsProperty(CSSPropertyID::Scale)
+        || containsProperty(CSSPropertyID::OffsetPath)
         // CSS containment
-        || containsProperty(CSSPropertyContain)
+        || containsProperty(CSSPropertyID::Contain)
         // CSS filter & backdrop-filter
-        || (containsProperty(CSSPropertyBackdropFilter) && !isRootElement)
-        || (containsProperty(CSSPropertyWebkitBackdropFilter) && !isRootElement)
-        || (containsProperty(CSSPropertyFilter) && !isRootElement);
+        || (containsProperty(CSSPropertyID::BackdropFilter) && !isRootElement)
+        || (containsProperty(CSSPropertyID::WebkitBackdropFilter) && !isRootElement)
+        || (containsProperty(CSSPropertyID::Filter) && !isRootElement);
 }
 
 bool WillChangeAnimatableFeatures::Data::canBeBackdropRoot() const
 {
-    return containsProperty(CSSPropertyOpacity)
-        || containsProperty(CSSPropertyBackdropFilter)
-        || containsProperty(CSSPropertyWebkitBackdropFilter)
-        || containsProperty(CSSPropertyClipPath)
-        || containsProperty(CSSPropertyFilter)
-        || containsProperty(CSSPropertyMixBlendMode)
-        || containsProperty(CSSPropertyMask)
-        || containsProperty(CSSPropertyViewTransitionName);
+    return containsProperty(CSSPropertyID::Opacity)
+        || containsProperty(CSSPropertyID::BackdropFilter)
+        || containsProperty(CSSPropertyID::WebkitBackdropFilter)
+        || containsProperty(CSSPropertyID::ClipPath)
+        || containsProperty(CSSPropertyID::Filter)
+        || containsProperty(CSSPropertyID::MixBlendMode)
+        || containsProperty(CSSPropertyID::Mask)
+        || containsProperty(CSSPropertyID::ViewTransitionName);
 }
 
 // MARK: - Conversion

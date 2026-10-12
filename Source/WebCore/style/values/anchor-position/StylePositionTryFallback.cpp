@@ -51,10 +51,10 @@ bool PositionTryFallback::PositionArea::operator==(const PositionTryFallback::Po
         Ref strongProperties = *properties;
         Ref strongOtherProperties = *other.properties;
 
-        auto lhsPositionArea = strongProperties->getPropertyCSSValue(CSSPropertyPositionArea);
+        auto lhsPositionArea = strongProperties->getPropertyCSSValue(CSSPropertyID::PositionArea);
         ASSERT(lhsPositionArea);
 
-        auto rhsPositionArea = strongOtherProperties->getPropertyCSSValue(CSSPropertyPositionArea);
+        auto rhsPositionArea = strongOtherProperties->getPropertyCSSValue(CSSPropertyID::PositionArea);
         ASSERT(rhsPositionArea);
 
         return *lhsPositionArea == *rhsPositionArea;
@@ -143,7 +143,7 @@ auto CSSValueConversion<PositionTryFallback>::operator()(BuilderState& state, co
     }
 
     // Turn the inlined position-area fallback into properties object that can be applied similarly to @position-try declarations.
-    auto property = CSSProperty { CSSPropertyPositionArea, protect(const_cast<CSSValue&>(value)) };
+    auto property = CSSProperty { CSSPropertyID::PositionArea, protect(const_cast<CSSValue&>(value)) };
     return {
         .positionArea = { ImmutableStyleProperties::createDeduplicating(std::span { &property, 1 }, HTMLStandardMode) }
     };
@@ -151,7 +151,7 @@ auto CSSValueConversion<PositionTryFallback>::operator()(BuilderState& state, co
 
 static Ref<CSSValue> computedPositionAreaValue(const PositionTryFallback::PositionArea& value)
 {
-    RefPtr cssValue = protect(value.properties)->getPropertyCSSValue(CSSPropertyPositionArea);
+    RefPtr cssValue = protect(value.properties)->getPropertyCSSValue(CSSPropertyID::PositionArea);
     if (RefPtr pair = dynamicDowncast<CSSValuePair>(*cssValue)) {
         auto dim1 = downcast<CSSKeywordValue>(pair->first()).valueID();
         auto dim2 = downcast<CSSKeywordValue>(pair->second()).valueID();
@@ -176,7 +176,7 @@ void Serialize<PositionTryFallback::PositionArea>::operator()(StringBuilder& bui
 
 TextStream& operator<<(TextStream& ts, const PositionTryFallback::PositionArea& value)
 {
-    return ts << protect(value.properties)->getPropertyValue(CSSPropertyPositionArea);
+    return ts << protect(value.properties)->getPropertyValue(CSSPropertyID::PositionArea);
 }
 
 } // namespace Style

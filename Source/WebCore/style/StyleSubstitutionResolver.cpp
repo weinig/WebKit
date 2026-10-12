@@ -470,7 +470,7 @@ RefPtr<MutableStyleProperties> SubstitutionResolver::resolveAndRegisterDashedFun
         if (resolvedValue && !resolvedValue->isGuaranteedInvalid()) {
             auto tokenData = CSSVariableData::create(CSSParserTokenRange { resolvedValue->tokens() }, resolvedValue->isAttrTainted(), context);
             auto value = CSSCustomPropertyValue::createSyntaxAll(parameter.name, WTF::move(tokenData));
-            resolvedArgumentProperties->addParsedProperty({ CSSPropertyCustom, WTF::move(value) });
+            resolvedArgumentProperties->addParsedProperty({ CSSPropertyID::Custom, WTF::move(value) });
         }
     }
 
@@ -590,7 +590,7 @@ bool SubstitutionResolver::substituteDashedFunction(StringView functionName, CSS
     // A local is not the document-registered property of the same name, so registering it as universal
     // keeps it untyped. A parameter keeps its own registration, whose initial value is the argument.
     for (auto property : bodyProperties.get()) {
-        if (property.id() != CSSPropertyCustom)
+        if (property.id() != CSSPropertyID::Custom)
             continue;
         auto& name = downcast<CSSCustomPropertyValue>(*property.value()).name();
         if (registrations.get(name))
@@ -1368,7 +1368,7 @@ RefPtr<CSSValue> SubstitutionResolver::substituteAndParse(const CSSSubstitutionV
 
     // https://drafts.csswg.org/css-values-5/#attr-security
     // Using an attr()-tainted value as or in a <url> makes a declaration invalid at computed-value time.
-    if (propertyID != CSSPropertyCustom && m_hasTaintedURL)
+    if (propertyID != CSSPropertyID::Custom && m_hasTaintedURL)
         return nullptr;
 
     if (!arePointingToEqualData(substitutionValue.m_cache.dependencyData, data) || substitutionValue.m_cache.propertyID != propertyID) {

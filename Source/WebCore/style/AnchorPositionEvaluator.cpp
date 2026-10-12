@@ -406,17 +406,17 @@ static const ScopedName& implicitAnchorElementName()
 static BoxAxis NODELETE mapInsetPropertyToPhysicalAxis(CSSPropertyID id, const WritingMode writingMode)
 {
     switch (id) {
-    case CSSPropertyLeft:
-    case CSSPropertyRight:
+    case CSSPropertyID::Left:
+    case CSSPropertyID::Right:
         return BoxAxis::Horizontal;
-    case CSSPropertyTop:
-    case CSSPropertyBottom:
+    case CSSPropertyID::Top:
+    case CSSPropertyID::Bottom:
         return BoxAxis::Vertical;
-    case CSSPropertyInsetInlineStart:
-    case CSSPropertyInsetInlineEnd:
+    case CSSPropertyID::InsetInlineStart:
+    case CSSPropertyID::InsetInlineEnd:
         return mapAxisLogicalToPhysical(writingMode, LogicalBoxAxis::Inline);
-    case CSSPropertyInsetBlockStart:
-    case CSSPropertyInsetBlockEnd:
+    case CSSPropertyID::InsetBlockStart:
+    case CSSPropertyID::InsetBlockEnd:
         return mapAxisLogicalToPhysical(writingMode, LogicalBoxAxis::Block);
     default:
         ASSERT_NOT_REACHED();
@@ -427,17 +427,17 @@ static BoxAxis NODELETE mapInsetPropertyToPhysicalAxis(CSSPropertyID id, const W
 static LogicalBoxAxis NODELETE mapInsetPropertyToLogicalAxis(CSSPropertyID id, const WritingMode writingMode)
 {
     switch (id) {
-    case CSSPropertyLeft:
-    case CSSPropertyRight:
+    case CSSPropertyID::Left:
+    case CSSPropertyID::Right:
         return writingMode.isHorizontal() ? LogicalBoxAxis::Inline : LogicalBoxAxis::Block;
-    case CSSPropertyTop:
-    case CSSPropertyBottom:
+    case CSSPropertyID::Top:
+    case CSSPropertyID::Bottom:
         return writingMode.isHorizontal() ? LogicalBoxAxis::Block : LogicalBoxAxis::Inline;
-    case CSSPropertyInsetInlineStart:
-    case CSSPropertyInsetInlineEnd:
+    case CSSPropertyID::InsetInlineStart:
+    case CSSPropertyID::InsetInlineEnd:
         return LogicalBoxAxis::Inline;
-    case CSSPropertyInsetBlockStart:
-    case CSSPropertyInsetBlockEnd:
+    case CSSPropertyID::InsetBlockStart:
+    case CSSPropertyID::InsetBlockEnd:
         return LogicalBoxAxis::Block;
     default:
         ASSERT_NOT_REACHED();
@@ -602,21 +602,21 @@ LayoutRect AnchorPositionEvaluator::computeAnchorRectRelativeToContainingBlock(C
 static bool inline NODELETE isInsetPropertyContainerStartSide(CSSPropertyID insetPropertyID, PositionedLayoutConstraints& constraints)
 {
     switch (insetPropertyID) {
-    case CSSPropertyLeft:
+    case CSSPropertyID::Left:
         return constraints.containingWritingMode().isAnyLeftToRight();
-    case CSSPropertyRight:
+    case CSSPropertyID::Right:
         return !constraints.containingWritingMode().isAnyLeftToRight();
-    case CSSPropertyTop:
+    case CSSPropertyID::Top:
         return constraints.containingWritingMode().isAnyTopToBottom();
-    case CSSPropertyBottom:
+    case CSSPropertyID::Bottom:
         return !constraints.containingWritingMode().isAnyTopToBottom();
-    case CSSPropertyInsetInlineStart:
+    case CSSPropertyID::InsetInlineStart:
         return !constraints.selfWritingMode().isInlineOpposing(constraints.containingWritingMode());
-    case CSSPropertyInsetInlineEnd:
+    case CSSPropertyID::InsetInlineEnd:
         return constraints.selfWritingMode().isInlineOpposing(constraints.containingWritingMode());
-    case CSSPropertyInsetBlockStart:
+    case CSSPropertyID::InsetBlockStart:
         return !constraints.selfWritingMode().isBlockOpposing(constraints.containingWritingMode());
-    case CSSPropertyInsetBlockEnd:
+    case CSSPropertyID::InsetBlockEnd:
         return constraints.selfWritingMode().isBlockOpposing(constraints.containingWritingMode());
     default:
         ASSERT_NOT_REACHED();
@@ -627,27 +627,27 @@ static bool inline NODELETE isInsetPropertyContainerStartSide(CSSPropertyID inse
 static CSSPropertyID NODELETE getOppositeInset(CSSPropertyID propertyID)
 {
     switch (propertyID) {
-    case CSSPropertyLeft:
-        return CSSPropertyRight;
-    case CSSPropertyRight:
-        return CSSPropertyLeft;
-    case CSSPropertyTop:
-        return CSSPropertyBottom;
-    case CSSPropertyBottom:
-        return CSSPropertyTop;
+    case CSSPropertyID::Left:
+        return CSSPropertyID::Right;
+    case CSSPropertyID::Right:
+        return CSSPropertyID::Left;
+    case CSSPropertyID::Top:
+        return CSSPropertyID::Bottom;
+    case CSSPropertyID::Bottom:
+        return CSSPropertyID::Top;
 
-    case CSSPropertyInsetInlineStart:
-        return CSSPropertyInsetInlineEnd;
-    case CSSPropertyInsetInlineEnd:
-        return CSSPropertyInsetInlineStart;
-    case CSSPropertyInsetBlockStart:
-        return CSSPropertyInsetBlockEnd;
-    case CSSPropertyInsetBlockEnd:
-        return CSSPropertyInsetBlockStart;
+    case CSSPropertyID::InsetInlineStart:
+        return CSSPropertyID::InsetInlineEnd;
+    case CSSPropertyID::InsetInlineEnd:
+        return CSSPropertyID::InsetInlineStart;
+    case CSSPropertyID::InsetBlockStart:
+        return CSSPropertyID::InsetBlockEnd;
+    case CSSPropertyID::InsetBlockEnd:
+        return CSSPropertyID::InsetBlockStart;
 
     default:
         ASSERT_NOT_REACHED();
-        return CSSPropertyInsetBlockStart;
+        return CSSPropertyID::InsetBlockStart;
     }
 }
 
@@ -683,31 +683,31 @@ static std::pair<CSSPropertyID, bool> applyTryTacticsToInset(CSSPropertyID prope
         case PositionTryFallback::Tactic::FlipStart:
             propertyID = [&] {
                 switch (propertyID) {
-                case CSSPropertyInsetInlineStart:
-                    return CSSPropertyInsetBlockStart;
-                case CSSPropertyInsetInlineEnd:
-                    return CSSPropertyInsetBlockEnd;
-                case CSSPropertyInsetBlockStart:
-                    return CSSPropertyInsetInlineStart;
-                case CSSPropertyInsetBlockEnd:
-                    return CSSPropertyInsetInlineEnd;
+                case CSSPropertyID::InsetInlineStart:
+                    return CSSPropertyID::InsetBlockStart;
+                case CSSPropertyID::InsetInlineEnd:
+                    return CSSPropertyID::InsetBlockEnd;
+                case CSSPropertyID::InsetBlockStart:
+                    return CSSPropertyID::InsetInlineStart;
+                case CSSPropertyID::InsetBlockEnd:
+                    return CSSPropertyID::InsetInlineEnd;
 
-                case CSSPropertyLeft:
+                case CSSPropertyID::Left:
                     return writingMode.isAnyLeftToRight() == writingMode.isAnyTopToBottom()
-                        ? CSSPropertyTop : CSSPropertyBottom;
-                case CSSPropertyRight:
+                        ? CSSPropertyID::Top : CSSPropertyID::Bottom;
+                case CSSPropertyID::Right:
                     return writingMode.isAnyLeftToRight() == writingMode.isAnyTopToBottom()
-                        ? CSSPropertyBottom : CSSPropertyTop;
-                case CSSPropertyTop:
+                        ? CSSPropertyID::Bottom : CSSPropertyID::Top;
+                case CSSPropertyID::Top:
                     return writingMode.isAnyLeftToRight() == writingMode.isAnyTopToBottom()
-                        ? CSSPropertyLeft : CSSPropertyRight;
-                case CSSPropertyBottom:
+                        ? CSSPropertyID::Left : CSSPropertyID::Right;
+                case CSSPropertyID::Bottom:
                     return writingMode.isAnyLeftToRight() == writingMode.isAnyTopToBottom()
-                        ? CSSPropertyRight : CSSPropertyLeft;
+                        ? CSSPropertyID::Right : CSSPropertyID::Left;
 
                 default:
                     ASSERT_NOT_REACHED();
-                    return CSSPropertyInsetBlockStart;
+                    return CSSPropertyID::InsetBlockStart;
                 }
             }();
             break;
@@ -916,40 +916,40 @@ std::optional<double> AnchorPositionEvaluator::evaluate(BuilderState& builderSta
 static AnchorSizeDimension NODELETE defaultDimensionForPropertyID(CSSPropertyID propertyID)
 {
     switch (propertyID) {
-    case CSSPropertyWidth:
-    case CSSPropertyMinWidth:
-    case CSSPropertyMaxWidth:
-    case CSSPropertyLeft:
-    case CSSPropertyRight:
-    case CSSPropertyMarginLeft:
-    case CSSPropertyMarginRight:
+    case CSSPropertyID::Width:
+    case CSSPropertyID::MinWidth:
+    case CSSPropertyID::MaxWidth:
+    case CSSPropertyID::Left:
+    case CSSPropertyID::Right:
+    case CSSPropertyID::MarginLeft:
+    case CSSPropertyID::MarginRight:
         return AnchorSizeDimension::Width;
 
-    case CSSPropertyHeight:
-    case CSSPropertyMinHeight:
-    case CSSPropertyMaxHeight:
-    case CSSPropertyTop:
-    case CSSPropertyBottom:
-    case CSSPropertyMarginTop:
-    case CSSPropertyMarginBottom:
+    case CSSPropertyID::Height:
+    case CSSPropertyID::MinHeight:
+    case CSSPropertyID::MaxHeight:
+    case CSSPropertyID::Top:
+    case CSSPropertyID::Bottom:
+    case CSSPropertyID::MarginTop:
+    case CSSPropertyID::MarginBottom:
         return AnchorSizeDimension::Height;
 
-    case CSSPropertyBlockSize:
-    case CSSPropertyMinBlockSize:
-    case CSSPropertyMaxBlockSize:
-    case CSSPropertyInsetBlockStart:
-    case CSSPropertyInsetBlockEnd:
-    case CSSPropertyMarginBlockStart:
-    case CSSPropertyMarginBlockEnd:
+    case CSSPropertyID::BlockSize:
+    case CSSPropertyID::MinBlockSize:
+    case CSSPropertyID::MaxBlockSize:
+    case CSSPropertyID::InsetBlockStart:
+    case CSSPropertyID::InsetBlockEnd:
+    case CSSPropertyID::MarginBlockStart:
+    case CSSPropertyID::MarginBlockEnd:
         return AnchorSizeDimension::Block;
 
-    case CSSPropertyInlineSize:
-    case CSSPropertyMinInlineSize:
-    case CSSPropertyMaxInlineSize:
-    case CSSPropertyInsetInlineStart:
-    case CSSPropertyInsetInlineEnd:
-    case CSSPropertyMarginInlineStart:
-    case CSSPropertyMarginInlineEnd:
+    case CSSPropertyID::InlineSize:
+    case CSSPropertyID::MinInlineSize:
+    case CSSPropertyID::MaxInlineSize:
+    case CSSPropertyID::InsetInlineStart:
+    case CSSPropertyID::InsetInlineEnd:
+    case CSSPropertyID::MarginInlineStart:
+    case CSSPropertyID::MarginInlineEnd:
         return AnchorSizeDimension::Inline;
 
     default:
@@ -1476,14 +1476,14 @@ bool AnchorPositionEvaluator::isLayoutTimeAnchorPositioned(const Style::Computed
 static CSSPropertyID NODELETE flipHorizontal(CSSPropertyID propertyID)
 {
     switch (propertyID) {
-    case CSSPropertyLeft:
-        return CSSPropertyRight;
-    case CSSPropertyRight:
-        return CSSPropertyLeft;
-    case CSSPropertyMarginLeft:
-        return CSSPropertyMarginRight;
-    case CSSPropertyMarginRight:
-        return CSSPropertyMarginLeft;
+    case CSSPropertyID::Left:
+        return CSSPropertyID::Right;
+    case CSSPropertyID::Right:
+        return CSSPropertyID::Left;
+    case CSSPropertyID::MarginLeft:
+        return CSSPropertyID::MarginRight;
+    case CSSPropertyID::MarginRight:
+        return CSSPropertyID::MarginLeft;
     default:
         return propertyID;
     }
@@ -1492,14 +1492,14 @@ static CSSPropertyID NODELETE flipHorizontal(CSSPropertyID propertyID)
 static CSSPropertyID NODELETE flipVertical(CSSPropertyID propertyID)
 {
     switch (propertyID) {
-    case CSSPropertyTop:
-        return CSSPropertyBottom;
-    case CSSPropertyBottom:
-        return CSSPropertyTop;
-    case CSSPropertyMarginTop:
-        return CSSPropertyMarginBottom;
-    case CSSPropertyMarginBottom:
-        return CSSPropertyMarginTop;
+    case CSSPropertyID::Top:
+        return CSSPropertyID::Bottom;
+    case CSSPropertyID::Bottom:
+        return CSSPropertyID::Top;
+    case CSSPropertyID::MarginTop:
+        return CSSPropertyID::MarginBottom;
+    case CSSPropertyID::MarginBottom:
+        return CSSPropertyID::MarginTop;
     default:
         return propertyID;
     }
@@ -1511,38 +1511,38 @@ static CSSPropertyID flipStart(CSSPropertyID propertyID, WritingMode writingMode
 
     auto flippedLogical = [&] {
         switch (logicalProperty) {
-        case CSSPropertyInsetBlockStart:
-            return CSSPropertyInsetInlineStart;
-        case CSSPropertyInsetBlockEnd:
-            return CSSPropertyInsetInlineEnd;
-        case CSSPropertyBlockSize:
-            return CSSPropertyInlineSize;
-        case CSSPropertyMinBlockSize:
-            return CSSPropertyMinInlineSize;
-        case CSSPropertyMaxBlockSize:
-            return CSSPropertyMaxInlineSize;
-        case CSSPropertyInsetInlineStart:
-            return CSSPropertyInsetBlockStart;
-        case CSSPropertyInsetInlineEnd:
-            return CSSPropertyInsetBlockEnd;
-        case CSSPropertyInlineSize:
-            return CSSPropertyBlockSize;
-        case CSSPropertyMinInlineSize:
-            return CSSPropertyMinBlockSize;
-        case CSSPropertyMaxInlineSize:
-            return CSSPropertyMaxBlockSize;
-        case CSSPropertyMarginBlockStart:
-            return CSSPropertyMarginInlineStart;
-        case CSSPropertyMarginBlockEnd:
-            return CSSPropertyMarginInlineEnd;
-        case CSSPropertyMarginInlineStart:
-            return CSSPropertyMarginBlockStart;
-        case CSSPropertyMarginInlineEnd:
-            return CSSPropertyMarginBlockEnd;
-        case CSSPropertyAlignSelf:
-            return CSSPropertyJustifySelf;
-        case CSSPropertyJustifySelf:
-            return CSSPropertyAlignSelf;
+        case CSSPropertyID::InsetBlockStart:
+            return CSSPropertyID::InsetInlineStart;
+        case CSSPropertyID::InsetBlockEnd:
+            return CSSPropertyID::InsetInlineEnd;
+        case CSSPropertyID::BlockSize:
+            return CSSPropertyID::InlineSize;
+        case CSSPropertyID::MinBlockSize:
+            return CSSPropertyID::MinInlineSize;
+        case CSSPropertyID::MaxBlockSize:
+            return CSSPropertyID::MaxInlineSize;
+        case CSSPropertyID::InsetInlineStart:
+            return CSSPropertyID::InsetBlockStart;
+        case CSSPropertyID::InsetInlineEnd:
+            return CSSPropertyID::InsetBlockEnd;
+        case CSSPropertyID::InlineSize:
+            return CSSPropertyID::BlockSize;
+        case CSSPropertyID::MinInlineSize:
+            return CSSPropertyID::MinBlockSize;
+        case CSSPropertyID::MaxInlineSize:
+            return CSSPropertyID::MaxBlockSize;
+        case CSSPropertyID::MarginBlockStart:
+            return CSSPropertyID::MarginInlineStart;
+        case CSSPropertyID::MarginBlockEnd:
+            return CSSPropertyID::MarginInlineEnd;
+        case CSSPropertyID::MarginInlineStart:
+            return CSSPropertyID::MarginBlockStart;
+        case CSSPropertyID::MarginInlineEnd:
+            return CSSPropertyID::MarginBlockEnd;
+        case CSSPropertyID::AlignSelf:
+            return CSSPropertyID::JustifySelf;
+        case CSSPropertyID::JustifySelf:
+            return CSSPropertyID::AlignSelf;
         default:
             return propertyID;
         }
@@ -1580,7 +1580,7 @@ CSSValueID AnchorPositionEvaluator::resolvePositionTryFallbackValueForSelfPositi
 {
     // Implements the bullet starting "For the self-alignment properties" from step 4 of https://drafts.csswg.org/css-anchor-position-1/#swap-due-to-a-try-tactic.
 
-    ASSERT(propertyID == CSSPropertyAlignSelf || propertyID == CSSPropertyJustifySelf);
+    ASSERT(propertyID == CSSPropertyID::AlignSelf || propertyID == CSSPropertyID::JustifySelf);
 
     auto flipSidedPosition = [](auto position) -> CSSValueID {
         // Swap to the "opposite" position if the current position is "sided".
@@ -1626,23 +1626,23 @@ CSSValueID AnchorPositionEvaluator::resolvePositionTryFallbackValueForSelfPositi
     for (auto tactic : fallback.tactics) {
         switch (tactic) {
         case PositionTryFallback::Tactic::FlipBlock:
-            if (propertyID == CSSPropertyAlignSelf)
+            if (propertyID == CSSPropertyID::AlignSelf)
                 position = flipSidedPosition(position);
             break;
         case PositionTryFallback::Tactic::FlipInline:
-            if (propertyID == CSSPropertyJustifySelf)
+            if (propertyID == CSSPropertyID::JustifySelf)
                 position = flipSidedPosition(position);
             break;
         case PositionTryFallback::Tactic::FlipX:
-            if (propertyID == (writingMode.isHorizontal() ? CSSPropertyJustifySelf : CSSPropertyAlignSelf))
+            if (propertyID == (writingMode.isHorizontal() ? CSSPropertyID::JustifySelf : CSSPropertyID::AlignSelf))
                 position = flipSidedPosition(position);
             break;
         case PositionTryFallback::Tactic::FlipY:
-            if (propertyID == (writingMode.isHorizontal() ? CSSPropertyAlignSelf : CSSPropertyJustifySelf))
+            if (propertyID == (writingMode.isHorizontal() ? CSSPropertyID::AlignSelf : CSSPropertyID::JustifySelf))
                 position = flipSidedPosition(position);
             break;
         case PositionTryFallback::Tactic::FlipStart:
-            if (propertyID == CSSPropertyJustifySelf)
+            if (propertyID == CSSPropertyID::JustifySelf)
                 position = flipStart(writingMode, position);
             break;
         }

@@ -55,9 +55,9 @@ static std::optional<ViewTransitionNavigation> NODELETE toViewTransitionNavigati
 StyleRuleViewTransition::StyleRuleViewTransition(Ref<StyleProperties>&& properties)
     : StyleRuleBase(StyleRuleType::ViewTransition)
 {
-    m_navigation = toViewTransitionNavigationEnum(properties->getPropertyCSSValue(CSSPropertyNavigation));
+    m_navigation = toViewTransitionNavigationEnum(properties->getPropertyCSSValue(CSSPropertyID::Navigation));
 
-    if (auto value = properties->getPropertyCSSValue(CSSPropertyTypes)) {
+    if (auto value = properties->getPropertyCSSValue(CSSPropertyID::Types)) {
         m_explicitlySetTypes = true;
 
         auto processSingleValue = [&](const CSSValue& currentValue) {

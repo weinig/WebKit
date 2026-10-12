@@ -92,7 +92,7 @@ private:
         // For -internal-auto-base() case: cache key is the base appearance state.
         std::optional<bool> isBaseAppearance;
         RefPtr<CSSValue> value;
-        CSSPropertyID propertyID { CSSPropertyInvalid };
+        CSSPropertyID propertyID { CSSPropertyID::Invalid };
     };
     mutable Cache m_cache;
 };

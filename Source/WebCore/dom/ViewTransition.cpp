@@ -731,7 +731,7 @@ void ViewTransition::setupDynamicStyleSheet(const AtomString& name, const Captur
             list.append(CSSCustomIdentValue::create(CSS::CustomIdent { "-ua-mix-blend-mode-plus-lighter"_s }));
         Ref valueList = CSSValueList::createCommaSeparated(WTF::move(list));
         Ref props = MutableStyleProperties::create();
-        props->setProperty(CSSPropertyAnimationName, WTF::move(valueList));
+        props->setProperty(CSSPropertyID::AnimationName, WTF::move(valueList));
 
         resolver->setViewTransitionStyles(CSSSelector::PseudoElement::ViewTransitionOld, name, props);
     }
@@ -743,7 +743,7 @@ void ViewTransition::setupDynamicStyleSheet(const AtomString& name, const Captur
             list.append(CSSCustomIdentValue::create(CSS::CustomIdent { "-ua-mix-blend-mode-plus-lighter"_s }));
         Ref valueList = CSSValueList::createCommaSeparated(WTF::move(list));
         Ref props = MutableStyleProperties::create();
-        props->setProperty(CSSPropertyAnimationName, WTF::move(valueList));
+        props->setProperty(CSSPropertyID::AnimationName, WTF::move(valueList));
 
         resolver->setViewTransitionStyles(CSSSelector::PseudoElement::ViewTransitionNew, name, props);
     }
@@ -755,7 +755,7 @@ void ViewTransition::setupDynamicStyleSheet(const AtomString& name, const Captur
     {
         Ref list = CSSValueList::createCommaSeparated(CSSCustomIdentValue::create(CSS::CustomIdent { makeAtomString("-ua-view-transition-group-anim-"_s, name) }));
         Ref props = MutableStyleProperties::create();
-        props->setProperty(CSSPropertyAnimationName, WTF::move(list));
+        props->setProperty(CSSPropertyID::AnimationName, WTF::move(list));
 
         resolver->setViewTransitionStyles(CSSSelector::PseudoElement::ViewTransitionGroup, name, props);
     }
@@ -763,7 +763,7 @@ void ViewTransition::setupDynamicStyleSheet(const AtomString& name, const Captur
     // image pair isolation rule
     {
         Ref props = MutableStyleProperties::create();
-        props->setProperty(CSSPropertyIsolation, CSSKeywordValue::create(CSSValueID::Isolate));
+        props->setProperty(CSSPropertyID::Isolation, CSSKeywordValue::create(CSSValueID::Isolate));
 
         resolver->setViewTransitionStyles(CSSSelector::PseudoElement::ViewTransitionImagePair, name, props);
     }
@@ -773,10 +773,10 @@ void ViewTransition::setupDynamicStyleSheet(const AtomString& name, const Captur
 
     // group keyframes
     static constexpr auto keyframeProperties = WTF::toArray<CSSPropertyID>({
-        CSSPropertyWidth,
-        CSSPropertyHeight,
-        CSSPropertyTransform,
-        CSSPropertyBackdropFilter,
+        CSSPropertyID::Width,
+        CSSPropertyID::Height,
+        CSSPropertyID::Transform,
+        CSSPropertyID::BackdropFilter,
     });
     Ref keyframe = StyleRuleKeyframe::create(protect(capturedElement.oldState.properties)->copyProperties(keyframeProperties));
     keyframe->setKeyText("from"_s);
@@ -970,13 +970,13 @@ void ViewTransition::copyElementBaseProperties(RenderLayerModelObject& renderer,
     Style::Extractor styleExtractor { &styleable->element, false, styleable->pseudoElementIdentifier };
 
     static constexpr auto transitionProperties = WTF::toArray<CSSPropertyID>({
-        CSSPropertyWritingMode,
-        CSSPropertyDirection,
-        CSSPropertyTextOrientation,
-        CSSPropertyMixBlendMode,
-        CSSPropertyBackdropFilter,
+        CSSPropertyID::WritingMode,
+        CSSPropertyID::Direction,
+        CSSPropertyID::TextOrientation,
+        CSSPropertyID::MixBlendMode,
+        CSSPropertyID::BackdropFilter,
 #if ENABLE(DARK_MODE_CSS)
-        CSSPropertyColorScheme,
+        CSSPropertyID::ColorScheme,
 #endif
     });
 
@@ -1030,15 +1030,15 @@ void ViewTransition::copyElementBaseProperties(RenderLayerModelObject& renderer,
         transform.unzoom(documentElementRenderer->style().usedZoom());
 
         Ref transformListValue = CSSTransformListValue::create(Style::createCSSValue(CSSValuePool::singleton(), documentElementRenderer->style(), transform));
-        protect(output.properties)->setProperty(CSSPropertyTransform, WTF::move(transformListValue));
+        protect(output.properties)->setProperty(CSSPropertyID::Transform, WTF::move(transformListValue));
     }
 
     // Factor out the zoom from the nearest common ancestor of the captured element and the view transition
     // pseudo tree (the document element), so that it doesn't get applied a second time when rendering the
     // snapshots.
     auto cssSize = Style::unapplyingZoom<LayoutSize>(output.size, documentElementRenderer->style());
-    protect(output.properties)->setProperty(CSSPropertyWidth, CSSPrimitiveValue::create(cssSize.width(), CSSUnitType::Px));
-    protect(output.properties)->setProperty(CSSPropertyHeight, CSSPrimitiveValue::create(cssSize.height(), CSSUnitType::Px));
+    protect(output.properties)->setProperty(CSSPropertyID::Width, CSSPrimitiveValue::create(cssSize.width(), CSSUnitType::Px));
+    protect(output.properties)->setProperty(CSSPropertyID::Height, CSSPrimitiveValue::create(cssSize.height(), CSSUnitType::Px));
 }
 
 // https://drafts.csswg.org/css-view-transitions-1/#update-pseudo-element-styles

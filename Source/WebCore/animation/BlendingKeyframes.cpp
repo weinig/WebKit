@@ -308,7 +308,7 @@ bool BlendingKeyframes::usesTreeCountingFunctions() const
 
 void BlendingKeyframes::addProperty(const AnimatableCSSProperty& property)
 {
-    ASSERT(!std::holds_alternative<CSSPropertyID>(property) || std::get<CSSPropertyID>(property) != CSSPropertyCustom);
+    ASSERT(!std::holds_alternative<CSSPropertyID>(property) || std::get<CSSPropertyID>(property) != CSSPropertyID::Custom);
     m_properties.add(property);
 }
 
@@ -319,7 +319,7 @@ bool BlendingKeyframes::containsProperty(const AnimatableCSSProperty& property) 
 
 bool BlendingKeyframes::hasColorSetToCurrentColor() const
 {
-    return m_propertiesSetToCurrentColor.contains(CSSPropertyColor);
+    return m_propertiesSetToCurrentColor.contains(CSSPropertyID::Color);
 }
 
 bool BlendingKeyframes::hasPropertySetToCurrentColor() const
@@ -351,7 +351,7 @@ void BlendingKeyframes::updatePropertiesMetadata(const StyleProperties& properti
                 m_propertiesSetToInherit.add(propertyID);
             else if (valueId == CSSValueCurrentcolor)
                 m_propertiesSetToCurrentColor.add(propertyID);
-            else if (!m_usesRelativeFontWeight && propertyID == CSSPropertyFontWeight && (valueId == CSSValueBolder || valueId == CSSValueLighter))
+            else if (!m_usesRelativeFontWeight && propertyID == CSSPropertyID::FontWeight && (valueId == CSSValueBolder || valueId == CSSValueLighter))
                 m_usesRelativeFontWeight = true;
         } else if (RefPtr primitiveValue = dynamicDowncast<CSSPrimitiveValue>(cssValue)) {
             auto propertyID = propertyReference.id();
@@ -380,13 +380,13 @@ void BlendingKeyframes::analyzeKeyframe(const BlendingKeyframe& keyframe)
         if (m_hasWidthDependentTransform && m_hasHeightDependentTransform)
             return;
 
-        if (keyframe.animatesProperty(CSSPropertyTransform)) {
+        if (keyframe.animatesProperty(CSSPropertyID::Transform)) {
             auto [isWidthDependent, isHeightDependent] = style->transform().computeSizeDependencies();
             m_hasWidthDependentTransform |= isWidthDependent;
             m_hasHeightDependentTransform |= isHeightDependent;
         }
 
-        if (keyframe.animatesProperty(CSSPropertyTranslate)) {
+        if (keyframe.animatesProperty(CSSPropertyID::Translate)) {
             auto [isWidthDependent, isHeightDependent] = style->translate().computeSizeDependencies();
             m_hasWidthDependentTransform |= isWidthDependent;
             m_hasHeightDependentTransform |= isHeightDependent;
@@ -394,7 +394,7 @@ void BlendingKeyframes::analyzeKeyframe(const BlendingKeyframe& keyframe)
     };
 
     auto analyzeDiscreteTransformInterval = [&] {
-        if (!m_hasDiscreteTransformInterval && keyframe.animatesProperty(CSSPropertyTransform))
+        if (!m_hasDiscreteTransformInterval && keyframe.animatesProperty(CSSPropertyID::Transform))
             m_hasDiscreteTransformInterval = style->transform().containsNonInvertibleMatrix({ });
     };
 
@@ -422,7 +422,7 @@ void BlendingKeyframes::analyzeKeyframe(const BlendingKeyframe& keyframe)
     };
 
     auto analyzeOffsetDistance = [&] {
-        if (!m_animatesOffsetDistanceToPercentOrCalculated && keyframe.animatesProperty(CSSPropertyOffsetDistance))
+        if (!m_animatesOffsetDistanceToPercentOrCalculated && keyframe.animatesProperty(CSSPropertyID::OffsetDistance))
             m_animatesOffsetDistanceToPercentOrCalculated = style->offsetDistance().isPercentOrCalculated();
     };
 
@@ -487,7 +487,7 @@ BlendingKeyframe::BlendingKeyframe(const BlendingKeyframe& source)
 
 void BlendingKeyframe::addProperty(const AnimatableCSSProperty& property)
 {
-    ASSERT(!std::holds_alternative<CSSPropertyID>(property) || std::get<CSSPropertyID>(property) != CSSPropertyCustom);
+    ASSERT(!std::holds_alternative<CSSPropertyID>(property) || std::get<CSSPropertyID>(property) != CSSPropertyID::Custom);
     m_properties.add(property);
 }
 

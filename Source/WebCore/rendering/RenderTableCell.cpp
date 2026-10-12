@@ -748,13 +748,13 @@ CollapsedBorderValue RenderTableCell::collapsedStartBorder(IncludeBorderColorOrN
 static Color resolvedBorderColor(const Style::ComputedStyle& style, CSSPropertyID borderColor)
 {
     switch (borderColor) {
-    case CSSPropertyBorderTopColor:
+    case CSSPropertyID::BorderTopColor:
         return style.visitedDependentBorderTopColorApplyingColorFilter();
-    case CSSPropertyBorderRightColor:
+    case CSSPropertyID::BorderRightColor:
         return style.visitedDependentBorderRightColorApplyingColorFilter();
-    case CSSPropertyBorderBottomColor:
+    case CSSPropertyID::BorderBottomColor:
         return style.visitedDependentBorderBottomColorApplyingColorFilter();
-    case CSSPropertyBorderLeftColor:
+    case CSSPropertyID::BorderLeftColor:
         return style.visitedDependentBorderLeftColorApplyingColorFilter();
     default:
         ASSERT_NOT_REACHED();
@@ -766,8 +766,8 @@ CollapsedBorderValue RenderTableCell::computeCollapsedStartBorder(IncludeBorderC
 {
     // For the start border, we need to check, in order of precedence:
     // (1) Our start border.
-    CSSPropertyID startColorProperty = includeColor ? CSSProperty::resolveDirectionAwareProperty(CSSPropertyBorderInlineStartColor, tableWritingMode()) : CSSPropertyInvalid;
-    CSSPropertyID endColorProperty = includeColor ? CSSProperty::resolveDirectionAwareProperty(CSSPropertyBorderInlineEndColor, tableWritingMode()) : CSSPropertyInvalid;
+    CSSPropertyID startColorProperty = includeColor ? CSSProperty::resolveDirectionAwareProperty(CSSPropertyID::BorderInlineStartColor, tableWritingMode()) : CSSPropertyID::Invalid;
+    CSSPropertyID endColorProperty = includeColor ? CSSProperty::resolveDirectionAwareProperty(CSSPropertyID::BorderInlineEndColor, tableWritingMode()) : CSSPropertyID::Invalid;
     auto deviceScaleFactor = style().deviceScaleFactor();
     CollapsedBorderValue result(style().borderStart(tableWritingMode()), includeColor ? resolvedBorderColor(style(), startColorProperty) : Color(), BorderPrecedence::Cell, style().usedZoomForLength(), deviceScaleFactor);
 
@@ -879,8 +879,8 @@ CollapsedBorderValue RenderTableCell::computeCollapsedEndBorder(IncludeBorderCol
     // For end border, we need to check, in order of precedence:
     // (1) Our end border.
     CSSPropertyID startColorProperty = includeColor
-        ? CSSProperty::resolveDirectionAwareProperty(CSSPropertyBorderInlineStartColor, tableWritingMode()) : CSSPropertyInvalid;
-    CSSPropertyID endColorProperty = includeColor ? CSSProperty::resolveDirectionAwareProperty(CSSPropertyBorderInlineEndColor, tableWritingMode()) : CSSPropertyInvalid;
+        ? CSSProperty::resolveDirectionAwareProperty(CSSPropertyID::BorderInlineStartColor, tableWritingMode()) : CSSPropertyID::Invalid;
+    CSSPropertyID endColorProperty = includeColor ? CSSProperty::resolveDirectionAwareProperty(CSSPropertyID::BorderInlineEndColor, tableWritingMode()) : CSSPropertyID::Invalid;
     auto deviceScaleFactor = style().deviceScaleFactor();
     CollapsedBorderValue result = CollapsedBorderValue(style().borderEnd(tableWritingMode()), includeColor ? resolvedBorderColor(style(), endColorProperty) : Color(), BorderPrecedence::Cell, style().usedZoomForLength(), deviceScaleFactor);
 
@@ -993,8 +993,8 @@ CollapsedBorderValue RenderTableCell::computeCollapsedBeforeBorder(IncludeBorder
 {
     // For before border, we need to check, in order of precedence:
     // (1) Our before border.
-    CSSPropertyID beforeColorProperty = includeColor ? CSSProperty::resolveDirectionAwareProperty(CSSPropertyBorderBlockStartColor, tableWritingMode()) : CSSPropertyInvalid;
-    CSSPropertyID afterColorProperty = includeColor ? CSSProperty::resolveDirectionAwareProperty(CSSPropertyBorderBlockEndColor, tableWritingMode()) : CSSPropertyInvalid;
+    CSSPropertyID beforeColorProperty = includeColor ? CSSProperty::resolveDirectionAwareProperty(CSSPropertyID::BorderBlockStartColor, tableWritingMode()) : CSSPropertyID::Invalid;
+    CSSPropertyID afterColorProperty = includeColor ? CSSProperty::resolveDirectionAwareProperty(CSSPropertyID::BorderBlockEndColor, tableWritingMode()) : CSSPropertyID::Invalid;
     auto deviceScaleFactor = style().deviceScaleFactor();
     CollapsedBorderValue result = CollapsedBorderValue(style().borderBefore(tableWritingMode()), includeColor ? resolvedBorderColor(style(), beforeColorProperty) : Color(), BorderPrecedence::Cell, style().usedZoomForLength(), deviceScaleFactor);
 
@@ -1091,8 +1091,8 @@ CollapsedBorderValue RenderTableCell::computeCollapsedAfterBorder(IncludeBorderC
 {
     // For after border, we need to check, in order of precedence:
     // (1) Our after border.
-    CSSPropertyID beforeColorProperty = includeColor ? CSSProperty::resolveDirectionAwareProperty(CSSPropertyBorderBlockStartColor, tableWritingMode()) : CSSPropertyInvalid;
-    CSSPropertyID afterColorProperty = includeColor ? CSSProperty::resolveDirectionAwareProperty(CSSPropertyBorderBlockEndColor, tableWritingMode()) : CSSPropertyInvalid;
+    CSSPropertyID beforeColorProperty = includeColor ? CSSProperty::resolveDirectionAwareProperty(CSSPropertyID::BorderBlockStartColor, tableWritingMode()) : CSSPropertyID::Invalid;
+    CSSPropertyID afterColorProperty = includeColor ? CSSProperty::resolveDirectionAwareProperty(CSSPropertyID::BorderBlockEndColor, tableWritingMode()) : CSSPropertyID::Invalid;
     auto deviceScaleFactor = style().deviceScaleFactor();
     CollapsedBorderValue result = CollapsedBorderValue(style().borderAfter(tableWritingMode()), includeColor ? resolvedBorderColor(style(), afterColorProperty) : Color(), BorderPrecedence::Cell, style().usedZoomForLength(), deviceScaleFactor);
 

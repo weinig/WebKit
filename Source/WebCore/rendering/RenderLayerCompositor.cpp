@@ -3905,19 +3905,19 @@ bool RenderLayerCompositor::requiresCompositingForAnimation(RenderLayerModelObje
         if (styleable->hasRunningAcceleratedAnimations())
             return true;
         if (auto* effectsStack = styleable->keyframeEffectStack()) {
-            return (effectsStack->isCurrentlyAffectingProperty(CSSPropertyOpacity) && (usesCompositing() || (m_compositingTriggers & ChromeClient::AnimatedOpacityTrigger)))
-                || effectsStack->isCurrentlyAffectingProperty(CSSPropertyFilter)
-                || effectsStack->isCurrentlyAffectingProperty(CSSPropertyBackdropFilter)
-                || effectsStack->isCurrentlyAffectingProperty(CSSPropertyWebkitBackdropFilter)
-                || effectsStack->isCurrentlyAffectingProperty(CSSPropertyTranslate)
-                || effectsStack->isCurrentlyAffectingProperty(CSSPropertyScale)
-                || effectsStack->isCurrentlyAffectingProperty(CSSPropertyRotate)
-                || effectsStack->isCurrentlyAffectingProperty(CSSPropertyTransform)
-                || effectsStack->isCurrentlyAffectingProperty(CSSPropertyOffsetAnchor)
-                || effectsStack->isCurrentlyAffectingProperty(CSSPropertyOffsetDistance)
-                || effectsStack->isCurrentlyAffectingProperty(CSSPropertyOffsetPath)
-                || effectsStack->isCurrentlyAffectingProperty(CSSPropertyOffsetPosition)
-                || effectsStack->isCurrentlyAffectingProperty(CSSPropertyOffsetRotate);
+            return (effectsStack->isCurrentlyAffectingProperty(CSSPropertyID::Opacity) && (usesCompositing() || (m_compositingTriggers & ChromeClient::AnimatedOpacityTrigger)))
+                || effectsStack->isCurrentlyAffectingProperty(CSSPropertyID::Filter)
+                || effectsStack->isCurrentlyAffectingProperty(CSSPropertyID::BackdropFilter)
+                || effectsStack->isCurrentlyAffectingProperty(CSSPropertyID::WebkitBackdropFilter)
+                || effectsStack->isCurrentlyAffectingProperty(CSSPropertyID::Translate)
+                || effectsStack->isCurrentlyAffectingProperty(CSSPropertyID::Scale)
+                || effectsStack->isCurrentlyAffectingProperty(CSSPropertyID::Rotate)
+                || effectsStack->isCurrentlyAffectingProperty(CSSPropertyID::Transform)
+                || effectsStack->isCurrentlyAffectingProperty(CSSPropertyID::OffsetAnchor)
+                || effectsStack->isCurrentlyAffectingProperty(CSSPropertyID::OffsetDistance)
+                || effectsStack->isCurrentlyAffectingProperty(CSSPropertyID::OffsetPath)
+                || effectsStack->isCurrentlyAffectingProperty(CSSPropertyID::OffsetPosition)
+                || effectsStack->isCurrentlyAffectingProperty(CSSPropertyID::OffsetRotate);
         }
     }
 
@@ -4562,10 +4562,10 @@ bool RenderLayerCompositor::isRunningTransformAnimation(RenderLayerModelObject& 
 
     if (auto styleable = Styleable::fromRenderer(renderer)) {
         if (auto* effectsStack = styleable->keyframeEffectStack())
-            return effectsStack->isCurrentlyAffectingProperty(CSSPropertyTransform)
-                || effectsStack->isCurrentlyAffectingProperty(CSSPropertyRotate)
-                || effectsStack->isCurrentlyAffectingProperty(CSSPropertyScale)
-                || effectsStack->isCurrentlyAffectingProperty(CSSPropertyTranslate);
+            return effectsStack->isCurrentlyAffectingProperty(CSSPropertyID::Transform)
+                || effectsStack->isCurrentlyAffectingProperty(CSSPropertyID::Rotate)
+                || effectsStack->isCurrentlyAffectingProperty(CSSPropertyID::Scale)
+                || effectsStack->isCurrentlyAffectingProperty(CSSPropertyID::Translate);
     }
 
     return false;

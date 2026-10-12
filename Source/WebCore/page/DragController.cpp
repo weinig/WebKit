@@ -610,7 +610,7 @@ bool DragController::concludeEditDrag(const DragData& dragData)
         if (!innerRange)
             return false;
         Ref style = MutableStyleProperties::create();
-        style->setProperty(CSSPropertyColor, serializationForHTML(color));
+        style->setProperty(CSSPropertyID::Color, serializationForHTML(color));
         if (!protect(innerFrame->editor())->shouldApplyStyle(style, *innerRange))
             return false;
         client().willPerformDragDestinationAction(DragDestinationAction::Edit, dragData);
@@ -1564,8 +1564,8 @@ void DragController::insertDroppedImagePlaceholdersAtCaret(const Vector<IntSize>
         Ref image = HTMLImageElement::create(*document);
         image->setAttributeWithoutSynchronization(HTMLNames::widthAttr, AtomString::number(size.width()));
         image->setAttributeWithoutSynchronization(HTMLNames::heightAttr, AtomString::number(size.height()));
-        image->setInlineStyleProperty(CSSPropertyMaxWidth, 100, CSSUnitType::Percentage);
-        image->setInlineStyleProperty(CSSPropertyBackgroundColor, serializationForCSS(Color { Color::black.colorWithAlphaByte(13) }));
+        image->setInlineStyleProperty(CSSPropertyID::MaxWidth, 100, CSSUnitType::Percentage);
+        image->setInlineStyleProperty(CSSPropertyID::BackgroundColor, serializationForCSS(Color { Color::black.colorWithAlphaByte(13) }));
         image->setIsDroppedImagePlaceholder();
         fragment->appendChild(WTF::move(image));
     }
@@ -1620,7 +1620,7 @@ void DragController::finalizeDroppedImagePlaceholder(HTMLImageElement& placehold
     protect(protect(placeholder.document())->eventLoop())->queueTask(TaskSource::InternalAsyncTask, [completion = WTF::move(completion), placeholder = Ref { placeholder }] () mutable {
         if (placeholder->isDroppedImagePlaceholder()) {
             placeholder->removeAttribute(HTMLNames::heightAttr);
-            placeholder->removeInlineStyleProperty(CSSPropertyBackgroundColor);
+            placeholder->removeInlineStyleProperty(CSSPropertyID::BackgroundColor);
         }
         completion();
     });

@@ -1694,7 +1694,7 @@ void RenderTheme::setColorWellSwatchBackground(HTMLElement& swatch, Color color)
 {
     if (!color.isOpaque())
         color = blendSourceOver(Color::white, color);
-    swatch.setInlineStyleProperty(CSSPropertyBackgroundColor, serializationForHTML(color));
+    swatch.setInlineStyleProperty(CSSPropertyID::BackgroundColor, serializationForHTML(color));
 }
 
 void RenderTheme::adjustSliderThumbStyle(Style::ComputedStyle& style, const Element* element) const

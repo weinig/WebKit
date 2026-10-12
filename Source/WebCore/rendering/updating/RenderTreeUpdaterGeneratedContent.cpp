@@ -157,7 +157,7 @@ static bool needsPseudoElementForAnimation(const Element& element, PseudoElement
     if (!stack)
         return false;
 
-    return stack->requiresPseudoElement() || stack->containsProperty(CSSPropertyDisplay);
+    return stack->requiresPseudoElement() || stack->containsProperty(CSSPropertyID::Display);
 }
 
 static RenderPtr<RenderObject> createContentRenderer(const Style::Content::Text& value, const String& altText, Document& document, const Style::ComputedStyle&)

@@ -536,7 +536,7 @@ OptionSet<DocumentNeeds> needsLayoutOrStyleRecalc(const Document& document)
 std::optional<CursorType> cursorTypeFrom(const StyleProperties& properties)
 {
     for (auto property : properties) {
-        if (property.id() == CSSPropertyCursor) {
+        if (property.id() == CSSPropertyID::Cursor) {
             if (RefPtr keywordValue = dynamicDowncast<CSSKeywordValue>(property.value()))
                 return fromCSSValue<CursorType>(*keywordValue);
             if (RefPtr valueList = dynamicDowncast<CSSValueList>(property.value()); valueList && valueList->size() >= 2) {

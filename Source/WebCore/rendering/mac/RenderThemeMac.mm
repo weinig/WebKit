@@ -1318,9 +1318,9 @@ void RenderThemeMac::createColorWellSwatchSubtree(HTMLElement& swatch)
     Ref div = HTMLDivElement::create(document);
     swatch.appendChild(ContainerNode::ChildChange::Source::Parser, div);
     div->setUserAgentPart(UserAgentParts::internalColorSwatchOverlay());
-    div->setInlineStyleProperty(CSSPropertyHeight, "100%"_s);
-    div->setInlineStyleProperty(CSSPropertyWidth, "100%"_s);
-    div->setInlineStyleProperty(CSSPropertyClipPath, "polygon(0 0, 100% 0, 0 100%)"_s);
+    div->setInlineStyleProperty(CSSPropertyID::Height, "100%"_s);
+    div->setInlineStyleProperty(CSSPropertyID::Width, "100%"_s);
+    div->setInlineStyleProperty(CSSPropertyID::ClipPath, "polygon(0 0, 100% 0, 0 100%)"_s);
 }
 
 void RenderThemeMac::setColorWellSwatchBackground(HTMLElement& swatch, Color color)
@@ -1330,8 +1330,8 @@ void RenderThemeMac::setColorWellSwatchBackground(HTMLElement& swatch, Color col
     auto backgroundColor = color.isOpaque() ? color : blendSourceOver(Color::white, color);
     auto foregroundColor = color.isOpaque() ? Color::transparentBlack : blendSourceOver(Color::black, color);
 
-    swatch.setInlineStyleProperty(CSSPropertyBackgroundColor, serializationForHTML(backgroundColor));
-    swatchChild->setInlineStyleProperty(CSSPropertyBackgroundColor, serializationForHTML(foregroundColor));
+    swatch.setInlineStyleProperty(CSSPropertyID::BackgroundColor, serializationForHTML(backgroundColor));
+    swatchChild->setInlineStyleProperty(CSSPropertyID::BackgroundColor, serializationForHTML(foregroundColor));
 }
 
 IntRect RenderThemeMac::progressBarRectForBounds(const RenderProgress& renderProgress, const IntRect& bounds) const

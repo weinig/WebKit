@@ -1689,7 +1689,7 @@ void PDFPluginBase::updateFullFramePluginBackgroundColor()
 
     Ref document = element->document();
     if (RefPtr body = document->bodyOrFrameset())
-        body->setInlineStyleProperty(CSSPropertyBackgroundColor, serializationForHTML(pluginBackgroundColor()));
+        body->setInlineStyleProperty(CSSPropertyID::BackgroundColor, serializationForHTML(pluginBackgroundColor()));
 }
 
 unsigned PDFPluginBase::countFindMatches(const String& target, WebCore::FindOptions options, unsigned maxMatchCount)

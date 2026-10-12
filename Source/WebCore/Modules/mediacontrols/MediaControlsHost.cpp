@@ -1006,9 +1006,9 @@ void MediaControlsHost::handleCaptionVisibilityInFullscreenAndPictureInPictureQu
         return;
 
     if (protect(m_mediaElement)->isInFullscreenOrPictureInPicture())
-        textTrackContainer->setInlineStyleProperty(CSSPropertyVisibility, CSSValueVisible);
+        textTrackContainer->setInlineStyleProperty(CSSPropertyID::Visibility, CSSValueVisible);
     else
-        textTrackContainer->setInlineStyleProperty(CSSPropertyVisibility, CSSValueInherit);
+        textTrackContainer->setInlineStyleProperty(CSSPropertyID::Visibility, CSSValueInherit);
 #endif
 }
 

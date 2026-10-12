@@ -282,7 +282,7 @@ void SVGPathElement::collectExtraStyleForPresentationalHints(MutableStylePropert
 {
     if (!document().settings().cssDPropertyEnabled())
         return;
-    if (!style.hasProperty(CSSPropertyD))
+    if (!style.hasProperty(CSSPropertyID::D))
         collectDPresentationalHint(style);
 }
 

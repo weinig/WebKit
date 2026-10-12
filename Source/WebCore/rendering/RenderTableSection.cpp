@@ -1174,13 +1174,13 @@ CellSpan RenderTableSection::spannedColumns(const LayoutRect& flippedRect, Shoul
 Color RenderTableSection::rowGroupBorderColor(CSSPropertyID borderColor) const
 {
     switch (borderColor) {
-    case CSSPropertyBorderTopColor:
+    case CSSPropertyID::BorderTopColor:
         return style().visitedDependentBorderTopColorApplyingColorFilter();
-    case CSSPropertyBorderRightColor:
+    case CSSPropertyID::BorderRightColor:
         return style().visitedDependentBorderRightColorApplyingColorFilter();
-    case CSSPropertyBorderBottomColor:
+    case CSSPropertyID::BorderBottomColor:
         return style().visitedDependentBorderBottomColorApplyingColorFilter();
-    case CSSPropertyBorderLeftColor:
+    case CSSPropertyID::BorderLeftColor:
         return style().visitedDependentBorderLeftColorApplyingColorFilter();
     default:
         ASSERT_NOT_REACHED();
@@ -1267,7 +1267,7 @@ void RenderTableSection::paintRowGroupBorderIfRequired(const PaintInfo& paintInf
                 Style::evaluate<LayoutUnit>(style.borderTop().width, style.usedZoomForLength(), style.deviceScaleFactor()),
             },
             BoxSide::Top,
-            CSSPropertyBorderTopColor,
+            CSSPropertyID::BorderTopColor,
             style.borderTopStyle(),
             table()->style().borderTopStyle()
         );
@@ -1283,7 +1283,7 @@ void RenderTableSection::paintRowGroupBorderIfRequired(const PaintInfo& paintInf
                 Style::evaluate<LayoutUnit>(style.borderBottom().width, style.usedZoomForLength(), style.deviceScaleFactor()),
             },
             BoxSide::Bottom,
-            CSSPropertyBorderBottomColor,
+            CSSPropertyID::BorderBottomColor,
             style.borderBottomStyle(),
             table()->style().borderBottomStyle()
         );
@@ -1299,7 +1299,7 @@ void RenderTableSection::paintRowGroupBorderIfRequired(const PaintInfo& paintInf
                 verticalRowGroupBorderHeight(cell, rowGroupRect, row),
             },
             BoxSide::Left,
-            CSSPropertyBorderLeftColor,
+            CSSPropertyID::BorderLeftColor,
             style.borderLeftStyle(),
             table()->style().borderLeftStyle()
         );
@@ -1315,7 +1315,7 @@ void RenderTableSection::paintRowGroupBorderIfRequired(const PaintInfo& paintInf
                 verticalRowGroupBorderHeight(cell, rowGroupRect, row),
             },
             BoxSide::Right,
-            CSSPropertyBorderRightColor,
+            CSSPropertyID::BorderRightColor,
             style.borderRightStyle(),
             table()->style().borderRightStyle()
         );

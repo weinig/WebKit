@@ -9533,7 +9533,7 @@ static NSTextAlignment NODELETE nsTextAlignmentFromRenderStyle(const WebCore::St
 
                 RefPtr<EditingStyle> typingStyle = coreFrame->selection().typingStyle();
                 if (typingStyle && typingStyle->style()) {
-                    String value = protect(typingStyle->style())->getPropertyValue(CSSPropertyWebkitTextDecorationsInEffect);
+                    String value = protect(typingStyle->style())->getPropertyValue(CSSPropertyID::WebkitTextDecorationsInEffect);
                     [_private->_textTouchBarItemController setTextIsUnderlined:value.contains("underline"_s)];
                 } else
                     [_private->_textTouchBarItemController setTextIsUnderlined:style->textDecorationLineInEffectOutOfLine().hasUnderline()];

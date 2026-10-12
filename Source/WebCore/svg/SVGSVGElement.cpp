@@ -369,7 +369,7 @@ void SVGSVGElement::collectExtraStyleForPresentationalHints(MutableStyleProperti
 
     if (functions.isEmpty())
         return;
-    addPropertyToPresentationalHintStyle(style, CSSPropertyTransform, CSSTransformListValue::create(WTF::move(functions)));
+    addPropertyToPresentationalHintStyle(style, CSSPropertyID::Transform, CSSTransformListValue::create(WTF::move(functions)));
 }
 
 Ref<NodeList> SVGSVGElement::collectIntersectionOrEnclosureList(SVGRect& rect, SVGElement* referenceElement, bool (*checkFunction)(SVGElement&, SVGRect&))

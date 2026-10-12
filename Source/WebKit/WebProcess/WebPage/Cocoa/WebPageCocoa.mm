@@ -969,8 +969,8 @@ void WebPage::getPlatformEditorStateCommon(LocalFrame& frame, EditorState& resul
                 postLayoutData.typingAttributes.add(TypingAttribute::Underline);
 
             if (RefPtr styleProperties = editingStyle->style()) {
-                bool isLeftToRight = styleProperties->propertyAsValueID(CSSPropertyDirection) == CSSValueLtr;
-                switch (styleProperties->propertyAsValueID(CSSPropertyTextAlign).value_or(CSSValueInvalid)) {
+                bool isLeftToRight = styleProperties->propertyAsValueID(CSSPropertyID::Direction) == CSSValueLtr;
+                switch (styleProperties->propertyAsValueID(CSSPropertyID::TextAlign).value_or(CSSValueInvalid)) {
                 case CSSValueRight:
                 case CSSValueWebkitRight:
                     postLayoutData.textAlignment = TextAlignment::Right;
@@ -995,7 +995,7 @@ void WebPage::getPlatformEditorStateCommon(LocalFrame& frame, EditorState& resul
                 default:
                     break;
                 }
-                if (auto textColor = styleProperties->propertyAsColor(CSSPropertyColor))
+                if (auto textColor = styleProperties->propertyAsColor(CSSPropertyID::Color))
                     postLayoutData.textColor = *textColor;
             }
         }
@@ -1530,7 +1530,7 @@ static std::optional<bool> elementHasHiddenVisibility(StyledElement* styledEleme
     if (!inlineStyle)
         return std::nullopt;
 
-    RefPtr value = dynamicDowncast<CSSKeywordValue>(inlineStyle->getPropertyCSSValue(CSSPropertyVisibility));
+    RefPtr value = dynamicDowncast<CSSKeywordValue>(inlineStyle->getPropertyCSSValue(CSSPropertyID::Visibility));
     if (!value)
         return false;
 
@@ -1571,7 +1571,7 @@ void WebPage::createTextIndicatorForElementWithID(const String& elementID, Compl
 
     auto isHiddenInitially = elementHasHiddenVisibility(styledElement.get());
 
-    styledElement->setInlineStyleProperty(CSSPropertyVisibility, CSSValueVisible, IsImportant::Yes);
+    styledElement->setInlineStyleProperty(CSSPropertyID::Visibility, CSSValueVisible, IsImportant::Yes);
 
     auto elementRange = WebCore::makeRangeSelectingNodeContents(*styledElement);
 
@@ -1596,9 +1596,9 @@ void WebPage::createTextIndicatorForElementWithID(const String& elementID, Compl
     // Ensure the state is idempotent after by removing the inline style if this is the case.
 
     if (isHiddenInitially.has_value())
-        styledElement->setInlineStyleProperty(CSSPropertyVisibility, *isHiddenInitially ? CSSValueHidden : CSSValueVisible, IsImportant::Yes);
+        styledElement->setInlineStyleProperty(CSSPropertyID::Visibility, *isHiddenInitially ? CSSValueHidden : CSSValueVisible, IsImportant::Yes);
     else
-        styledElement->removeInlineStyleProperty(CSSPropertyVisibility);
+        styledElement->removeInlineStyleProperty(CSSPropertyID::Visibility);
 
     completionHandler(WTF::move(textIndicator));
 }

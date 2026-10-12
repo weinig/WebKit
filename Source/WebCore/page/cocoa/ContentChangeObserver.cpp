@@ -293,7 +293,7 @@ static bool isObservedPropertyForTransition(AnimatableCSSProperty property)
 {
     return WTF::switchOn(property,
         [] (CSSPropertyID propertyId) {
-            return propertyId == CSSPropertyLeft || propertyId == CSSPropertyOpacity;
+            return propertyId == CSSPropertyID::Left || propertyId == CSSPropertyID::Opacity;
         },
         [] (const AtomString&) {
             return false;

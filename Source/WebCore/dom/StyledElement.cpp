@@ -129,7 +129,7 @@ CSSStyleProperties* StyledElement::inlineStyleCSSOMWrapper()
 
 static bool usesStyleBasedEditability(const StyleProperties& properties)
 {
-    return properties.getPropertyCSSValue(CSSPropertyWebkitUserModify);
+    return properties.getPropertyCSSValue(CSSPropertyID::WebkitUserModify);
 }
 
 void StyledElement::setInlineStyleFromString(const AtomString& newStyleString)
@@ -263,7 +263,7 @@ bool StyledElement::setInlineStyleCustomProperty(const AtomString& property, con
 
 bool StyledElement::setInlineStyleCustomProperty(Ref<CSSValue>&& customPropertyValue, IsImportant important)
 {
-    bool changes = ensureMutableInlineStyle()->addParsedProperty(CSSProperty(CSSPropertyCustom, WTF::move(customPropertyValue), important));
+    bool changes = ensureMutableInlineStyle()->addParsedProperty(CSSProperty(CSSPropertyID::Custom, WTF::move(customPropertyValue), important));
     if (changes)
         inlineStyleChanged();
     return changes;
@@ -356,13 +356,13 @@ void StyledElement::rebuildPresentationalHintStyle()
         };
         if (isSVG) {
             // SVG style tends to have unique x/y properties. Don't spend effort trying to deduplicate them.
-            if (hasNonZeroProperty(CSSPropertyX))
+            if (hasNonZeroProperty(CSSPropertyID::X))
                 return false;
-            if (hasNonZeroProperty(CSSPropertyY))
+            if (hasNonZeroProperty(CSSPropertyID::Y))
                 return false;
-            if (hasNonZeroProperty(CSSPropertyCx))
+            if (hasNonZeroProperty(CSSPropertyID::Cx))
                 return false;
-            if (hasNonZeroProperty(CSSPropertyCy))
+            if (hasNonZeroProperty(CSSPropertyID::Cy))
                 return false;
         }
         return true;
@@ -395,10 +395,10 @@ void StyledElement::mapLanguageAttributeToLocale(const AtomString& value, Mutabl
 {
     if (!value.isEmpty()) {
         // Quote the locale id so it is treated as a string instead of as a CSS keyword.
-        addPropertyToPresentationalHintStyle(style, CSSPropertyWebkitLocale, serializeString(value));
+        addPropertyToPresentationalHintStyle(style, CSSPropertyID::WebkitLocale, serializeString(value));
     } else {
         // The empty string means the language is explicitly unknown.
-        addPropertyToPresentationalHintStyle(style, CSSPropertyWebkitLocale, CSSValueAuto);
+        addPropertyToPresentationalHintStyle(style, CSSPropertyID::WebkitLocale, CSSValueAuto);
     }
 }
 

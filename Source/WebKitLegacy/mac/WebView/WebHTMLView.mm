@@ -2926,7 +2926,7 @@ IGNORE_WARNINGS_END
         NSMenuItem *menuItem = (NSMenuItem *)item;
         if ([menuItem isKindOfClass:[NSMenuItem class]]) {
             String direction = writingDirection == NSWritingDirectionLeftToRight ? "ltr"_s : "rtl"_s;
-            [menuItem setState:(protect(frame->editor())->selectionHasStyle(WebCore::CSSPropertyDirection, direction) != TriState::False)];
+            [menuItem setState:(protect(frame->editor())->selectionHasStyle(WebCore::CSSPropertyID::Direction, direction) != TriState::False)];
         }
         return [self _canEdit];
     }
@@ -2943,7 +2943,7 @@ IGNORE_WARNINGS_END
         if ([menuItem isKindOfClass:[NSMenuItem class]]) {
             // Take control of the title of the menu item instead of just checking/unchecking it because
             // a check would be ambiguous.
-            [menuItem setTitle:protect((protect(frame->editor())->selectionHasStyle(WebCore::CSSPropertyDirection, "rtl"_s) != TriState::False)
+            [menuItem setTitle:protect((protect(frame->editor())->selectionHasStyle(WebCore::CSSPropertyID::Direction, "rtl"_s) != TriState::False)
                 ? UI_STRING_INTERNAL("Left to Right", "Left to Right context menu item")
                 : UI_STRING_INTERNAL("Right to Left", "Right to Left context menu item"))];
         }

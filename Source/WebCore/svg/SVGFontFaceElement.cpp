@@ -242,7 +242,7 @@ int SVGFontFaceElement::descent() const
 
 String SVGFontFaceElement::fontFamily() const
 {
-    return protect(protect(fontFaceRule())->properties())->getPropertyValue(CSSPropertyFontFamily);
+    return protect(protect(fontFaceRule())->properties())->getPropertyValue(CSSPropertyID::FontFamily);
 }
 
 SVGFontElement* SVGFontFaceElement::associatedFontElement() const
@@ -276,11 +276,11 @@ void SVGFontFaceElement::rebuildFontFace()
 
     // Parse in-memory CSS rules
     Ref fontFaceRule = this->fontFaceRule();
-    protect(fontFaceRule->mutableProperties())->addParsedProperty(CSSProperty(CSSPropertySrc, list.releaseNonNull()));
+    protect(fontFaceRule->mutableProperties())->addParsedProperty(CSSProperty(CSSPropertyID::Src, list.releaseNonNull()));
 
     if (describesParentFont) {
         // Traverse parsed CSS values and associate CSSFontFaceSrcLocalValue elements with ourselves.
-        if (RefPtr srcList = downcast<CSSValueList>(protect(fontFaceRule->properties())->getPropertyCSSValue(CSSPropertySrc).get())) {
+        if (RefPtr srcList = downcast<CSSValueList>(protect(fontFaceRule->properties())->getPropertyCSSValue(CSSPropertyID::Src).get())) {
             for (Ref item : *srcList)
                 downcast<CSSFontFaceSrcLocalValue>(const_cast<CSSValue&>(item.get())).setSVGFontFaceElement(*this);
         }

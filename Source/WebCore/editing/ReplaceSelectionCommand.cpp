@@ -615,8 +615,8 @@ static bool nodeTreeHasInlineStyleWithLegibleColorForInvertLightness(const Node&
 
     if (RefPtr element = dynamicDowncast<StyledElement>(node)) {
         if (RefPtr inlineStyle = element->inlineStyle()) {
-            currentTextLightness = lightnessIgnoringSemanticColors(inlineStyle->propertyAsColor(CSSPropertyColor));
-            currentBackgroundLightness = lightnessIgnoringSemanticColors(inlineStyle->propertyAsColor(CSSPropertyBackgroundColor));
+            currentTextLightness = lightnessIgnoringSemanticColors(inlineStyle->propertyAsColor(CSSPropertyID::Color));
+            currentBackgroundLightness = lightnessIgnoringSemanticColors(inlineStyle->propertyAsColor(CSSPropertyID::BackgroundColor));
         }
     }
 
@@ -774,9 +774,9 @@ void ReplaceSelectionCommand::removeRedundantStylesAndKeepStyleSpanInline(Insert
 
             // Mutate using the CSSOM wrapper so we get the same event behavior as a script.
             if (isBlock(*element))
-                protect(element->cssomStyle())->setPropertyInternal(CSSPropertyDisplay, "inline"_s, IsImportant::No);
+                protect(element->cssomStyle())->setPropertyInternal(CSSPropertyID::Display, "inline"_s, IsImportant::No);
             if (element->renderer() && element->renderer()->style().floating() != Float::None)
-                protect(element->cssomStyle())->setPropertyInternal(CSSPropertyFloat, noneAtom(), IsImportant::No);
+                protect(element->cssomStyle())->setPropertyInternal(CSSPropertyID::Float, noneAtom(), IsImportant::No);
         }
     }
 }
@@ -2013,7 +2013,7 @@ void ReplaceSelectionCommand::updateDirectionForStartOfInsertedContentIfNeeded(c
 
         if (CheckedPtr renderer = blockContainer->renderer(); renderer && renderer->writingMode().bidiDirection() != newDirection) {
             auto directionValueID = toCSSValueID(*newDirection);
-            Ref style = EditingStyle::create(CSSPropertyDirection, directionValueID);
+            Ref style = EditingStyle::create(CSSPropertyID::Direction, directionValueID);
             applyStyle(style.ptr(), paragraphEnd, paragraphEnd, EditAction::SetBlockWritingDirection, ApplyStylePropertyLevel::ForceBlock);
             setNodeAttribute(*blockContainer, dirAttr, nameLiteral(directionValueID));
             restoreOriginalEndingSelection = true;
@@ -2048,7 +2048,7 @@ using ElementToStyleProperties = HashMap<Ref<StyledElement>, Vector<CSSPropertyI
 
         Ref document = node.document();
         Vector<CSSPropertyID, 3> propertiesToRemove;
-        if (auto inlineBackgroundColor = style->propertyAsColor(CSSPropertyBackgroundColor)) {
+        if (auto inlineBackgroundColor = style->propertyAsColor(CSSPropertyID::BackgroundColor)) {
             bool inlineColorIsValid = inlineBackgroundColor->isValid();
             auto backgroundColor = inlineColorIsValid ? *inlineBackgroundColor : protect(renderer->style())->visitedDependentBackgroundColor();
             auto compositeOperator = document->compositeOperatorForBackgroundColor(backgroundColor, *renderer);
@@ -2056,11 +2056,11 @@ using ElementToStyleProperties = HashMap<Ref<StyledElement>, Vector<CSSPropertyI
                 bool inlineColorIsSemantic = inlineColorIsValid && inlineBackgroundColor->isSemantic();
                 if (inlineColorIsSemantic || !document->settings().punchOutWhiteBackgroundsInDarkMode() || !backgroundColor.isOpaque() || !isLightOrDarkNeutralBackgroundColor(backgroundColor))
                     return;
-                propertiesToRemove.append(CSSPropertyBackgroundColor);
+                propertiesToRemove.append(CSSPropertyID::BackgroundColor);
             }
         }
 
-        for (auto property : { CSSPropertyColor, CSSPropertyCaretColor }) {
+        for (auto property : { CSSPropertyID::Color, CSSPropertyID::CaretColor }) {
             auto color = style->propertyAsColor(property);
             if (!color)
                 continue;

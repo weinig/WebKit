@@ -141,13 +141,13 @@ void HTMLTextAreaElement::collectPresentationalHintsForAttribute(const Qualified
 {
     if (name == wrapAttr) {
         if (m_wrap != NoWrap) {
-            addPropertyToPresentationalHintStyle(style, CSSPropertyWhiteSpaceCollapse, CSSValuePreserve);
-            addPropertyToPresentationalHintStyle(style, CSSPropertyTextWrapMode, CSSValueWrap);
-            addPropertyToPresentationalHintStyle(style, CSSPropertyOverflowWrap, CSSValueBreakWord);
+            addPropertyToPresentationalHintStyle(style, CSSPropertyID::WhiteSpaceCollapse, CSSValuePreserve);
+            addPropertyToPresentationalHintStyle(style, CSSPropertyID::TextWrapMode, CSSValueWrap);
+            addPropertyToPresentationalHintStyle(style, CSSPropertyID::OverflowWrap, CSSValueBreakWord);
         } else {
-            addPropertyToPresentationalHintStyle(style, CSSPropertyWhiteSpaceCollapse, CSSValuePreserve);
-            addPropertyToPresentationalHintStyle(style, CSSPropertyTextWrapMode, CSSValueNowrap);
-            addPropertyToPresentationalHintStyle(style, CSSPropertyOverflowWrap, CSSValueNormal);
+            addPropertyToPresentationalHintStyle(style, CSSPropertyID::WhiteSpaceCollapse, CSSValuePreserve);
+            addPropertyToPresentationalHintStyle(style, CSSPropertyID::TextWrapMode, CSSValueNowrap);
+            addPropertyToPresentationalHintStyle(style, CSSPropertyID::OverflowWrap, CSSValueNormal);
         }
     } else
         HTMLTextFormControlElement::collectPresentationalHintsForAttribute(name, value, style);

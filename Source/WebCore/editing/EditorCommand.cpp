@@ -230,7 +230,7 @@ static unsigned verticalScrollDistance(LocalFrame& frame)
 
 static bool executeBackColor(LocalFrame& frame, Event*, EditorCommandSource source, const String& value)
 {
-    return executeApplyStyle(frame, source, EditAction::SetBackgroundColor, CSSPropertyBackgroundColor, value);
+    return executeApplyStyle(frame, source, EditAction::SetBackgroundColor, CSSPropertyID::BackgroundColor, value);
 }
 
 static bool executeCopy(LocalFrame& frame, Event*, EditorCommandSource source, const String&)
@@ -386,7 +386,7 @@ static bool executeFindString(LocalFrame& frame, Event*, EditorCommandSource, co
 
 static bool executeFontName(LocalFrame& frame, Event*, EditorCommandSource source, const String& value)
 {
-    return executeApplyStyle(frame, source, EditAction::SetFont, CSSPropertyFontFamily, value);
+    return executeApplyStyle(frame, source, EditAction::SetFont, CSSPropertyID::FontFamily, value);
 }
 
 static bool executeFontSize(LocalFrame& frame, Event*, EditorCommandSource source, const String& value)
@@ -394,17 +394,17 @@ static bool executeFontSize(LocalFrame& frame, Event*, EditorCommandSource sourc
     CSSValueID size;
     if (!HTMLFontElement::cssValueFromFontSizeNumber(value, size))
         return false;
-    return executeApplyStyle(frame, source, EditAction::ChangeAttributes, CSSPropertyFontSize, size);
+    return executeApplyStyle(frame, source, EditAction::ChangeAttributes, CSSPropertyID::FontSize, size);
 }
 
 static bool executeFontSizeDelta(LocalFrame& frame, Event*, EditorCommandSource source, const String& value)
 {
-    return executeApplyStyle(frame, source, EditAction::ChangeAttributes, CSSPropertyWebkitFontSizeDelta, value);
+    return executeApplyStyle(frame, source, EditAction::ChangeAttributes, CSSPropertyID::WebkitFontSizeDelta, value);
 }
 
 static bool executeForeColor(LocalFrame& frame, Event*, EditorCommandSource source, const String& value)
 {
-    return executeApplyStyle(frame, source, EditAction::SetColor, CSSPropertyColor, value);
+    return executeApplyStyle(frame, source, EditAction::SetColor, CSSPropertyID::Color, value);
 }
 
 static bool executeFormatBlock(LocalFrame& frame, Event*, EditorCommandSource, const String& value)
@@ -559,29 +559,29 @@ static bool executeInsertNestedOrderedList(LocalFrame& frame, Event*, EditorComm
 
 static bool executeJustifyCenter(LocalFrame& frame, Event*, EditorCommandSource source, const String&)
 {
-    return executeApplyParagraphStyle(frame, source, EditAction::Center, CSSPropertyTextAlign, "center"_s);
+    return executeApplyParagraphStyle(frame, source, EditAction::Center, CSSPropertyID::TextAlign, "center"_s);
 }
 
 static bool executeJustifyFull(LocalFrame& frame, Event*, EditorCommandSource source, const String&)
 {
-    return executeApplyParagraphStyle(frame, source, EditAction::Justify, CSSPropertyTextAlign, "justify"_s);
+    return executeApplyParagraphStyle(frame, source, EditAction::Justify, CSSPropertyID::TextAlign, "justify"_s);
 }
 
 static bool executeJustifyLeft(LocalFrame& frame, Event*, EditorCommandSource source, const String&)
 {
-    return executeApplyParagraphStyle(frame, source, EditAction::AlignLeft, CSSPropertyTextAlign, "left"_s);
+    return executeApplyParagraphStyle(frame, source, EditAction::AlignLeft, CSSPropertyID::TextAlign, "left"_s);
 }
 
 static bool executeJustifyRight(LocalFrame& frame, Event*, EditorCommandSource source, const String&)
 {
-    return executeApplyParagraphStyle(frame, source, EditAction::AlignRight, CSSPropertyTextAlign, "right"_s);
+    return executeApplyParagraphStyle(frame, source, EditAction::AlignRight, CSSPropertyID::TextAlign, "right"_s);
 }
 
 static bool executeMakeTextWritingDirectionLeftToRight(LocalFrame& frame, Event*, EditorCommandSource, const String&)
 {
     auto style = MutableStyleProperties::create();
-    style->setProperty(CSSPropertyUnicodeBidi, CSSValueEmbed);
-    style->setProperty(CSSPropertyDirection, CSSValueLtr);
+    style->setProperty(CSSPropertyID::UnicodeBidi, CSSValueEmbed);
+    style->setProperty(CSSPropertyID::Direction, CSSValueLtr);
     protect(frame.editor())->applyStyle(style.ptr(), EditAction::SetInlineWritingDirection);
     return true;
 }
@@ -589,7 +589,7 @@ static bool executeMakeTextWritingDirectionLeftToRight(LocalFrame& frame, Event*
 static bool executeMakeTextWritingDirectionNatural(LocalFrame& frame, Event*, EditorCommandSource, const String&)
 {
     auto style = MutableStyleProperties::create();
-    style->setProperty(CSSPropertyUnicodeBidi, CSSValueNormal);
+    style->setProperty(CSSPropertyID::UnicodeBidi, CSSValueNormal);
     protect(frame.editor())->applyStyle(style.ptr(), EditAction::SetInlineWritingDirection);
     return true;
 }
@@ -597,8 +597,8 @@ static bool executeMakeTextWritingDirectionNatural(LocalFrame& frame, Event*, Ed
 static bool executeMakeTextWritingDirectionRightToLeft(LocalFrame& frame, Event*, EditorCommandSource, const String&)
 {
     auto style = MutableStyleProperties::create();
-    style->setProperty(CSSPropertyUnicodeBidi, CSSValueEmbed);
-    style->setProperty(CSSPropertyDirection, CSSValueRtl);
+    style->setProperty(CSSPropertyID::UnicodeBidi, CSSValueEmbed);
+    style->setProperty(CSSPropertyID::Direction, CSSValueRtl);
     protect(frame.editor())->applyStyle(style.ptr(), EditAction::SetInlineWritingDirection);
     return true;
 }
@@ -1108,7 +1108,7 @@ static TextDecorationChange textDecorationChangeForToggling(Editor& editor, CSSP
 static bool executeStrikethrough(LocalFrame& frame, Event*, EditorCommandSource source, const String&)
 {
     Ref<EditingStyle> style = EditingStyle::create();
-    style->setStrikeThroughChange(textDecorationChangeForToggling(protect(frame.editor()), CSSPropertyWebkitTextDecorationsInEffect, "line-through"_s));
+    style->setStrikeThroughChange(textDecorationChangeForToggling(protect(frame.editor()), CSSPropertyID::WebkitTextDecorationsInEffect, "line-through"_s));
     return applyCommandToFrame(frame, source, EditAction::StrikeThrough, WTF::move(style));
 }
 
@@ -1126,12 +1126,12 @@ static bool executeUseCSS(LocalFrame& frame, Event*, EditorCommandSource, const 
 
 static bool executeSubscript(LocalFrame& frame, Event*, EditorCommandSource source, const String&)
 {
-    return executeToggleStyle(frame, source, EditAction::Subscript, CSSPropertyVerticalAlign, "baseline"_s, "sub"_s);
+    return executeToggleStyle(frame, source, EditAction::Subscript, CSSPropertyID::VerticalAlign, "baseline"_s, "sub"_s);
 }
 
 static bool executeSuperscript(LocalFrame& frame, Event*, EditorCommandSource source, const String&)
 {
-    return executeToggleStyle(frame, source, EditAction::Superscript, CSSPropertyVerticalAlign, "baseline"_s, "super"_s);
+    return executeToggleStyle(frame, source, EditAction::Superscript, CSSPropertyID::VerticalAlign, "baseline"_s, "super"_s);
 }
 
 static bool executeSwapWithMark(LocalFrame& frame, Event*, EditorCommandSource, const String&)
@@ -1162,12 +1162,12 @@ static bool executeTakeFindStringFromSelection(LocalFrame& frame, Event*, Editor
 
 static bool executeToggleBold(LocalFrame& frame, Event*, EditorCommandSource source, const String&)
 {
-    return executeToggleStyle(frame, source, EditAction::Bold, CSSPropertyFontWeight, "normal"_s, "bold"_s);
+    return executeToggleStyle(frame, source, EditAction::Bold, CSSPropertyID::FontWeight, "normal"_s, "bold"_s);
 }
 
 static bool executeToggleItalic(LocalFrame& frame, Event*, EditorCommandSource source, const String&)
 {
-    return executeToggleStyle(frame, source, EditAction::Italics, CSSPropertyFontStyle, "normal"_s, "italic"_s);
+    return executeToggleStyle(frame, source, EditAction::Italics, CSSPropertyID::FontStyle, "normal"_s, "italic"_s);
 }
 
 static bool executeTranspose(LocalFrame& frame, Event*, EditorCommandSource, const String&)
@@ -1179,7 +1179,7 @@ static bool executeTranspose(LocalFrame& frame, Event*, EditorCommandSource, con
 static bool executeUnderline(LocalFrame& frame, Event*, EditorCommandSource source, const String&)
 {
     Ref<EditingStyle> style = EditingStyle::create();
-    TextDecorationChange change = textDecorationChangeForToggling(protect(frame.editor()), CSSPropertyWebkitTextDecorationsInEffect, "underline"_s);
+    TextDecorationChange change = textDecorationChangeForToggling(protect(frame.editor()), CSSPropertyID::WebkitTextDecorationsInEffect, "underline"_s);
     style->setUnderlineChange(change);
     return applyCommandToFrame(frame, source, EditAction::Underline, WTF::move(style));
 }
@@ -1199,7 +1199,7 @@ static bool executeUnlink(LocalFrame& frame, Event*, EditorCommandSource, const 
 
 static bool executeUnscript(LocalFrame& frame, Event*, EditorCommandSource source, const String&)
 {
-    return executeApplyStyle(frame, source, EditAction::Unscript, CSSPropertyVerticalAlign, "baseline"_s);
+    return executeApplyStyle(frame, source, EditAction::Unscript, CSSPropertyID::VerticalAlign, "baseline"_s);
 }
 
 static bool executeUnselect(LocalFrame& frame, Event*, EditorCommandSource, const String&)
@@ -1484,12 +1484,12 @@ static TriState NODELETE stateNone(LocalFrame&, Event*)
 
 static TriState stateBold(LocalFrame& frame, Event*)
 {
-    return stateStyle(frame, CSSPropertyFontWeight, "bold"_s);
+    return stateStyle(frame, CSSPropertyID::FontWeight, "bold"_s);
 }
 
 static TriState stateItalic(LocalFrame& frame, Event*)
 {
-    return stateStyle(frame, CSSPropertyFontStyle, "italic"_s);
+    return stateStyle(frame, CSSPropertyID::FontStyle, "italic"_s);
 }
 
 static TriState stateOrderedList(LocalFrame& frame, Event*)
@@ -1499,7 +1499,7 @@ static TriState stateOrderedList(LocalFrame& frame, Event*)
 
 static TriState stateStrikethrough(LocalFrame& frame, Event*)
 {
-    return stateStyle(frame, CSSPropertyWebkitTextDecorationsInEffect, "line-through"_s);
+    return stateStyle(frame, CSSPropertyID::WebkitTextDecorationsInEffect, "line-through"_s);
 }
 
 static TriState stateStyleWithCSS(LocalFrame& frame, Event*)
@@ -1509,12 +1509,12 @@ static TriState stateStyleWithCSS(LocalFrame& frame, Event*)
 
 static TriState stateSubscript(LocalFrame& frame, Event*)
 {
-    return stateStyle(frame, CSSPropertyVerticalAlign, "sub"_s);
+    return stateStyle(frame, CSSPropertyID::VerticalAlign, "sub"_s);
 }
 
 static TriState stateSuperscript(LocalFrame& frame, Event*)
 {
-    return stateStyle(frame, CSSPropertyVerticalAlign, "super"_s);
+    return stateStyle(frame, CSSPropertyID::VerticalAlign, "super"_s);
 }
 
 static TriState stateTextWritingDirectionLeftToRight(LocalFrame& frame, Event*)
@@ -1534,7 +1534,7 @@ static TriState stateTextWritingDirectionRightToLeft(LocalFrame& frame, Event*)
 
 static TriState stateUnderline(LocalFrame& frame, Event*)
 {
-    return stateStyle(frame, CSSPropertyWebkitTextDecorationsInEffect, "underline"_s);
+    return stateStyle(frame, CSSPropertyID::WebkitTextDecorationsInEffect, "underline"_s);
 }
 
 static TriState stateUnorderedList(LocalFrame& frame, Event*)
@@ -1544,22 +1544,22 @@ static TriState stateUnorderedList(LocalFrame& frame, Event*)
 
 static TriState stateJustifyCenter(LocalFrame& frame, Event*)
 {
-    return stateStyle(frame, CSSPropertyTextAlign, "center"_s);
+    return stateStyle(frame, CSSPropertyID::TextAlign, "center"_s);
 }
 
 static TriState stateJustifyFull(LocalFrame& frame, Event*)
 {
-    return stateStyle(frame, CSSPropertyTextAlign, "justify"_s);
+    return stateStyle(frame, CSSPropertyID::TextAlign, "justify"_s);
 }
 
 static TriState stateJustifyLeft(LocalFrame& frame, Event*)
 {
-    return stateStyle(frame, CSSPropertyTextAlign, "left"_s);
+    return stateStyle(frame, CSSPropertyID::TextAlign, "left"_s);
 }
 
 static TriState stateJustifyRight(LocalFrame& frame, Event*)
 {
-    return stateStyle(frame, CSSPropertyTextAlign, "right"_s);
+    return stateStyle(frame, CSSPropertyID::TextAlign, "right"_s);
 }
 
 // Value functions
@@ -1579,7 +1579,7 @@ static String NODELETE valueAsEmptyString(LocalFrame&, Event*)
 
 static String valueBackColor(LocalFrame& frame, Event*)
 {
-    return valueStyle(frame, CSSPropertyBackgroundColor);
+    return valueStyle(frame, CSSPropertyID::BackgroundColor);
 }
 
 static String valueDefaultParagraphSeparator(LocalFrame& frame, Event*)
@@ -1597,22 +1597,22 @@ static String valueDefaultParagraphSeparator(LocalFrame& frame, Event*)
 
 static String valueFontName(LocalFrame& frame, Event*)
 {
-    return valueStyle(frame, CSSPropertyFontFamily);
+    return valueStyle(frame, CSSPropertyID::FontFamily);
 }
 
 static String valueFontSize(LocalFrame& frame, Event*)
 {
-    return valueStyle(frame, CSSPropertyFontSize);
+    return valueStyle(frame, CSSPropertyID::FontSize);
 }
 
 static String valueFontSizeDelta(LocalFrame& frame, Event*)
 {
-    return valueStyle(frame, CSSPropertyWebkitFontSizeDelta);
+    return valueStyle(frame, CSSPropertyID::WebkitFontSizeDelta);
 }
 
 static String valueForeColor(LocalFrame& frame, Event*)
 {
-    return valueStyle(frame, CSSPropertyColor);
+    return valueStyle(frame, CSSPropertyID::Color);
 }
 
 static String valueFormatBlock(LocalFrame& frame, Event*)

@@ -179,8 +179,8 @@ unsigned HTMLElement::parseBorderWidthAttribute(const AtomString& value) const
 
 void HTMLElement::applyBorderAttributeToStyle(const AtomString& value, MutableStyleProperties& style)
 {
-    addPropertyToPresentationalHintStyle(style, CSSPropertyBorderWidth, parseBorderWidthAttribute(value), CSSUnitType::Px);
-    addPropertyToPresentationalHintStyle(style, CSSPropertyBorderStyle, CSSValueSolid);
+    addPropertyToPresentationalHintStyle(style, CSSPropertyID::BorderWidth, parseBorderWidthAttribute(value), CSSUnitType::Px);
+    addPropertyToPresentationalHintStyle(style, CSSPropertyID::BorderStyle, CSSValueSolid);
 }
 
 bool HTMLElement::hasPresentationalHintsForAttribute(const QualifiedName& name) const
@@ -231,9 +231,9 @@ void HTMLElement::collectPresentationalHintsForAttribute(const QualifiedName& na
     switch (name.nodeName()) {
     case AttributeNames::alignAttr:
         if (equalLettersIgnoringASCIICase(value, "middle"_s))
-            addPropertyToPresentationalHintStyle(style, CSSPropertyTextAlign, CSSValueCenter);
+            addPropertyToPresentationalHintStyle(style, CSSPropertyID::TextAlign, CSSValueCenter);
         else
-            addPropertyToPresentationalHintStyle(style, CSSPropertyTextAlign, value);
+            addPropertyToPresentationalHintStyle(style, CSSPropertyID::TextAlign, value);
         break;
     case AttributeNames::contenteditableAttr: {
         CSSValueID userModifyValue = CSSValueReadWrite;
@@ -247,36 +247,36 @@ void HTMLElement::collectPresentationalHintsForAttribute(const QualifiedName& na
             userModifyValue = CSSValueReadWritePlaintextOnly;
             [[fallthrough]];
         case ContentEditableType::True:
-            addPropertyToPresentationalHintStyle(style, CSSPropertyOverflowWrap, CSSValueBreakWord);
-            addPropertyToPresentationalHintStyle(style, CSSPropertyWebkitNbspMode, CSSValueSpace);
-            addPropertyToPresentationalHintStyle(style, CSSPropertyLineBreak, CSSValueAfterWhiteSpace);
+            addPropertyToPresentationalHintStyle(style, CSSPropertyID::OverflowWrap, CSSValueBreakWord);
+            addPropertyToPresentationalHintStyle(style, CSSPropertyID::WebkitNbspMode, CSSValueSpace);
+            addPropertyToPresentationalHintStyle(style, CSSPropertyID::LineBreak, CSSValueAfterWhiteSpace);
 #if PLATFORM(IOS_FAMILY)
-            addPropertyToPresentationalHintStyle(style, CSSPropertyWebkitTextSizeAdjust, CSSValueNone);
+            addPropertyToPresentationalHintStyle(style, CSSPropertyID::WebkitTextSizeAdjust, CSSValueNone);
 #endif
             break;
         }
-        addPropertyToPresentationalHintStyle(style, CSSPropertyWebkitUserModify, userModifyValue);
+        addPropertyToPresentationalHintStyle(style, CSSPropertyID::WebkitUserModify, userModifyValue);
         break;
     }
     case AttributeNames::hiddenAttr:
         if (document().settings().hiddenUntilFoundEnabled() && equalIgnoringASCIICase(value, "until-found"_s))
-            addPropertyToPresentationalHintStyle(style, CSSPropertyContentVisibility, CSSValueHidden);
+            addPropertyToPresentationalHintStyle(style, CSSPropertyID::ContentVisibility, CSSValueHidden);
         else
-            addPropertyToPresentationalHintStyle(style, CSSPropertyDisplay, CSSValueNone);
+            addPropertyToPresentationalHintStyle(style, CSSPropertyID::Display, CSSValueNone);
         break;
     case AttributeNames::draggableAttr:
         if (equalLettersIgnoringASCIICase(value, "true"_s))
-            addPropertyToPresentationalHintStyle(style, CSSPropertyWebkitUserDrag, CSSValueElement);
+            addPropertyToPresentationalHintStyle(style, CSSPropertyID::WebkitUserDrag, CSSValueElement);
         else if (equalLettersIgnoringASCIICase(value, "false"_s))
-            addPropertyToPresentationalHintStyle(style, CSSPropertyWebkitUserDrag, CSSValueNone);
+            addPropertyToPresentationalHintStyle(style, CSSPropertyID::WebkitUserDrag, CSSValueNone);
         break;
     case AttributeNames::dirAttr:
         if (equalLettersIgnoringASCIICase(value, "auto"_s))
-            addPropertyToPresentationalHintStyle(style, CSSPropertyUnicodeBidi, unicodeBidiAttributeForDirAuto(*this));
+            addPropertyToPresentationalHintStyle(style, CSSPropertyID::UnicodeBidi, unicodeBidiAttributeForDirAuto(*this));
         else if (equalLettersIgnoringASCIICase(value, "rtl"_s) || equalLettersIgnoringASCIICase(value, "ltr"_s)) {
-            addPropertyToPresentationalHintStyle(style, CSSPropertyDirection, value);
+            addPropertyToPresentationalHintStyle(style, CSSPropertyID::Direction, value);
             if (!hasTagName(bdiTag) && !hasTagName(bdoTag) && !hasTagName(outputTag))
-                addPropertyToPresentationalHintStyle(style, CSSPropertyUnicodeBidi, CSSValueIsolate);
+                addPropertyToPresentationalHintStyle(style, CSSPropertyID::UnicodeBidi, CSSValueIsolate);
         }
         break;
     case AttributeNames::XML::langAttr:
@@ -604,7 +604,7 @@ void HTMLElement::applyAspectRatioWithoutDimensionalRulesFromWidthAndHeightAttri
 
 void HTMLElement::addParsedWidthAndHeightToAspectRatioList(double width, double height, MutableStyleProperties& style)
 {
-    style.setProperty(CSSPropertyAspectRatio,
+    style.setProperty(CSSPropertyID::AspectRatio,
         CSSValueList::createSpaceSeparated(
             CSSKeywordValue::create(CSSValueAuto),
             CSSRatioValue::create(CSS::Ratio { width, height })
@@ -639,10 +639,10 @@ void HTMLElement::applyAlignmentAttributeToStyle(const AtomString& alignment, Mu
         verticalAlignValue = CSSValueTextTop;
 
     if (floatValue != CSSValueInvalid)
-        addPropertyToPresentationalHintStyle(style, CSSPropertyFloat, floatValue);
+        addPropertyToPresentationalHintStyle(style, CSSPropertyID::Float, floatValue);
 
     if (verticalAlignValue != CSSValueInvalid)
-        addPropertyToPresentationalHintStyle(style, CSSPropertyVerticalAlign, verticalAlignValue);
+        addPropertyToPresentationalHintStyle(style, CSSPropertyID::VerticalAlign, verticalAlignValue);
 }
 
 bool HTMLElement::hasCustomFocusLogic() const

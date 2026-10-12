@@ -706,14 +706,14 @@ void HTMLInputElement::collectPresentationalHintsForAttribute(const QualifiedNam
     switch (name.nodeName()) {
     case AttributeNames::vspaceAttr:
         if (isImageButton()) {
-            addHTMLLengthToStyle(style, CSSPropertyMarginTop, value);
-            addHTMLLengthToStyle(style, CSSPropertyMarginBottom, value);
+            addHTMLLengthToStyle(style, CSSPropertyID::MarginTop, value);
+            addHTMLLengthToStyle(style, CSSPropertyID::MarginBottom, value);
         }
         break;
     case AttributeNames::hspaceAttr:
         if (isImageButton()) {
-            addHTMLLengthToStyle(style, CSSPropertyMarginLeft, value);
-            addHTMLLengthToStyle(style, CSSPropertyMarginRight, value);
+            addHTMLLengthToStyle(style, CSSPropertyID::MarginLeft, value);
+            addHTMLLengthToStyle(style, CSSPropertyID::MarginRight, value);
         }
         break;
     case AttributeNames::alignAttr:
@@ -722,13 +722,13 @@ void HTMLInputElement::collectPresentationalHintsForAttribute(const QualifiedNam
         break;
     case AttributeNames::widthAttr:
         if (m_inputType->shouldRespectHeightAndWidthAttributes())
-            addHTMLLengthToStyle(style, CSSPropertyWidth, value);
+            addHTMLLengthToStyle(style, CSSPropertyID::Width, value);
         if (isImageButton())
             applyAspectRatioFromWidthAndHeightAttributesToStyle(value, attributeWithoutSynchronization(heightAttr), style);
         break;
     case AttributeNames::heightAttr:
         if (m_inputType->shouldRespectHeightAndWidthAttributes())
-            addHTMLLengthToStyle(style, CSSPropertyHeight, value);
+            addHTMLLengthToStyle(style, CSSPropertyID::Height, value);
         if (isImageButton())
             applyAspectRatioFromWidthAndHeightAttributesToStyle(attributeWithoutSynchronization(widthAttr), value, style);
         break;

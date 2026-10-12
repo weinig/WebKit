@@ -191,16 +191,16 @@ void HTMLFontElement::collectPresentationalHintsForAttribute(const QualifiedName
     case AttributeNames::sizeAttr: {
         CSSValueID size = CSSValueInvalid;
         if (cssValueFromFontSizeNumber(value, size))
-            addPropertyToPresentationalHintStyle(style, CSSPropertyFontSize, size);
+            addPropertyToPresentationalHintStyle(style, CSSPropertyID::FontSize, size);
         break;
     }
     case AttributeNames::colorAttr:
-        addHTMLColorToStyle(style, CSSPropertyColor, value);
+        addHTMLColorToStyle(style, CSSPropertyID::Color, value);
         break;
     case AttributeNames::faceAttr:
         if (!value.isEmpty()) {
             if (auto fontFaceValue = CSSValuePool::singleton().createFontFaceValue(value))
-                style.setProperty(CSSProperty(CSSPropertyFontFamily, fontFaceValue.releaseNonNull()));
+                style.setProperty(CSSProperty(CSSPropertyID::FontFamily, fontFaceValue.releaseNonNull()));
         }
         break;
     default:

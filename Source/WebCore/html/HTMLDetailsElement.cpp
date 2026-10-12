@@ -130,8 +130,8 @@ void HTMLDetailsElement::didAddUserAgentShadowRoot(ShadowRoot& root)
     ScriptDisallowedScope::EventAllowedScope defaultSlotScope { defaultSlot };
     defaultSlot->setUserAgentPart(UserAgentParts::detailsContent());
     ASSERT(!hasAttributeWithoutSynchronization(openAttr));
-    defaultSlot->setInlineStyleProperty(CSSPropertyContentVisibility, CSSValueHidden);
-    defaultSlot->setInlineStyleProperty(CSSPropertyDisplay, CSSValueBlock);
+    defaultSlot->setInlineStyleProperty(CSSPropertyID::ContentVisibility, CSSValueHidden);
+    defaultSlot->setInlineStyleProperty(CSSPropertyID::Display, CSSValueBlock);
     root.appendChild(defaultSlot);
     lazyInitialize(m_defaultSlot, WTF::move(defaultSlot));
 
@@ -175,7 +175,7 @@ void HTMLDetailsElement::attributeChanged(const QualifiedName& name, const AtomS
             Style::PseudoClassChangeInvalidation styleInvalidation(*this, CSSSelector::PseudoClass::Open, isOpen);
             m_isOpen = isOpen;
             if (!newValue.isNull()) {
-                defaultSlot->removeInlineStyleProperty(CSSPropertyContentVisibility);
+                defaultSlot->removeInlineStyleProperty(CSSPropertyID::ContentVisibility);
                 queueDetailsToggleEventTask(ToggleState::Closed, ToggleState::Open);
                 if (!attributeWithoutSynchronization(nameAttr).isEmpty()) {
                     ShouldNotFireMutationEventsScope scope(document());
@@ -183,7 +183,7 @@ void HTMLDetailsElement::attributeChanged(const QualifiedName& name, const AtomS
                         otherDetailsElement->removeAttribute(openAttr);
                 }
             } else {
-                defaultSlot->setInlineStyleProperty(CSSPropertyContentVisibility, CSSValueHidden);
+                defaultSlot->setInlineStyleProperty(CSSPropertyID::ContentVisibility, CSSValueHidden);
                 queueDetailsToggleEventTask(ToggleState::Open, ToggleState::Closed);
             }
         }

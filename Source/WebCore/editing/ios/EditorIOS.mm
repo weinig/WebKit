@@ -65,17 +65,17 @@ void Editor::removeUnchangeableStyles()
     auto defaultStyle = protect(editingStyle->style())->mutableCopy();
     
     // Text widgets implement background color via the UIView property. Their body element will not have one.
-    defaultStyle->setProperty(CSSPropertyBackgroundColor, "rgba(255, 255, 255, 0.0)"_s);
+    defaultStyle->setProperty(CSSPropertyID::BackgroundColor, "rgba(255, 255, 255, 0.0)"_s);
     
     // Remove properties that the user can modify, like font-weight. 
     // Also remove font-family, per HI spec.
     // FIXME: it'd be nice if knowledge about which styles were unchangeable was not hard-coded here.
-    defaultStyle->removeProperty(CSSPropertyFontWeight);
-    defaultStyle->removeProperty(CSSPropertyFontStyle);
-    defaultStyle->removeProperty(CSSPropertyFontVariantCaps);
+    defaultStyle->removeProperty(CSSPropertyID::FontWeight);
+    defaultStyle->removeProperty(CSSPropertyID::FontStyle);
+    defaultStyle->removeProperty(CSSPropertyID::FontVariantCaps);
     // FIXME: we should handle also pasted quoted text, strikethrough, etc. <rdar://problem/9255115>
-    defaultStyle->removeProperty(CSSPropertyTextDecorationLine);
-    defaultStyle->removeProperty(CSSPropertyWebkitTextDecorationsInEffect); // implements underline
+    defaultStyle->removeProperty(CSSPropertyID::TextDecorationLine);
+    defaultStyle->removeProperty(CSSPropertyID::WebkitTextDecorationsInEffect); // implements underline
 
     // FIXME add EditAction::MatchStlye <rdar://problem/9156507> Undo rich text's paste & match style should say "Undo Match Style"
     applyStyleToSelection(defaultStyle.ptr(), EditAction::ChangeAttributes);

@@ -956,7 +956,7 @@ void HTMLTextFormControlElement::adjustInnerTextStyle(const Style::ComputedStyle
 
     if (auto innerText = innerTextElement()) {
         if (RefPtr properties = innerText->presentationalHintStyle()) {
-            if (auto value = properties->propertyAsValueID(CSSPropertyWebkitUserModify))
+            if (auto value = properties->propertyAsValueID(CSSPropertyID::WebkitUserModify))
                 textBlockStyle.setUserModify(fromCSSValueID<UserModify>(*value));
         }
     }

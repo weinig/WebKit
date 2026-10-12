@@ -678,7 +678,7 @@ void StyledMarkupAccumulator::wrapWithStyleNode(StyleProperties* style, bool isB
 void StyledMarkupAccumulator::appendStyleNodeOpenTag(StringBuilder& out, StyleProperties* style, bool isBlock, std::optional<TextDirection> directionToAppend)
 {
     // With AnnotateForInterchange::Yes, wrappingStyleForSerialization should have removed -webkit-text-decorations-in-effect
-    ASSERT(!shouldAnnotate() || propertyMissingOrEqualToNone(style, CSSPropertyWebkitTextDecorationsInEffect));
+    ASSERT(!shouldAnnotate() || propertyMissingOrEqualToNone(style, CSSPropertyID::WebkitTextDecorationsInEffect));
     out.append('<', isBlock ? "div"_s : "span"_s, ' ');
     if (directionToAppend)
         out.append(directionAttributeAndValue(*directionToAppend), ' ');
@@ -728,7 +728,7 @@ void StyledMarkupAccumulator::appendText(StringBuilder& out, const Text& text)
         // Make sure spans are inline style in paste side e.g. span { display: block }.
         wrappingStyle->forceDisplayInline();
         // FIXME: Should this be included in forceDisplayInline?
-        protect(wrappingStyle->style())->setProperty(CSSPropertyFloat, CSSValueNone);
+        protect(wrappingStyle->style())->setProperty(CSSPropertyID::Float, CSSValueNone);
 
         appendStyleNodeOpenTag(out, protect(wrappingStyle->style()), false, [&] -> std::optional<TextDirection> {
             if (m_hasAppendedAnyText)
@@ -897,7 +897,7 @@ void StyledMarkupAccumulator::appendStartTag(StringBuilder& out, const Element& 
 
 #if ENABLE(DATA_DETECTION)
         if (replacementType == SpanReplacementType::DataDetector && newInlineStyle->style())
-            protect(newInlineStyle->style())->removeProperty(CSSPropertyTextDecorationColor);
+            protect(newInlineStyle->style())->removeProperty(CSSPropertyID::TextDecorationColor);
 #endif
 
         if (shouldAnnotateOrForceInline) {
@@ -915,7 +915,7 @@ void StyledMarkupAccumulator::appendStartTag(StringBuilder& out, const Element& 
             // If the node is not fully selected by the range, then we don't want to keep styles that affect its relationship to the nodes around it
             // only the ones that affect it and the nodes within it.
             if (rangeFullySelectsNode == DoesNotFullySelectNode && newInlineStyle->style())
-                protect(newInlineStyle->style())->removeProperty(CSSPropertyFloat);
+                protect(newInlineStyle->style())->removeProperty(CSSPropertyID::Float);
         }
 
         if (!newInlineStyle->isEmpty()) {
@@ -1273,23 +1273,23 @@ static String serializePreservingVisualAppearanceInternal(const Position& start,
 
                 // Bring the background attribute over, but not as an attribute because a background attribute on a div
                 // appears to have no effect.
-                if ((!fullySelectedRootStyle || !fullySelectedRootStyle->style() || !protect(fullySelectedRootStyle->style())->getPropertyCSSValue(CSSPropertyBackgroundImage))
+                if ((!fullySelectedRootStyle || !fullySelectedRootStyle->style() || !protect(fullySelectedRootStyle->style())->getPropertyCSSValue(CSSPropertyID::BackgroundImage))
                     && fullySelectedRoot->hasAttributeWithoutSynchronization(backgroundAttr))
-                    protect(fullySelectedRootStyle->style())->setProperty(CSSPropertyBackgroundImage, makeString("url('"_s, fullySelectedRoot->getAttribute(backgroundAttr), "')"_s));
+                    protect(fullySelectedRootStyle->style())->setProperty(CSSPropertyID::BackgroundImage, makeString("url('"_s, fullySelectedRoot->getAttribute(backgroundAttr), "')"_s));
 
                 if (fullySelectedRootStyle->style()) {
                     RefPtr style = fullySelectedRootStyle->style();
                     // Reset the CSS properties to avoid an assertion error in addStyleMarkup().
                     // This assertion is caused at least when we select all text of a <body> element whose
                     // 'text-decoration' property is "inherit", and copy it.
-                    if (!propertyMissingOrEqualToNone(style.get(), CSSPropertyTextDecorationLine)) {
-                        style->setProperty(CSSPropertyTextDecorationLine, CSSValueNone);
-                        style->setProperty(CSSPropertyTextDecorationThickness, CSSValueAuto);
-                        style->setProperty(CSSPropertyTextDecorationStyle, CSSValueSolid);
-                        style->setProperty(CSSPropertyTextDecorationColor, CSSValueCurrentcolor);
+                    if (!propertyMissingOrEqualToNone(style.get(), CSSPropertyID::TextDecorationLine)) {
+                        style->setProperty(CSSPropertyID::TextDecorationLine, CSSValueNone);
+                        style->setProperty(CSSPropertyID::TextDecorationThickness, CSSValueAuto);
+                        style->setProperty(CSSPropertyID::TextDecorationStyle, CSSValueSolid);
+                        style->setProperty(CSSPropertyID::TextDecorationColor, CSSValueCurrentcolor);
                     }
-                    if (!propertyMissingOrEqualToNone(style.get(), CSSPropertyWebkitTextDecorationsInEffect))
-                        style->setProperty(CSSPropertyWebkitTextDecorationsInEffect, CSSValueNone);
+                    if (!propertyMissingOrEqualToNone(style.get(), CSSPropertyID::WebkitTextDecorationsInEffect))
+                        style->setProperty(CSSPropertyID::WebkitTextDecorationsInEffect, CSSValueNone);
                     accumulator.wrapWithStyleNode(style.get(), true);
                 }
             } else {
@@ -1310,7 +1310,7 @@ static String serializePreservingVisualAppearanceInternal(const Position& start,
             accumulator.append("<div style=\"clear: both;\"></div>"_s);
         RefPtr<EditingStyle> positionRelativeStyle = styleFromMatchedRulesAndInlineDecl(*body);
         RefPtr positionStyle = positionRelativeStyle->style();
-        positionStyle->setProperty(CSSPropertyPosition, CSSValueRelative);
+        positionStyle->setProperty(CSSPropertyID::Position, CSSValueRelative);
         accumulator.wrapWithStyleNode(positionStyle.get(), true);
     }
 

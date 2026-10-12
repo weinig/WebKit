@@ -453,22 +453,22 @@ void HTMLAttachmentElement::updateProgress(const AtomString& progress)
     bool validProgress = false;
     float value = progress.toFloat(&validProgress);
     if (validProgress && std::isfinite(value)) {
-        m_imageElement->setInlineStyleProperty(CSSPropertyDisplay, CSSValueNone);
+        m_imageElement->setInlineStyleProperty(CSSPropertyID::Display, CSSValueNone);
         if (!value) {
-            m_placeholderElement->removeInlineStyleProperty(CSSPropertyDisplay);
-            m_progressElement->setInlineStyleProperty(CSSPropertyDisplay, CSSValueNone);
+            m_placeholderElement->removeInlineStyleProperty(CSSPropertyID::Display);
+            m_progressElement->setInlineStyleProperty(CSSPropertyID::Display, CSSValueNone);
             m_progressElement->removeInlineStyleCustomProperty(attachmentProgressCSSProperty());
             return;
         }
-        m_placeholderElement->setInlineStyleProperty(CSSPropertyDisplay, CSSValueNone);
-        m_progressElement->removeInlineStyleProperty(CSSPropertyDisplay);
+        m_placeholderElement->setInlineStyleProperty(CSSPropertyID::Display, CSSValueNone);
+        m_progressElement->removeInlineStyleProperty(CSSPropertyID::Display);
         m_progressElement->setInlineStyleCustomProperty(attachmentProgressCSSProperty(), (value < 0.0) ? "0"_s : (value > 1.0) ? "1"_s : progress);
         return;
     }
 
-    m_imageElement->removeInlineStyleProperty(CSSPropertyDisplay);
-    m_placeholderElement->setInlineStyleProperty(CSSPropertyDisplay, CSSValueNone);
-    m_progressElement->setInlineStyleProperty(CSSPropertyDisplay, CSSValueNone);
+    m_imageElement->removeInlineStyleProperty(CSSPropertyID::Display);
+    m_placeholderElement->setInlineStyleProperty(CSSPropertyID::Display, CSSValueNone);
+    m_progressElement->setInlineStyleProperty(CSSPropertyID::Display, CSSValueNone);
     m_progressElement->removeInlineStyleCustomProperty(attachmentProgressCSSProperty());
 }
 
@@ -652,10 +652,10 @@ Node::NeedsPostConnectionSteps HTMLAttachmentElement::insertionSteps(InsertionTy
 {
     auto result = HTMLElement::insertionSteps(type, ancestor);
     if (isWideLayout()) {
-        setInlineStyleProperty(CSSPropertyMarginLeft, 1, CSSUnitType::Px);
-        setInlineStyleProperty(CSSPropertyMarginRight, 1, CSSUnitType::Px);
-        setInlineStyleProperty(CSSPropertyMarginTop, 1, CSSUnitType::Px);
-        setInlineStyleProperty(CSSPropertyMarginBottom, 1, CSSUnitType::Px);
+        setInlineStyleProperty(CSSPropertyID::MarginLeft, 1, CSSUnitType::Px);
+        setInlineStyleProperty(CSSPropertyID::MarginRight, 1, CSSUnitType::Px);
+        setInlineStyleProperty(CSSPropertyID::MarginTop, 1, CSSUnitType::Px);
+        setInlineStyleProperty(CSSPropertyID::MarginBottom, 1, CSSUnitType::Px);
     }
 
     Ref document = this->document();

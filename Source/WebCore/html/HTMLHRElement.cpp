@@ -130,37 +130,37 @@ void HTMLHRElement::collectPresentationalHintsForAttribute(const QualifiedName& 
     switch (name.nodeName()) {
     case AttributeNames::alignAttr:
         if (equalLettersIgnoringASCIICase(value, "left"_s)) {
-            addPropertyToPresentationalHintStyle(style, CSSPropertyMarginLeft, 0, CSSUnitType::Px);
-            addPropertyToPresentationalHintStyle(style, CSSPropertyMarginRight, CSSValueAuto);
+            addPropertyToPresentationalHintStyle(style, CSSPropertyID::MarginLeft, 0, CSSUnitType::Px);
+            addPropertyToPresentationalHintStyle(style, CSSPropertyID::MarginRight, CSSValueAuto);
         } else if (equalLettersIgnoringASCIICase(value, "right"_s)) {
-            addPropertyToPresentationalHintStyle(style, CSSPropertyMarginLeft, CSSValueAuto);
-            addPropertyToPresentationalHintStyle(style, CSSPropertyMarginRight, 0, CSSUnitType::Px);
+            addPropertyToPresentationalHintStyle(style, CSSPropertyID::MarginLeft, CSSValueAuto);
+            addPropertyToPresentationalHintStyle(style, CSSPropertyID::MarginRight, 0, CSSUnitType::Px);
         } else {
-            addPropertyToPresentationalHintStyle(style, CSSPropertyMarginLeft, CSSValueAuto);
-            addPropertyToPresentationalHintStyle(style, CSSPropertyMarginRight, CSSValueAuto);
+            addPropertyToPresentationalHintStyle(style, CSSPropertyID::MarginLeft, CSSValueAuto);
+            addPropertyToPresentationalHintStyle(style, CSSPropertyID::MarginRight, CSSValueAuto);
         }
         break;
     case AttributeNames::widthAttr:
-        addHTMLLengthToStyle(style, CSSPropertyWidth, value);
+        addHTMLLengthToStyle(style, CSSPropertyID::Width, value);
         break;
     case AttributeNames::colorAttr:
-        addPropertyToPresentationalHintStyle(style, CSSPropertyBorderStyle, CSSValueSolid);
-        addHTMLColorToStyle(style, CSSPropertyBorderColor, value);
-        addHTMLColorToStyle(style, CSSPropertyBackgroundColor, value);
+        addPropertyToPresentationalHintStyle(style, CSSPropertyID::BorderStyle, CSSValueSolid);
+        addHTMLColorToStyle(style, CSSPropertyID::BorderColor, value);
+        addHTMLColorToStyle(style, CSSPropertyID::BackgroundColor, value);
         break;
     case AttributeNames::noshadeAttr:
         if (!hasAttributeWithoutSynchronization(colorAttr)) {
-            addPropertyToPresentationalHintStyle(style, CSSPropertyBorderStyle, CSSValueSolid);
+            addPropertyToPresentationalHintStyle(style, CSSPropertyID::BorderStyle, CSSValueSolid);
             auto darkGrayValue = CSSValuePool::singleton().createColorValue(Color::darkGray);
-            style.setProperty(CSSPropertyBorderColor, darkGrayValue);
-            style.setProperty(CSSPropertyBackgroundColor, WTF::move(darkGrayValue));
+            style.setProperty(CSSPropertyID::BorderColor, darkGrayValue);
+            style.setProperty(CSSPropertyID::BackgroundColor, WTF::move(darkGrayValue));
         }
         break;
     case AttributeNames::sizeAttr:
         if (int size = parseHTMLInteger(value).value_or(0); size > 1)
-            addPropertyToPresentationalHintStyle(style, CSSPropertyHeight, size - 2, CSSUnitType::Px);
+            addPropertyToPresentationalHintStyle(style, CSSPropertyID::Height, size - 2, CSSUnitType::Px);
         else
-            addPropertyToPresentationalHintStyle(style, CSSPropertyBorderBottomWidth, 0, CSSUnitType::Px);
+            addPropertyToPresentationalHintStyle(style, CSSPropertyID::BorderBottomWidth, 0, CSSUnitType::Px);
         break;
     default:
         HTMLElement::collectPresentationalHintsForAttribute(name, value, style);

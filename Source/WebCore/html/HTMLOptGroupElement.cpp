@@ -102,9 +102,9 @@ void HTMLOptGroupElement::updateUserAgentShadowTree()
         labelContainer->setTextContent(WTF::move(label));
 
     if (showLabel)
-        labelContainer->removeInlineStyleProperty(CSSPropertyDisplay);
+        labelContainer->removeInlineStyleProperty(CSSPropertyID::Display);
     else
-        labelContainer->setInlineStyleProperty(CSSPropertyDisplay, CSSValueNone);
+        labelContainer->setInlineStyleProperty(CSSPropertyID::Display, CSSValueNone);
 }
 
 void HTMLOptGroupElement::didAddUserAgentShadowRoot(ShadowRoot& root)

@@ -313,46 +313,46 @@ void HTMLTableElement::collectPresentationalHintsForAttribute(const QualifiedNam
 {
     switch (name.nodeName()) {
     case AttributeNames::widthAttr:
-        addHTMLLengthToStyle(style, CSSPropertyWidth, value, AllowZeroValue::No);
+        addHTMLLengthToStyle(style, CSSPropertyID::Width, value, AllowZeroValue::No);
         break;
     case AttributeNames::heightAttr:
-        addHTMLLengthToStyle(style, CSSPropertyHeight, value);
+        addHTMLLengthToStyle(style, CSSPropertyID::Height, value);
         break;
     case AttributeNames::borderAttr:
-        addPropertyToPresentationalHintStyle(style, CSSPropertyBorderWidth, parseBorderWidthAttribute(value), CSSUnitType::Px);
+        addPropertyToPresentationalHintStyle(style, CSSPropertyID::BorderWidth, parseBorderWidthAttribute(value), CSSUnitType::Px);
         break;
     case AttributeNames::bordercolorAttr:
         if (!value.isEmpty())
-            addHTMLColorToStyle(style, CSSPropertyBorderColor, value);
+            addHTMLColorToStyle(style, CSSPropertyID::BorderColor, value);
         break;
     case AttributeNames::bgcolorAttr:
-        addHTMLColorToStyle(style, CSSPropertyBackgroundColor, value);
+        addHTMLColorToStyle(style, CSSPropertyID::BackgroundColor, value);
         break;
     case AttributeNames::backgroundAttr:
         if (auto url = value.string().trim(isASCIIWhitespace); !url.isEmpty())
-            style.setProperty(CSSProperty(CSSPropertyBackgroundImage, CSSImageValue::create(protect(document())->encodingParseURL(url))));
+            style.setProperty(CSSProperty(CSSPropertyID::BackgroundImage, CSSImageValue::create(protect(document())->encodingParseURL(url))));
         break;
     case AttributeNames::valignAttr:
         if (!value.isEmpty())
-            addPropertyToPresentationalHintStyle(style, CSSPropertyVerticalAlign, value);
+            addPropertyToPresentationalHintStyle(style, CSSPropertyID::VerticalAlign, value);
         break;
     case AttributeNames::cellspacingAttr:
         if (!value.isEmpty())
-            addHTMLPixelsToStyle(style, CSSPropertyBorderSpacing, value);
+            addHTMLPixelsToStyle(style, CSSPropertyID::BorderSpacing, value);
         break;
     case AttributeNames::alignAttr:
         if (!value.isEmpty()) {
             if (equalLettersIgnoringASCIICase(value, "center"_s)) {
-                addPropertyToPresentationalHintStyle(style, CSSPropertyMarginInlineStart, CSSValueAuto);
-                addPropertyToPresentationalHintStyle(style, CSSPropertyMarginInlineEnd, CSSValueAuto);
+                addPropertyToPresentationalHintStyle(style, CSSPropertyID::MarginInlineStart, CSSValueAuto);
+                addPropertyToPresentationalHintStyle(style, CSSPropertyID::MarginInlineEnd, CSSValueAuto);
             } else
-                addPropertyToPresentationalHintStyle(style, CSSPropertyFloat, value);
+                addPropertyToPresentationalHintStyle(style, CSSPropertyID::Float, value);
         }
         break;
     case AttributeNames::rulesAttr:
         // The presence of a valid rules attribute causes border collapsing to be enabled.
         if (m_rulesAttr != TableRules::Unset)
-            addPropertyToPresentationalHintStyle(style, CSSPropertyBorderCollapse, CSSValueCollapse);
+            addPropertyToPresentationalHintStyle(style, CSSPropertyID::BorderCollapse, CSSValueCollapse);
         break;
     case AttributeNames::frameAttr: {
         bool borderTop;
@@ -360,11 +360,11 @@ void HTMLTableElement::collectPresentationalHintsForAttribute(const QualifiedNam
         bool borderBottom;
         bool borderLeft;
         if (getBordersFromFrameAttributeValue(value, borderTop, borderRight, borderBottom, borderLeft)) {
-            addPropertyToPresentationalHintStyle(style, CSSPropertyBorderWidth, CSSValueThin);
-            addPropertyToPresentationalHintStyle(style, CSSPropertyBorderTopStyle, borderTop ? CSSValueSolid : CSSValueHidden);
-            addPropertyToPresentationalHintStyle(style, CSSPropertyBorderBottomStyle, borderBottom ? CSSValueSolid : CSSValueHidden);
-            addPropertyToPresentationalHintStyle(style, CSSPropertyBorderLeftStyle, borderLeft ? CSSValueSolid : CSSValueHidden);
-            addPropertyToPresentationalHintStyle(style, CSSPropertyBorderRightStyle, borderRight ? CSSValueSolid : CSSValueHidden);
+            addPropertyToPresentationalHintStyle(style, CSSPropertyID::BorderWidth, CSSValueThin);
+            addPropertyToPresentationalHintStyle(style, CSSPropertyID::BorderTopStyle, borderTop ? CSSValueSolid : CSSValueHidden);
+            addPropertyToPresentationalHintStyle(style, CSSPropertyID::BorderBottomStyle, borderBottom ? CSSValueSolid : CSSValueHidden);
+            addPropertyToPresentationalHintStyle(style, CSSPropertyID::BorderLeftStyle, borderLeft ? CSSValueSolid : CSSValueHidden);
+            addPropertyToPresentationalHintStyle(style, CSSPropertyID::BorderRightStyle, borderRight ? CSSValueSolid : CSSValueHidden);
         }
         break;
     }
@@ -453,10 +453,10 @@ void HTMLTableElement::attributeChanged(const QualifiedName& name, const AtomStr
 static Ref<MutableStyleProperties> createBorderStyle(CSSValueID value)
 {
     Ref style = MutableStyleProperties::create();
-    style->setProperty(CSSPropertyBorderTopStyle, value);
-    style->setProperty(CSSPropertyBorderBottomStyle, value);
-    style->setProperty(CSSPropertyBorderLeftStyle, value);
-    style->setProperty(CSSPropertyBorderRightStyle, value);
+    style->setProperty(CSSPropertyID::BorderTopStyle, value);
+    style->setProperty(CSSPropertyID::BorderBottomStyle, value);
+    style->setProperty(CSSPropertyID::BorderLeftStyle, value);
+    style->setProperty(CSSPropertyID::BorderRightStyle, value);
     return style;
 }
 
@@ -506,28 +506,28 @@ Ref<MutableStyleProperties> HTMLTableElement::createSharedCellStyle() const
 
     switch (cellBorders()) {
     case CellBorders::SolidColsOnly:
-        style->setProperty(CSSPropertyBorderLeftWidth, CSSValueThin);
-        style->setProperty(CSSPropertyBorderRightWidth, CSSValueThin);
-        style->setProperty(CSSPropertyBorderLeftStyle, CSSValueSolid);
-        style->setProperty(CSSPropertyBorderRightStyle, CSSValueSolid);
-        style->setProperty(CSSPropertyBorderColor, CSSKeywordValue::create(CSSValueInherit));
+        style->setProperty(CSSPropertyID::BorderLeftWidth, CSSValueThin);
+        style->setProperty(CSSPropertyID::BorderRightWidth, CSSValueThin);
+        style->setProperty(CSSPropertyID::BorderLeftStyle, CSSValueSolid);
+        style->setProperty(CSSPropertyID::BorderRightStyle, CSSValueSolid);
+        style->setProperty(CSSPropertyID::BorderColor, CSSKeywordValue::create(CSSValueInherit));
         break;
     case CellBorders::SolidRowsOnly:
-        style->setProperty(CSSPropertyBorderTopWidth, CSSValueThin);
-        style->setProperty(CSSPropertyBorderBottomWidth, CSSValueThin);
-        style->setProperty(CSSPropertyBorderTopStyle, CSSValueSolid);
-        style->setProperty(CSSPropertyBorderBottomStyle, CSSValueSolid);
-        style->setProperty(CSSPropertyBorderColor, CSSKeywordValue::create(CSSValueInherit));
+        style->setProperty(CSSPropertyID::BorderTopWidth, CSSValueThin);
+        style->setProperty(CSSPropertyID::BorderBottomWidth, CSSValueThin);
+        style->setProperty(CSSPropertyID::BorderTopStyle, CSSValueSolid);
+        style->setProperty(CSSPropertyID::BorderBottomStyle, CSSValueSolid);
+        style->setProperty(CSSPropertyID::BorderColor, CSSKeywordValue::create(CSSValueInherit));
         break;
     case CellBorders::Solid:
-        style->setProperty(CSSPropertyBorderWidth, CSSPrimitiveValue::create(1, CSSUnitType::Px));
-        style->setProperty(CSSPropertyBorderStyle, CSSKeywordValue::create(CSSValueSolid));
-        style->setProperty(CSSPropertyBorderColor, CSSKeywordValue::create(CSSValueInherit));
+        style->setProperty(CSSPropertyID::BorderWidth, CSSPrimitiveValue::create(1, CSSUnitType::Px));
+        style->setProperty(CSSPropertyID::BorderStyle, CSSKeywordValue::create(CSSValueSolid));
+        style->setProperty(CSSPropertyID::BorderColor, CSSKeywordValue::create(CSSValueInherit));
         break;
     case CellBorders::Inset:
-        style->setProperty(CSSPropertyBorderWidth, CSSPrimitiveValue::create(1, CSSUnitType::Px));
-        style->setProperty(CSSPropertyBorderStyle, CSSKeywordValue::create(CSSValueInset));
-        style->setProperty(CSSPropertyBorderColor, CSSKeywordValue::create(CSSValueInherit));
+        style->setProperty(CSSPropertyID::BorderWidth, CSSPrimitiveValue::create(1, CSSUnitType::Px));
+        style->setProperty(CSSPropertyID::BorderStyle, CSSKeywordValue::create(CSSValueInset));
+        style->setProperty(CSSPropertyID::BorderColor, CSSKeywordValue::create(CSSValueInherit));
         break;
     case CellBorders::None:
         // If 'rules=none' then allow any borders set at cell level to take effect. 
@@ -535,7 +535,7 @@ Ref<MutableStyleProperties> HTMLTableElement::createSharedCellStyle() const
     }
 
     if (m_padding)
-        style->setProperty(CSSPropertyPadding, CSSPrimitiveValue::create(m_padding, CSSUnitType::Px));
+        style->setProperty(CSSPropertyID::Padding, CSSPrimitiveValue::create(m_padding, CSSUnitType::Px));
 
     return style;
 }
@@ -551,15 +551,15 @@ static Ref<MutableStyleProperties> makeGroupBorderStyle(bool rows)
 {
     auto style = MutableStyleProperties::create();
     if (rows) {
-        style->setProperty(CSSPropertyBorderTopWidth, CSSValueThin);
-        style->setProperty(CSSPropertyBorderBottomWidth, CSSValueThin);
-        style->setProperty(CSSPropertyBorderTopStyle, CSSValueSolid);
-        style->setProperty(CSSPropertyBorderBottomStyle, CSSValueSolid);
+        style->setProperty(CSSPropertyID::BorderTopWidth, CSSValueThin);
+        style->setProperty(CSSPropertyID::BorderBottomWidth, CSSValueThin);
+        style->setProperty(CSSPropertyID::BorderTopStyle, CSSValueSolid);
+        style->setProperty(CSSPropertyID::BorderBottomStyle, CSSValueSolid);
     } else {
-        style->setProperty(CSSPropertyBorderLeftWidth, CSSValueThin);
-        style->setProperty(CSSPropertyBorderRightWidth, CSSValueThin);
-        style->setProperty(CSSPropertyBorderLeftStyle, CSSValueSolid);
-        style->setProperty(CSSPropertyBorderRightStyle, CSSValueSolid);
+        style->setProperty(CSSPropertyID::BorderLeftWidth, CSSValueThin);
+        style->setProperty(CSSPropertyID::BorderRightWidth, CSSValueThin);
+        style->setProperty(CSSPropertyID::BorderLeftStyle, CSSValueSolid);
+        style->setProperty(CSSPropertyID::BorderRightStyle, CSSValueSolid);
     }
     return style;
 }

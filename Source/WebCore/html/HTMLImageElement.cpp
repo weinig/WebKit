@@ -180,29 +180,29 @@ void HTMLImageElement::collectPresentationalHintsForAttribute(const QualifiedNam
 {
     switch (name.nodeName()) {
     case AttributeNames::widthAttr:
-        addHTMLMultiLengthToStyle(style, CSSPropertyWidth, value);
+        addHTMLMultiLengthToStyle(style, CSSPropertyID::Width, value);
         applyAspectRatioFromWidthAndHeightAttributesToStyle(value, attributeWithoutSynchronization(heightAttr), style);
         break;
     case AttributeNames::heightAttr:
-        addHTMLMultiLengthToStyle(style, CSSPropertyHeight, value);
+        addHTMLMultiLengthToStyle(style, CSSPropertyID::Height, value);
         applyAspectRatioFromWidthAndHeightAttributesToStyle(attributeWithoutSynchronization(widthAttr), value, style);
         break;
     case AttributeNames::borderAttr:
         applyBorderAttributeToStyle(value, style);
         break;
     case AttributeNames::vspaceAttr:
-        addHTMLLengthToStyle(style, CSSPropertyMarginTop, value);
-        addHTMLLengthToStyle(style, CSSPropertyMarginBottom, value);
+        addHTMLLengthToStyle(style, CSSPropertyID::MarginTop, value);
+        addHTMLLengthToStyle(style, CSSPropertyID::MarginBottom, value);
         break;
     case AttributeNames::hspaceAttr:
-        addHTMLLengthToStyle(style, CSSPropertyMarginLeft, value);
-        addHTMLLengthToStyle(style, CSSPropertyMarginRight, value);
+        addHTMLLengthToStyle(style, CSSPropertyID::MarginLeft, value);
+        addHTMLLengthToStyle(style, CSSPropertyID::MarginRight, value);
         break;
     case AttributeNames::alignAttr:
         applyAlignmentAttributeToStyle(value, style);
         break;
     case AttributeNames::valignAttr:
-        addPropertyToPresentationalHintStyle(style, CSSPropertyVerticalAlign, value);
+        addPropertyToPresentationalHintStyle(style, CSSPropertyID::VerticalAlign, value);
         break;
     default:
         HTMLElement::collectPresentationalHintsForAttribute(name, value, style);
@@ -224,19 +224,19 @@ void HTMLImageElement::collectExtraStyleForPresentationalHints(MutableStylePrope
         return;
 
     if (!widthAttrFromSource.isNull())
-        addHTMLLengthToStyle(style, CSSPropertyWidth, widthAttrFromSource);
+        addHTMLLengthToStyle(style, CSSPropertyID::Width, widthAttrFromSource);
     else
-        addPropertyToPresentationalHintStyle(style, CSSPropertyWidth, CSSValueAuto);
+        addPropertyToPresentationalHintStyle(style, CSSPropertyID::Width, CSSValueAuto);
 
     if (!heightAttrFromSource.isNull())
-        addHTMLLengthToStyle(style, CSSPropertyHeight, heightAttrFromSource);
+        addHTMLLengthToStyle(style, CSSPropertyID::Height, heightAttrFromSource);
     else
-        addPropertyToPresentationalHintStyle(style, CSSPropertyHeight, CSSValueAuto);
+        addPropertyToPresentationalHintStyle(style, CSSPropertyID::Height, CSSValueAuto);
 
     if (!widthAttrFromSource.isNull() && !heightAttrFromSource.isNull())
         applyAspectRatioFromWidthAndHeightAttributesToStyle(widthAttrFromSource, heightAttrFromSource, style);
     else
-        addPropertyToPresentationalHintStyle(style, CSSPropertyAspectRatio, CSSValueAuto);
+        addPropertyToPresentationalHintStyle(style, CSSPropertyID::AspectRatio, CSSValueAuto);
 }
 
 String HTMLImageElement::imageSourceURL() const

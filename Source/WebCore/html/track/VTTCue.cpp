@@ -157,16 +157,16 @@ void VTTCueBox::applyCSSPropertiesWithRegion()
 
     // the 'left' property must be set to left
     WTF::visit(WTF::makeVisitor([this, protectedThis = Ref { *this }] (double left) {
-        setInlineStyleProperty(CSSPropertyLeft, left, CSSUnitType::Percentage);
+        setInlineStyleProperty(CSSPropertyID::Left, left, CSSUnitType::Percentage);
     }, [this, protectedThis = Ref { *this }] (auto) {
-        setInlineStyleProperty(CSSPropertyLeft, CSSValueAuto);
+        setInlineStyleProperty(CSSPropertyID::Left, CSSValueAuto);
     }), cue->left());
-    setInlineStyleProperty(CSSPropertyHeight, CSSValueAuto);
-    setInlineStyleProperty(CSSPropertyTextAlign, cue->getCSSAlignment());
+    setInlineStyleProperty(CSSPropertyID::Height, CSSValueAuto);
+    setInlineStyleProperty(CSSPropertyID::TextAlign, cue->getCSSAlignment());
 
     // Section 7.4 states that the text track display should be abolustely positioned,
     // unless if it is the child of a region, then it is to be relatively positioned.
-    setInlineStyleProperty(CSSPropertyPosition, CSSValueRelative);
+    setInlineStyleProperty(CSSPropertyID::Position, CSSValueRelative);
 }
 
 void VTTCueBox::applyCSSProperties()
@@ -203,20 +203,20 @@ void VTTCueBox::applyCSSProperties()
     // is not a true viewport, but it is a container, so they serve the same purpose.
 
     // the 'writing-mode' property must be set to writing-mode
-    setInlineStyleProperty(CSSPropertyWritingMode, cue->getCSSWritingMode());
+    setInlineStyleProperty(CSSPropertyID::WritingMode, cue->getCSSWritingMode());
 
     // the 'top' property must be set to top
     WTF::visit(WTF::makeVisitor([this, protectedThis = Ref { *this }] (double top) {
-        setInlineStyleProperty(CSSPropertyTop, top, CSSUnitType::Cqh);
+        setInlineStyleProperty(CSSPropertyID::Top, top, CSSUnitType::Cqh);
     }, [this, protectedThis = Ref { *this }] (auto) {
-        setInlineStyleProperty(CSSPropertyTop, CSSValueAuto);
+        setInlineStyleProperty(CSSPropertyID::Top, CSSValueAuto);
     }), cue->top());
 
     // the 'left' property must be set to left
     WTF::visit(WTF::makeVisitor([this, protectedThis = Ref { *this }] (double left) {
-        setInlineStyleProperty(CSSPropertyLeft, left, CSSUnitType::Cqw);
+        setInlineStyleProperty(CSSPropertyID::Left, left, CSSUnitType::Cqw);
     }, [this, protectedThis = Ref { *this }] (auto) {
-        setInlineStyleProperty(CSSPropertyLeft, CSSValueAuto);
+        setInlineStyleProperty(CSSPropertyID::Left, CSSValueAuto);
     }), cue->left());
 
     // NOTE: For 'width' and 'height', see step 8. in 7.2, Processing Cue Settings:
@@ -227,31 +227,31 @@ void VTTCueBox::applyCSSProperties()
 
     // the 'width' property must be set to width
     WTF::visit(WTF::makeVisitor([this, protectedThis = Ref { *this }] (double width) {
-        setInlineStyleProperty(CSSPropertyWidth, width, CSSUnitType::Cqw);
+        setInlineStyleProperty(CSSPropertyID::Width, width, CSSUnitType::Cqw);
     }, [this, protectedThis = Ref { *this }] (auto) {
-        setInlineStyleProperty(CSSPropertyWidth, CSSValueAuto);
+        setInlineStyleProperty(CSSPropertyID::Width, CSSValueAuto);
     }), cue->width());
 
     // the 'height' property must be set to height
     WTF::visit(WTF::makeVisitor([this, protectedThis = Ref { *this }] (double height) {
-        setInlineStyleProperty(CSSPropertyHeight, height, CSSUnitType::Cqh);
+        setInlineStyleProperty(CSSPropertyID::Height, height, CSSUnitType::Cqh);
     }, [this, protectedThis = Ref { *this }] (auto) {
-        setInlineStyleProperty(CSSPropertyHeight, CSSValueAuto);
+        setInlineStyleProperty(CSSPropertyID::Height, CSSValueAuto);
     }), cue->height());
 
     // The 'text-align' property on the (root) List of WebVTT Node Objects must
     // be set to the value in the second cell of the row of the table below
     // whose first cell is the value of the corresponding cue's WebVTT cue text
     // alignment:
-    setInlineStyleProperty(CSSPropertyTextAlign, cue->getCSSAlignment());
+    setInlineStyleProperty(CSSPropertyID::TextAlign, cue->getCSSAlignment());
 
     // Section 7.4 states that the text track display should be abolustely positioned,
     // unless if it is the child of a region, then it is to be relatively positioned.
-    setInlineStyleProperty(CSSPropertyPosition, CSSValueAbsolute);
+    setInlineStyleProperty(CSSPropertyID::Position, CSSValueAbsolute);
 
     if (cue->preventLineWrapping()) {
-        setInlineStyleProperty(CSSPropertyWhiteSpaceCollapse, CSSValuePreserve);
-        setInlineStyleProperty(CSSPropertyTextWrapMode, CSSValueNowrap);
+        setInlineStyleProperty(CSSPropertyID::WhiteSpaceCollapse, CSSValuePreserve);
+        setInlineStyleProperty(CSSPropertyID::TextWrapMode, CSSValueNowrap);
     }
 
     // Make sure shadow or stroke is not clipped.

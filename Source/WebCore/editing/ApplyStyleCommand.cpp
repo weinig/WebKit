@@ -412,13 +412,13 @@ void ApplyStyleCommand::applyRelativeFontStyleChange(EditingStyle* style)
         RefPtr<MutableStyleProperties> inlineStyle = copyStyleOrCreateEmpty(protect(element->inlineStyle()));
         float currentFontSize = computedFontSize(node.get());
         float desiredFontSize = std::max(MinimumFontSize, startingFontSizes.get(node.get()) + style->fontSizeDelta());
-        RefPtr<CSSValue> value = inlineStyle->getPropertyCSSValue(CSSPropertyFontSize);
+        RefPtr<CSSValue> value = inlineStyle->getPropertyCSSValue(CSSPropertyID::FontSize);
         if (value) {
-            element->removeInlineStyleProperty(CSSPropertyFontSize);
+            element->removeInlineStyleProperty(CSSPropertyID::FontSize);
             currentFontSize = computedFontSize(node.get());
         }
         if (currentFontSize != desiredFontSize) {
-            inlineStyle->setProperty(CSSPropertyFontSize, CSSPrimitiveValue::create(desiredFontSize, CSSUnitType::Px));
+            inlineStyle->setProperty(CSSPropertyID::FontSize, CSSPrimitiveValue::create(desiredFontSize, CSSUnitType::Px));
             setNodeAttribute(*element, styleAttr, inlineStyle->asTextAtom(CSS::defaultSerializationContext()));
         }
         if (inlineStyle->isEmpty()) {
@@ -476,7 +476,7 @@ RefPtr<HTMLElement> ApplyStyleCommand::splitAncestorsWithUnicodeBidi(Node* node,
     RefPtr<Node> nextHighestAncestorWithUnicodeBidi;
     auto highestAncestorUnicodeBidi = CSSValueID::Invalid;
     for (RefPtr ancestor { node->parentNode() }; ancestor != block; ancestor = ancestor->parentNode()) {
-        auto unicodeBidi = valueID(Style::Extractor(ancestor.get()).propertyValue(CSSPropertyUnicodeBidi).get());
+        auto unicodeBidi = valueID(Style::Extractor(ancestor.get()).propertyValue(CSSPropertyID::UnicodeBidi).get());
         if (unicodeBidi != CSSValueID::Invalid && unicodeBidi != CSSValueID::Normal) {
             highestAncestorUnicodeBidi = unicodeBidi;
             nextHighestAncestorWithUnicodeBidi = highestAncestorWithUnicodeBidi;
@@ -528,7 +528,7 @@ void ApplyStyleCommand::removeEmbeddingUpToEnclosingBlock(Node* node, Node* unsp
         if (!element)
             continue;
 
-        auto unicodeBidi = valueID(Style::Extractor(element.get()).propertyValue(CSSPropertyUnicodeBidi).get());
+        auto unicodeBidi = valueID(Style::Extractor(element.get()).propertyValue(CSSPropertyID::UnicodeBidi).get());
         if (unicodeBidi == CSSValueID::Invalid || unicodeBidi == CSSValueID::Normal)
             continue;
 
@@ -542,8 +542,8 @@ void ApplyStyleCommand::removeEmbeddingUpToEnclosingBlock(Node* node, Node* unsp
             removeNodeAttribute(*element, dirAttr);
         } else {
             auto inlineStyle = copyStyleOrCreateEmpty(protect(element->inlineStyle()));
-            inlineStyle->setProperty(CSSPropertyUnicodeBidi, CSSValueNormal);
-            inlineStyle->removeProperty(CSSPropertyDirection);
+            inlineStyle->setProperty(CSSPropertyID::UnicodeBidi, CSSValueNormal);
+            inlineStyle->removeProperty(CSSPropertyID::Direction);
             setNodeAttribute(*element, styleAttr, inlineStyle->asTextAtom(CSS::defaultSerializationContext()));
             if (isSpanWithoutAttributesOrUnstyledStyleSpan(*element))
                 removeNodePreservingChildren(*element);
@@ -554,7 +554,7 @@ void ApplyStyleCommand::removeEmbeddingUpToEnclosingBlock(Node* node, Node* unsp
 static RefPtr<Node> highestEmbeddingAncestor(Node* startNode, Node* enclosingNode)
 {
     for (RefPtr currentNode = startNode; currentNode && currentNode != enclosingNode; currentNode = currentNode->parentNode()) {
-        if (currentNode->isHTMLElement() && valueID(Style::Extractor(currentNode.get()).propertyValue(CSSPropertyUnicodeBidi).get()) == CSSValueEmbed)
+        if (currentNode->isHTMLElement() && valueID(Style::Extractor(currentNode.get()).propertyValue(CSSPropertyID::UnicodeBidi).get()) == CSSValueEmbed)
             return currentNode;
     }
 
@@ -1517,7 +1517,7 @@ float ApplyStyleCommand::computedFontSize(Node* node)
         return 0;
 
     // FIXME: This should not be using Style::Extractor to extract a CSSValue. Instead, we should make it possible to get at the computed style that exists on Style::ComputedStyle directly, avoiding unnecessary and lossy conversion through CSSValue.
-    RefPtr value = dynamicDowncast<CSSPrimitiveValue>(Style::Extractor(node).propertyValue(CSSPropertyFontSize));
+    RefPtr value = dynamicDowncast<CSSPrimitiveValue>(Style::Extractor(node).propertyValue(CSSPropertyID::FontSize));
     if (!value)
         return 0;
     return Style::deprecatedToStyleFromCSSValue<Style::Length<CSS::Nonnegative, float>>(*value)->resolveZoom(Style::ZoomFactor::none());

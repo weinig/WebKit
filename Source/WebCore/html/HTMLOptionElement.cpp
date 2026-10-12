@@ -148,11 +148,11 @@ void HTMLOptionElement::updateUserAgentShadowTree()
 
     labelContainer->setTextContent(String { labelValue });
     if (m_ownerSelect && !labelValue.isNull()) {
-        labelContainer->setInlineStyleProperty(CSSPropertyDisplay, CSSValueInline);
-        slot->setInlineStyleProperty(CSSPropertyDisplay, CSSValueNone);
+        labelContainer->setInlineStyleProperty(CSSPropertyID::Display, CSSValueInline);
+        slot->setInlineStyleProperty(CSSPropertyID::Display, CSSValueNone);
     } else {
-        labelContainer->setInlineStyleProperty(CSSPropertyDisplay, CSSValueNone);
-        slot->setInlineStyleProperty(CSSPropertyDisplay, CSSValueContents);
+        labelContainer->setInlineStyleProperty(CSSPropertyID::Display, CSSValueNone);
+        slot->setInlineStyleProperty(CSSPropertyID::Display, CSSValueContents);
     }
 }
 

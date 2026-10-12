@@ -256,7 +256,7 @@ void HTMLSelectElement::didAddUserAgentShadowRoot(ShadowRoot& root)
     ScriptDisallowedScope::EventAllowedScope listBoxSlotScope { listBoxSlot };
     listBoxSlot->setAttributeWithoutSynchronization(nameAttr, listBoxSlotName());
     // Options in the picker inherit read-only from its user agent part. Match that here.
-    listBoxSlot->setInlineStyleProperty(CSSPropertyWebkitUserModify, CSSValueReadOnly);
+    listBoxSlot->setInlineStyleProperty(CSSPropertyID::WebkitUserModify, CSSValueReadOnly);
     root.appendChild(listBoxSlot);
     m_listBoxSlot = WTF::move(listBoxSlot);
 }
